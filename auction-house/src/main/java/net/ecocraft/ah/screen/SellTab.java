@@ -271,7 +271,8 @@ public class SellTab {
 
         String listingType = isBuyout ? "BUYOUT" : "AUCTION";
         int hours = DURATIONS[selectedDuration];
-        PacketDistributor.sendToServer(new CreateListingPayload(listingType, priceValue, hours));
+        int slotToSend = selectedInventorySlot >= 0 ? selectedInventorySlot : -1;
+        PacketDistributor.sendToServer(new CreateListingPayload(listingType, priceValue, hours, slotToSend));
         lastMessage = "Envoi en cours...";
         lastSuccess = true;
     }

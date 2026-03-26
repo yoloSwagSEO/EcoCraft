@@ -7,29 +7,29 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.PathfinderMob;
-import net.minecraft.world.entity.ai.goal.FloatGoal;
+import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.goal.LookAtPlayerGoal;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.neoforged.neoforge.network.PacketDistributor;
 
 /**
- * A stationary NPC that opens the auction house when interacted with.
+ * A stationary NPC auctioneer. Uses Mob (not PathfinderMob) to avoid
+ * pathfinding-related issues. Invulnerable, no gravity, no collision.
  */
-public class AuctioneerEntity extends PathfinderMob {
+public class AuctioneerEntity extends Mob {
 
-    public AuctioneerEntity(EntityType<? extends PathfinderMob> type, Level level) {
+    public AuctioneerEntity(EntityType<? extends Mob> type, Level level) {
         super(type, level);
         this.setNoGravity(true);
         this.setInvulnerable(true);
-        this.setCustomName(Component.literal("§6Commissaire-priseur"));
+        this.setCustomName(Component.literal("\u00a76Commissaire-priseur"));
         this.setCustomNameVisible(true);
+        // Entity will persist in the world (not despawn)
     }
 
     @Override
     protected void registerGoals() {
-        this.goalSelector.addGoal(0, new FloatGoal(this));
         this.goalSelector.addGoal(1, new LookAtPlayerGoal(this, Player.class, 8.0f));
     }
 
@@ -40,16 +40,11 @@ public class AuctioneerEntity extends PathfinderMob {
             PacketDistributor.sendToPlayer(serverPlayer, new OpenAHPayload());
             return InteractionResult.SUCCESS;
         }
-        // For OFF_HAND, consume the interaction on client side to prevent further processing
-        if (hand == InteractionHand.OFF_HAND) {
-            return InteractionResult.CONSUME;
-        }
         return InteractionResult.PASS;
     }
 
     @Override
     public boolean hurt(DamageSource source, float amount) {
-        // Invulnerable — return false but don't interfere with interaction pipeline
         return false;
     }
 
@@ -59,20 +54,18 @@ public class AuctioneerEntity extends PathfinderMob {
     }
 
     @Override
-    public boolean isPickable() {
-        return true;
-    }
-
-    @Override
     public boolean skipAttackInteraction(net.minecraft.world.entity.Entity attacker) {
-        // Prevent attack interactions from consuming left-click events
         return true;
     }
 
     @Override
     public boolean canBeCollidedWith() {
-        // Don't intercept raycasts when the player tries to break/place blocks nearby
         return false;
+    }
+
+    @Override
+    public boolean isPickable() {
+        return true;
     }
 
     @Override

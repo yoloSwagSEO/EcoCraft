@@ -119,17 +119,25 @@ public final class ServerPayloadHandler {
                 AuctionService service = requireService();
                 ServerPlayer player = (ServerPlayer) context.player();
 
-                ItemStack held = player.getMainHandItem();
-                if (held.isEmpty()) {
-                    context.reply(new AHActionResultPayload(false, "You must hold an item to sell."));
+                // Get item from the specified slot, or main hand if -1
+                ItemStack itemToSell;
+                int slotIndex = payload.slotIndex();
+                if (slotIndex >= 0 && slotIndex < player.getInventory().getContainerSize()) {
+                    itemToSell = player.getInventory().getItem(slotIndex);
+                } else {
+                    itemToSell = player.getMainHandItem();
+                    slotIndex = -1;
+                }
+
+                if (itemToSell.isEmpty()) {
+                    context.reply(new AHActionResultPayload(false, "Aucun objet sélectionné!"));
                     return;
                 }
 
-                String itemId = BuiltInRegistries.ITEM.getKey(held.getItem()).toString();
-                String itemName = held.getHoverName().getString();
-                // In 1.21.1, items use the component system; serialize the full stack for storage
-                String nbt = null; // Component-based serialisation deferred to a helper
-                int quantity = held.getCount();
+                String itemId = BuiltInRegistries.ITEM.getKey(itemToSell.getItem()).toString();
+                String itemName = itemToSell.getHoverName().getString();
+                String nbt = null;
+                int quantity = itemToSell.getCount();
                 ListingType type = ListingType.valueOf(payload.listingType());
                 BigDecimal price = BigDecimal.valueOf(payload.price());
 
@@ -148,8 +156,12 @@ public final class ServerPayloadHandler {
                         ItemCategory.MISC
                 );
 
-                // Remove item from hand
-                player.getMainHandItem().setCount(0);
+                // Remove item from the correct slot
+                if (slotIndex >= 0) {
+                    player.getInventory().setItem(slotIndex, ItemStack.EMPTY);
+                } else {
+                    player.getMainHandItem().setCount(0);
+                }
 
                 context.reply(new AHActionResultPayload(true, "Listing created successfully."));
             } catch (AuctionService.AuctionException e) {
