@@ -1,5 +1,6 @@
 package net.ecocraft.ah;
 
+import net.ecocraft.ah.network.AHNetworkHandler;
 import net.ecocraft.ah.registry.AHRegistries;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
@@ -12,5 +13,6 @@ public class AuctionHouseMod {
 
     public AuctionHouseMod(IEventBus modBus, ModContainer container) {
         AHRegistries.register(modBus);
+        modBus.register(AHNetworkHandler.class);
     }
 }
