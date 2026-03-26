@@ -1,0 +1,12 @@
+{
+  "block.ecocraft_ah.auction_terminal": "Auction Terminal",
+  "entity.ecocraft_ah.auctioneer": "Auctioneer",
+  "item.ecocraft_ah.auctioneer_spawn_egg": "Auctioneer Spawn Egg",
+  "itemGroup.ecocraft_ah.auction_house": "Auction House",
+  "commands.ecocraft_ah.ah.usage": "Opens the Auction House",
+  "commands.ecocraft_ah.ah.sell.usage": "Sell the item in your hand",
+  "commands.ecocraft_ah.ah.search.usage": "Search the Auction House",
+  "commands.ecocraft_ah.ah.collect.usage": "Collect pending parcels",
+  "commands.ecocraft_ah.ah.admin.reload": "Reload auction house configuration",
+  "commands.ecocraft_ah.ah.admin.expire": "Force expire old listings"
+}
