@@ -21,9 +21,11 @@ public class AuctionHouseScreen extends Screen {
 
     private static final Logger LOGGER = LogUtils.getLogger();
 
-    public static final int GUI_WIDTH = 320;
-    public static final int GUI_HEIGHT = 220;
+    private static final int MAX_GUI_WIDTH = 400;
+    private static final int MAX_GUI_HEIGHT = 280;
 
+    private int guiWidth;
+    private int guiHeight;
     private int guiLeft;
     private int guiTop;
 
@@ -41,8 +43,10 @@ public class AuctionHouseScreen extends Screen {
 
     @Override
     protected void init() {
-        guiLeft = (width - GUI_WIDTH) / 2;
-        guiTop = (height - GUI_HEIGHT) / 2;
+        guiWidth = Math.min(MAX_GUI_WIDTH, (int) (width * 0.8));
+        guiHeight = Math.min(MAX_GUI_HEIGHT, (int) (height * 0.8));
+        guiLeft = (width - guiWidth) / 2;
+        guiTop = (height - guiHeight) / 2;
 
         List<Component> tabLabels = List.of(
                 Component.literal("\uD83D\uDED2 Acheter"),
@@ -56,8 +60,8 @@ public class AuctionHouseScreen extends Screen {
 
         int contentX = guiLeft + 4;
         int contentY = guiTop + 30;
-        int contentW = GUI_WIDTH - 8;
-        int contentH = GUI_HEIGHT - 34;
+        int contentW = guiWidth - 8;
+        int contentH = guiHeight - 34;
 
         buyTab = new BuyTab(this, contentX, contentY, contentW, contentH);
         sellTab = new SellTab(this, contentX, contentY, contentW, contentH);
@@ -89,7 +93,7 @@ public class AuctionHouseScreen extends Screen {
     @Override
     public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         super.renderBackground(graphics, mouseX, mouseY, partialTick);
-        EcoTheme.drawPanel(graphics, guiLeft, guiTop, GUI_WIDTH, GUI_HEIGHT, EcoColors.BG_DARKEST, EcoColors.BORDER_GOLD);
+        EcoTheme.drawPanel(graphics, guiLeft, guiTop, guiWidth, guiHeight, EcoColors.BG_DARKEST, EcoColors.BORDER_GOLD);
     }
 
     @Override

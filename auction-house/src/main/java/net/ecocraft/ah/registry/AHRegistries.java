@@ -14,6 +14,7 @@ import net.minecraft.world.item.SpawnEggItem;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.neoforged.bus.api.IEventBus;
+import net.neoforged.neoforge.common.DeferredSpawnEggItem;
 import net.neoforged.neoforge.registries.DeferredBlock;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredItem;
@@ -59,7 +60,7 @@ public class AHRegistries {
 
     public static final DeferredItem<SpawnEggItem> AUCTIONEER_SPAWN_EGG = ITEMS.register(
             "auctioneer_spawn_egg",
-            () -> new SpawnEggItem(AUCTIONEER.get(), 0x4E7F3E, 0xD4AF37, new Item.Properties())
+            () -> new DeferredSpawnEggItem(AUCTIONEER, 0x4E7F3E, 0xD4AF37, new Item.Properties())
     );
 
     // --- Creative Tab ---

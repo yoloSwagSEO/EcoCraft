@@ -1,25 +1,39 @@
 package net.ecocraft.ah.entity;
 
-import net.minecraft.client.model.VillagerModel;
+import com.mojang.blaze3d.vertex.PoseStack;
+import net.minecraft.client.model.HumanoidModel;
 import net.minecraft.client.model.geom.ModelLayers;
+import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
-import net.minecraft.client.renderer.entity.MobRenderer;
+import net.minecraft.client.renderer.entity.HumanoidMobRenderer;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 
 /**
- * Renders the auctioneer NPC using the vanilla villager model.
+ * Renders the auctioneer NPC using a humanoid model with a villager-like texture.
  */
-public class AuctioneerRenderer extends MobRenderer<AuctioneerEntity, VillagerModel<AuctioneerEntity>> {
+public class AuctioneerRenderer extends HumanoidMobRenderer<AuctioneerEntity, HumanoidModel<AuctioneerEntity>> {
 
     private static final ResourceLocation TEXTURE =
-            ResourceLocation.withDefaultNamespace("textures/entity/villager/villager.png");
+            ResourceLocation.withDefaultNamespace("textures/entity/steve.png");
 
     public AuctioneerRenderer(EntityRendererProvider.Context context) {
-        super(context, new VillagerModel<>(context.bakeLayer(ModelLayers.VILLAGER)), 0.5f);
+        super(context, new HumanoidModel<>(context.bakeLayer(ModelLayers.PLAYER)), 0.5f);
     }
 
     @Override
     public ResourceLocation getTextureLocation(AuctioneerEntity entity) {
         return TEXTURE;
+    }
+
+    @Override
+    public void render(AuctioneerEntity entity, float entityYaw, float partialTick,
+                       PoseStack poseStack, MultiBufferSource buffer, int packedLight) {
+        super.render(entity, entityYaw, partialTick, poseStack, buffer, packedLight);
+    }
+
+    @Override
+    protected boolean shouldShowName(AuctioneerEntity entity) {
+        return true;
     }
 }

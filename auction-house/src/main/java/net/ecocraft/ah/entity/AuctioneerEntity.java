@@ -20,6 +20,8 @@ public class AuctioneerEntity extends PathfinderMob {
 
     public AuctioneerEntity(EntityType<? extends PathfinderMob> type, Level level) {
         super(type, level);
+        this.setNoGravity(true);
+        this.setInvulnerable(true);
     }
 
     @Override
@@ -35,12 +37,33 @@ public class AuctioneerEntity extends PathfinderMob {
             PacketDistributor.sendToPlayer(serverPlayer, new OpenAHPayload());
             return InteractionResult.SUCCESS;
         }
-        return super.mobInteract(player, hand);
+        // For OFF_HAND, consume the interaction on client side to prevent further processing
+        if (hand == InteractionHand.OFF_HAND) {
+            return InteractionResult.CONSUME;
+        }
+        return InteractionResult.PASS;
     }
 
     @Override
     public boolean hurt(DamageSource source, float amount) {
+        // Invulnerable — return false but don't interfere with interaction pipeline
         return false;
+    }
+
+    @Override
+    public boolean isPushable() {
+        return false;
+    }
+
+    @Override
+    public boolean isPickable() {
+        return true;
+    }
+
+    @Override
+    public boolean skipAttackInteraction(net.minecraft.world.entity.Entity attacker) {
+        // Prevent attack interactions from consuming left-click events
+        return true;
     }
 
     @Override
