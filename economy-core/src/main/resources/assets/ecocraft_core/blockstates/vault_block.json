@@ -1,0 +1,5 @@
+{
+  "variants": {
+    "": { "model": "ecocraft_core:block/vault_block" }
+  }
+}
