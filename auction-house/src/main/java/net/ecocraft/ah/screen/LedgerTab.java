@@ -14,6 +14,7 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.network.PacketDistributor;
 
 import java.text.SimpleDateFormat;
@@ -218,12 +219,14 @@ public class LedgerTab {
         List<TableRow> rows = new ArrayList<>();
         for (var entry : entries) {
             int typeColor = getTypeColor(entry.type());
-            boolean isIncome = entry.type().contains("SALE") || entry.type().contains("OUTBID");
+            boolean isIncome = (entry.type().contains("SALE") || entry.type().contains("OUTBID"))
+                    && !entry.type().contains("LISTING_FEE");
 
             String truncatedName = AuctionHouseScreen.truncateText(font, entry.itemName(), nameColWidth);
             String truncatedCounterparty = AuctionHouseScreen.truncateText(font, entry.counterparty(), counterpartyColWidth);
 
-            rows.add(TableRow.of(List.of(
+            ItemStack icon = AuctionHouseScreen.itemFromId(entry.itemId());
+            rows.add(TableRow.withIcon(icon, entry.rarityColor(), List.of(
                     TableRow.Cell.of(Component.literal(truncatedName), entry.rarityColor()),
                     TableRow.Cell.of(Component.literal(translateType(entry.type())), typeColor),
                     TableRow.Cell.of(Component.literal((isIncome ? "+" : "-") + BuyTab.formatPrice(entry.amount())),
@@ -268,6 +271,7 @@ public class LedgerTab {
             case "EXPIRED", "HDV_EXPIRED" -> EcoColors.TEXT_DIM;
             case "OUTBID", "HDV_OUTBID" -> EcoColors.WARNING;
             case "TAX" -> EcoColors.DANGER;
+            case "LISTING_FEE", "HDV_LISTING_FEE" -> EcoColors.WARNING;
             default -> EcoColors.TEXT_GREY;
         };
     }

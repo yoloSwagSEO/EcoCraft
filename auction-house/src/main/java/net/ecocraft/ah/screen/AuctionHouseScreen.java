@@ -9,7 +9,10 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.ItemStack;
 import org.slf4j.Logger;
 
 import java.util.List;
@@ -37,6 +40,18 @@ public class AuctionHouseScreen extends Screen {
 
     public AuctionHouseScreen() {
         super(Component.literal("Auction House"));
+    }
+
+    /**
+     * Helper to create ItemStack from registry name (e.g. "minecraft:golden_apple").
+     */
+    public static ItemStack itemFromId(String itemId) {
+        try {
+            ResourceLocation rl = ResourceLocation.parse(itemId);
+            var item = BuiltInRegistries.ITEM.get(rl);
+            if (item != null) return new ItemStack(item);
+        } catch (Exception e) { /* ignore */ }
+        return ItemStack.EMPTY;
     }
 
     /**

@@ -128,6 +128,24 @@ public class AuctionService {
         );
 
         storage.createListing(listing);
+
+        // Log deposit fee in ledger as a parcel entry
+        if (depositUnits > 0) {
+            storage.createParcel(new AuctionParcel(
+                    UUID.randomUUID().toString(),
+                    sellerUuid,
+                    itemId,
+                    itemName,
+                    null,
+                    0,
+                    depositUnits,
+                    currencyId,
+                    ParcelSource.HDV_LISTING_FEE,
+                    now,
+                    true // auto-collected (already withdrawn)
+            ));
+        }
+
         return listing;
     }
 

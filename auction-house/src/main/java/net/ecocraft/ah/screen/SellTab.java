@@ -22,7 +22,9 @@ import java.util.List;
 import java.util.function.Consumer;
 
 /**
- * Sell tab: allows the player to select an item from their inventory and list it.
+ * Sell tab: two-column layout.
+ * Left column: item slot, type toggle, price input, duration, tax summary, sell button.
+ * Right column: full 9x4 inventory grid.
  */
 public class SellTab {
 
@@ -32,6 +34,8 @@ public class SellTab {
     private static final String[] DURATION_LABELS = {"12h", "24h", "48h"};
     private static final int SLOT_SIZE = 18;
     private static final int SLOT_PADDING = 2;
+    private static final int INV_COLS = 9;
+    private static final int INV_ROWS = 4;
 
     private final AuctionHouseScreen parent;
     private final int x, y, w, h;
@@ -42,7 +46,7 @@ public class SellTab {
     private long priceValue = 0;
     private String lastMessage = "";
     private boolean lastSuccess = false;
-    private int selectedInventorySlot = -1; // -1 means use main hand
+    private int selectedInventorySlot = -1; // -1 means nothing selected
 
     // Widgets
     private EcoItemSlot itemSlot;
@@ -53,10 +57,10 @@ public class SellTab {
     private EcoButton sellButton;
     private final List<InventorySlotWidget> inventorySlots = new ArrayList<>();
 
-    // Inventory grid layout
-    private int invGridX;
-    private int invGridY;
-    private int invGridCols;
+    // Layout positions computed in init
+    private int leftColX, leftColW;
+    private int rightColX, rightColW;
+    private int summaryY;
 
     public SellTab(AuctionHouseScreen parent, int x, int y, int w, int h) {
         this.parent = parent;
@@ -68,11 +72,18 @@ public class SellTab {
 
     public void init(Consumer<AbstractWidget> addWidget) {
         Font font = Minecraft.getInstance().font;
-        int centerX = x + w / 2;
+
+        // Two-column layout: 60% left, 40% right
+        leftColX = x + 4;
+        leftColW = (int) (w * 0.6) - 8;
+        rightColX = x + (int) (w * 0.6) + 4;
+        rightColW = w - (int) (w * 0.6) - 8;
+
+        int leftCenterX = leftColX + leftColW / 2;
         int currentY = y + 4;
 
-        // 1. Item slot (32x32) centered
-        itemSlot = new EcoItemSlot(centerX - 16, currentY, 32);
+        // 1. Item slot (32x32) + item name
+        itemSlot = new EcoItemSlot(leftCenterX - 16, currentY, 32);
         updateSelectedItem();
         addWidget.accept(itemSlot);
         currentY += 36; // 32 slot + 4 gap
@@ -80,28 +91,26 @@ public class SellTab {
         // Item name label space (rendered in render())
         currentY += 12; // text height + gap
 
-        // 2. GAP
         currentY += 4;
 
-        // 3. Type toggle: Achat imm\u00e9diat / Ench\u00e8re
-        buyoutBtn = new EcoButton(centerX - 82, currentY, 80, 16,
+        // 2. Type toggle: Achat immediat / Enchere
+        buyoutBtn = new EcoButton(leftCenterX - 82, currentY, 80, 16,
                 Component.literal("Achat imm\u00e9diat"),
                 isBuyout ? EcoButton.Style.SUCCESS : EcoButton.Style.GHOST,
                 () -> { isBuyout = true; parent.rebuildCurrentTab(); });
-        auctionBtn = new EcoButton(centerX + 2, currentY, 80, 16,
+        auctionBtn = new EcoButton(leftCenterX + 2, currentY, 80, 16,
                 Component.literal("Ench\u00e8re"),
                 !isBuyout ? EcoButton.Style.AUCTION : EcoButton.Style.GHOST,
                 () -> { isBuyout = false; parent.rebuildCurrentTab(); });
         addWidget.accept(buyoutBtn);
         addWidget.accept(auctionBtn);
-        currentY += 20; // 16 button + 4 gap
+        currentY += 20;
 
-        // 4. GAP
         currentY += 4;
 
-        // 5. Price input with label
-        priceInput = new EditBox(font, centerX - 60, currentY, 120, 14, Component.literal("Prix"));
-        priceInput.setHint(Component.literal("Prix (en G)"));
+        // 3. "Prix unitaire:" label + price input
+        priceInput = new EditBox(font, leftCenterX - 60, currentY, 120, 14, Component.literal("Prix"));
+        priceInput.setHint(Component.literal("Prix unitaire (G)"));
         priceInput.setMaxLength(12);
         priceInput.setFilter(SellTab::isValidPriceChar);
         priceInput.setResponder(this::onPriceChanged);
@@ -109,88 +118,79 @@ public class SellTab {
             priceInput.setValue(String.valueOf(priceValue));
         }
         addWidget.accept(priceInput);
-        currentY += 18; // 14 input + 4 gap
+        currentY += 18;
 
-        // 6. GAP
         currentY += 4;
 
-        // 7. Duration selector
+        // 4. Duration selector
         List<Component> durationLabels = List.of(
                 Component.literal(DURATION_LABELS[0]),
                 Component.literal(DURATION_LABELS[1]),
                 Component.literal(DURATION_LABELS[2])
         );
-        durationTags = new EcoFilterTags(centerX - 60, currentY, durationLabels, idx -> selectedDuration = idx);
+        durationTags = new EcoFilterTags(leftCenterX - 60, currentY, durationLabels, idx -> selectedDuration = idx);
         durationTags.setActiveTag(selectedDuration);
         addWidget.accept(durationTags);
-        currentY += 18; // tags height + gap
+        currentY += 18;
 
-        // 8. GAP
         currentY += 4;
 
-        // 9. Tax summary panel (rendered in render()) - reserve space
-        int summaryY = currentY;
-        int summaryH = 56;
+        // 5. Quantity info (rendered in render())
+        currentY += 12; // "Quantite: X" line
+        currentY += 4;
+
+        // 6. Tax summary panel (rendered in render()) - reserve space
+        summaryY = currentY;
+        int summaryH = 68; // taller to include unit price + total price + tax + deposit + net
         currentY += summaryH + 4;
 
-        // 10. GAP
         currentY += 4;
 
-        // 11. "Mettre en vente" button
-        sellButton = EcoButton.success(centerX - 60, currentY, 120, 18,
+        // 7. "Mettre en vente" button
+        sellButton = EcoButton.success(leftCenterX - 60, currentY, 120, 18,
                 Component.literal("Mettre en vente"), this::onSellClicked);
         addWidget.accept(sellButton);
-        currentY += 22; // 18 button + 4 gap
+        currentY += 22;
 
-        // 12. GAP
-        currentY += 6;
+        // 8. Status message space (rendered in render())
 
-        // 13. "Inventaire:" label + inventory grid
-        invGridY = currentY + 12; // 12 for the label
-        int availableHeight = (y + h) - invGridY - 14; // 14 for status message at bottom
+        // --- Right column: Inventory grid ---
+        buildInventoryGrid(addWidget);
+    }
 
-        // Calculate grid layout
-        int cellSize = SLOT_SIZE + SLOT_PADDING;
-        invGridCols = Math.min(9, (w - 8) / cellSize);
-        int totalGridWidth = invGridCols * cellSize - SLOT_PADDING;
-        invGridX = x + (w - totalGridWidth) / 2;
-
-        // Build inventory slot widgets from player inventory
+    private void buildInventoryGrid(Consumer<AbstractWidget> addWidget) {
         inventorySlots.clear();
         var player = Minecraft.getInstance().player;
-        if (player != null) {
-            Inventory inv = player.getInventory();
-            int slotIndex = 0;
-            int maxRows = Math.max(1, availableHeight / cellSize);
-            int maxSlots = maxRows * invGridCols;
+        if (player == null) return;
 
-            // Show main inventory (slots 0-35: 9 hotbar + 27 main)
-            for (int i = 0; i < Math.min(36, maxSlots); i++) {
-                ItemStack stack = inv.getItem(i);
-                if (stack.isEmpty()) continue;
+        Inventory inv = player.getInventory();
+        int cellSize = SLOT_SIZE + SLOT_PADDING;
+        int totalGridWidth = INV_COLS * cellSize - SLOT_PADDING;
+        int gridX = rightColX + (rightColW - totalGridWidth) / 2;
+        int gridY = y + 18; // leave room for "Inventaire" title
 
-                int col = slotIndex % invGridCols;
-                int row = slotIndex / invGridCols;
-                if (row >= maxRows) break;
+        // Show ALL 36 slots (9 hotbar + 27 main) as a proper 9x4 grid
+        for (int i = 0; i < INV_ROWS * INV_COLS; i++) {
+            int col = i % INV_COLS;
+            int row = i / INV_COLS;
+            int slotX = gridX + col * cellSize;
+            int slotY = gridY + row * cellSize;
 
-                int slotX = invGridX + col * cellSize;
-                int slotY = invGridY + row * cellSize;
-                final int inventoryIndex = i;
-                boolean isSelected = (selectedInventorySlot == i);
+            ItemStack stack = inv.getItem(i);
+            boolean isSelected = (selectedInventorySlot == i);
+            final int inventoryIndex = i;
 
-                InventorySlotWidget slotWidget = new InventorySlotWidget(
-                        slotX, slotY, SLOT_SIZE, stack, isSelected,
-                        () -> onInventorySlotClicked(inventoryIndex));
-                inventorySlots.add(slotWidget);
-                addWidget.accept(slotWidget);
-                slotIndex++;
-            }
+            InventorySlotWidget slotWidget = new InventorySlotWidget(
+                    slotX, slotY, SLOT_SIZE, stack, isSelected,
+                    () -> onInventorySlotClicked(inventoryIndex));
+            inventorySlots.add(slotWidget);
+            addWidget.accept(slotWidget);
         }
     }
 
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         Font font = Minecraft.getInstance().font;
-        int centerX = x + w / 2;
+        int leftCenterX = leftColX + leftColW / 2;
 
         // Item name (below the slot)
         int nameY = y + 40;
@@ -198,60 +198,68 @@ public class SellTab {
         if (selected.isEmpty()) {
             String msg = "S\u00e9lectionnez un objet";
             int msgW = font.width(msg);
-            graphics.drawString(font, msg, centerX - msgW / 2, nameY, EcoColors.TEXT_GREY, false);
+            graphics.drawString(font, msg, leftCenterX - msgW / 2, nameY, EcoColors.TEXT_GREY, false);
         } else {
             String itemName = selected.getHoverName().getString();
-            int maxNameWidth = w - 40;
+            int maxNameWidth = leftColW - 20;
             String truncatedName = AuctionHouseScreen.truncateText(font, itemName, maxNameWidth);
             int nameW = font.width(truncatedName);
-            graphics.drawString(font, truncatedName, centerX - nameW / 2, nameY, EcoColors.TEXT_LIGHT, false);
+            graphics.drawString(font, truncatedName, leftCenterX - nameW / 2, nameY, EcoColors.TEXT_LIGHT, false);
         }
 
-        // "Prix:" label left of the price input
-        int priceInputY = priceInput != null ? priceInput.getY() : 0;
+        // "Prix unitaire:" label left of the price input
         if (priceInput != null) {
-            graphics.drawString(font, "Prix:", priceInput.getX() - font.width("Prix: ") - 2, priceInputY + 3, EcoColors.TEXT_GREY, false);
+            int priceInputY = priceInput.getY();
+            graphics.drawString(font, "Prix unitaire:", priceInput.getX() - font.width("Prix unitaire: ") - 2, priceInputY + 3, EcoColors.TEXT_GREY, false);
         }
+
+        // Quantity info below duration
+        int quantityY = (durationTags != null) ? durationTags.getY() + 22 : y + 130;
+        int quantity = selected.isEmpty() ? 0 : selected.getCount();
+        String qtyText = "Quantit\u00e9: " + quantity;
+        int qtyW = font.width(qtyText);
+        graphics.drawString(font, qtyText, leftCenterX - qtyW / 2, quantityY, EcoColors.TEXT_LIGHT, false);
 
         // Tax summary panel
-        int summaryX = x + 20;
-        int summaryW = w - 40;
-        // Calculate summaryY based on duration tags position
-        int summaryY = (durationTags != null) ? durationTags.getY() + 22 : y + 120;
+        int panelX = leftColX + 10;
+        int panelW = leftColW - 20;
+        int panelY = summaryY;
+        int panelH = 68;
 
         if (priceValue > 0 && !selected.isEmpty()) {
-            EcoTheme.drawPanel(graphics, summaryX, summaryY, summaryW, 56);
+            EcoTheme.drawPanel(graphics, panelX, panelY, panelW, panelH);
 
-            long price = priceValue;
-            long tax = (long) (price * TAX_RATE);
-            long deposit = (long) (price * DEPOSIT_RATE);
-            long net = price - tax;
+            long unitPrice = priceValue;
+            long totalPrice = unitPrice * quantity;
+            long tax = (long) (totalPrice * TAX_RATE);
+            long deposit = (long) (totalPrice * DEPOSIT_RATE);
+            long net = totalPrice - tax;
 
-            int labelX = summaryX + 10;
-            int valueX = summaryX + summaryW - 10;
+            int labelX = panelX + 8;
+            int valueX = panelX + panelW - 8;
 
-            drawSummaryLine(graphics, font, "Prix de vente:", BuyTab.formatPrice(price), labelX, valueX, summaryY + 4, EcoColors.TEXT_LIGHT, EcoColors.GOLD);
-            drawSummaryLine(graphics, font, "Taxe (5%):", "-" + BuyTab.formatPrice(tax), labelX, valueX, summaryY + 16, EcoColors.TEXT_GREY, EcoColors.DANGER);
-            drawSummaryLine(graphics, font, "D\u00e9p\u00f4t (2%):", BuyTab.formatPrice(deposit), labelX, valueX, summaryY + 28, EcoColors.TEXT_GREY, EcoColors.WARNING);
-            EcoTheme.drawGoldSeparator(graphics, summaryX + 4, summaryY + 39, summaryW - 8);
-            drawSummaryLine(graphics, font, "Net:", BuyTab.formatPrice(net), labelX, valueX, summaryY + 44, EcoColors.TEXT_LIGHT, EcoColors.SUCCESS);
+            drawSummaryLine(graphics, font, "Prix unitaire:", BuyTab.formatPrice(unitPrice), labelX, valueX, panelY + 4, EcoColors.TEXT_GREY, EcoColors.TEXT_LIGHT);
+            drawSummaryLine(graphics, font, "Prix total:", BuyTab.formatPrice(totalPrice), labelX, valueX, panelY + 16, EcoColors.TEXT_LIGHT, EcoColors.GOLD);
+            drawSummaryLine(graphics, font, "Taxe (5%):", "-" + BuyTab.formatPrice(tax), labelX, valueX, panelY + 28, EcoColors.TEXT_GREY, EcoColors.DANGER);
+            drawSummaryLine(graphics, font, "D\u00e9p\u00f4t (2%):", "-" + BuyTab.formatPrice(deposit), labelX, valueX, panelY + 40, EcoColors.TEXT_GREY, EcoColors.WARNING);
+            EcoTheme.drawGoldSeparator(graphics, panelX + 4, panelY + 51, panelW - 8);
+            drawSummaryLine(graphics, font, "Net:", BuyTab.formatPrice(net), labelX, valueX, panelY + 56, EcoColors.TEXT_LIGHT, EcoColors.SUCCESS);
         } else {
             // Draw empty summary placeholder
-            EcoTheme.drawPanel(graphics, summaryX, summaryY, summaryW, 56);
+            EcoTheme.drawPanel(graphics, panelX, panelY, panelW, panelH);
             String placeholder = "Entrez un prix pour voir le r\u00e9sum\u00e9";
             int phW = font.width(placeholder);
-            graphics.drawString(font, placeholder, summaryX + (summaryW - phW) / 2, summaryY + 22, EcoColors.TEXT_DIM, false);
+            graphics.drawString(font, placeholder, panelX + (panelW - phW) / 2, panelY + 28, EcoColors.TEXT_DIM, false);
         }
 
-        // Inventory label
-        String invLabel = "Inventaire:";
-        graphics.drawString(font, invLabel, invGridX, invGridY - 10, EcoColors.TEXT_GREY, false);
+        // Right column: Inventory title
+        graphics.drawString(font, "Inventaire", rightColX + 4, y + 6, EcoColors.TEXT_GREY, false);
 
-        // Status message at very bottom
+        // Status message at bottom left
         if (!lastMessage.isEmpty()) {
             int msgColor = lastSuccess ? EcoColors.SUCCESS : EcoColors.DANGER;
             int msgW = font.width(lastMessage);
-            graphics.drawString(font, lastMessage, centerX - msgW / 2, y + h - 10, msgColor, false);
+            graphics.drawString(font, lastMessage, leftCenterX - msgW / 2, y + h - 10, msgColor, false);
         }
     }
 
@@ -291,7 +299,16 @@ public class SellTab {
     }
 
     private void onInventorySlotClicked(int inventoryIndex) {
-        selectedInventorySlot = inventoryIndex;
+        // If clicking an empty slot, deselect
+        var player = Minecraft.getInstance().player;
+        if (player != null) {
+            ItemStack stack = player.getInventory().getItem(inventoryIndex);
+            if (stack.isEmpty()) {
+                selectedInventorySlot = -1;
+            } else {
+                selectedInventorySlot = inventoryIndex;
+            }
+        }
         updateSelectedItem();
         parent.rebuildCurrentTab();
     }
@@ -335,6 +352,13 @@ public class SellTab {
         }
         lastMessage = msg;
         lastSuccess = payload.success();
+
+        // Fix 4: Clear selection and reset after successful sale
+        if (payload.success()) {
+            selectedInventorySlot = -1;
+            priceValue = 0;
+            parent.rebuildCurrentTab();
+        }
     }
 
     // --- Helpers ---
@@ -357,7 +381,7 @@ public class SellTab {
             // Selection is now empty, fall back
             selectedInventorySlot = -1;
         }
-        return player.getMainHandItem();
+        return ItemStack.EMPTY; // No default to main hand; require explicit selection
     }
 
     private static boolean isValidPriceChar(String text) {
@@ -372,7 +396,7 @@ public class SellTab {
         private final Runnable onClick;
 
         public InventorySlotWidget(int x, int y, int size, ItemStack stack, boolean selected, Runnable onClick) {
-            super(x, y, size, size, stack.getHoverName());
+            super(x, y, size, size, stack.isEmpty() ? Component.literal("Vide") : stack.getHoverName());
             this.stack = stack;
             this.selected = selected;
             this.onClick = onClick;
@@ -388,15 +412,17 @@ public class SellTab {
             graphics.fill(getX(), getY(), getX() + 1, getY() + height, borderColor);
             graphics.fill(getX() + width - 1, getY(), getX() + width, getY() + height, borderColor);
 
-            // Item
-            int itemX = getX() + (width - 16) / 2;
-            int itemY = getY() + (height - 16) / 2;
-            graphics.renderItem(stack, itemX, itemY);
-            graphics.renderItemDecorations(Minecraft.getInstance().font, stack, itemX, itemY);
+            // Item (only if not empty)
+            if (!stack.isEmpty()) {
+                int itemX = getX() + (width - 16) / 2;
+                int itemY = getY() + (height - 16) / 2;
+                graphics.renderItem(stack, itemX, itemY);
+                graphics.renderItemDecorations(Minecraft.getInstance().font, stack, itemX, itemY);
 
-            // Tooltip on hover
-            if (isHovered()) {
-                graphics.renderTooltip(Minecraft.getInstance().font, stack, mouseX, mouseY);
+                // Tooltip on hover
+                if (isHovered()) {
+                    graphics.renderTooltip(Minecraft.getInstance().font, stack, mouseX, mouseY);
+                }
             }
         }
 

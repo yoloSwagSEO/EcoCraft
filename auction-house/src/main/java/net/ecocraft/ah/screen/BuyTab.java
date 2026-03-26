@@ -14,6 +14,7 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.network.PacketDistributor;
 
 import java.util.ArrayList;
@@ -339,7 +340,8 @@ public class BuyTab {
         List<TableRow> rows = new ArrayList<>();
         for (var item : currentItems) {
             String truncatedName = AuctionHouseScreen.truncateText(font, item.itemName(), nameColWidth);
-            rows.add(TableRow.of(List.of(
+            ItemStack icon = AuctionHouseScreen.itemFromId(item.itemId());
+            rows.add(TableRow.withIcon(icon, item.rarityColor(), List.of(
                     TableRow.Cell.of(Component.literal(truncatedName), item.rarityColor()),
                     TableRow.Cell.of(Component.literal(formatPrice(item.bestPrice())), EcoColors.GOLD),
                     TableRow.Cell.of(Component.literal(String.valueOf(item.listingCount())), EcoColors.TEXT_LIGHT),

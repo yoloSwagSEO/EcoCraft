@@ -316,18 +316,25 @@ public final class ServerPayloadHandler {
                 long sinceMs;
                 switch (payload.period()) {
                     case "24h" -> sinceMs = System.currentTimeMillis() - 24L * 3600 * 1000;
-                    case "7d" -> sinceMs = System.currentTimeMillis() - SEVEN_DAYS_MS;
-                    case "30d" -> sinceMs = System.currentTimeMillis() - 30L * 24 * 3600 * 1000;
+                    case "7j", "7d" -> sinceMs = System.currentTimeMillis() - SEVEN_DAYS_MS;
+                    case "30j", "30d" -> sinceMs = System.currentTimeMillis() - 30L * 24 * 3600 * 1000;
                     default -> sinceMs = 0L;
                 }
 
-                // Parse type filter
+                // Parse type filter - map client filter names to ParcelSource
                 ParcelSource sourceFilter = null;
                 if (payload.typeFilter() != null && !payload.typeFilter().isEmpty()
-                        && !payload.typeFilter().equals("ALL")) {
-                    try {
-                        sourceFilter = ParcelSource.valueOf(payload.typeFilter());
-                    } catch (IllegalArgumentException ignored) {}
+                        && !"all".equalsIgnoreCase(payload.typeFilter())) {
+                    sourceFilter = switch (payload.typeFilter().toLowerCase()) {
+                        case "purchases" -> ParcelSource.HDV_PURCHASE;
+                        case "sales" -> ParcelSource.HDV_SALE;
+                        case "auctions" -> ParcelSource.HDV_OUTBID;
+                        case "expired" -> ParcelSource.HDV_EXPIRED;
+                        default -> {
+                            try { yield ParcelSource.valueOf(payload.typeFilter()); }
+                            catch (IllegalArgumentException ignored) { yield null; }
+                        }
+                    };
                 }
 
                 var parcels = service.getLedger(player.getUUID(), sourceFilter, sinceMs, payload.page(), PAGE_SIZE);

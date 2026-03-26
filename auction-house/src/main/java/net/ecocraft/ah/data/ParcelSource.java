@@ -8,5 +8,7 @@ public enum ParcelSource {
     /** Item returned after a listing expired unsold (sent to seller). */
     HDV_EXPIRED,
     /** Refund of a previous bid that was outbid by a higher offer (sent to previous bidder). */
-    HDV_OUTBID
+    HDV_OUTBID,
+    /** Listing fee (deposit) charged when creating a listing. */
+    HDV_LISTING_FEE
 }
