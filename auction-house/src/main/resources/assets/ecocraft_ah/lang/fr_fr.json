@@ -1,0 +1,12 @@
+{
+  "block.ecocraft_ah.auction_terminal": "Terminal d'encheres",
+  "entity.ecocraft_ah.auctioneer": "Commissaire-priseur",
+  "item.ecocraft_ah.auctioneer_spawn_egg": "Oeuf d'apparition de commissaire-priseur",
+  "itemGroup.ecocraft_ah.auction_house": "Hotel des ventes",
+  "commands.ecocraft_ah.ah.usage": "Ouvre l'hotel des ventes",
+  "commands.ecocraft_ah.ah.sell.usage": "Vendre l'objet en main",
+  "commands.ecocraft_ah.ah.search.usage": "Rechercher dans l'hotel des ventes",
+  "commands.ecocraft_ah.ah.collect.usage": "Recuperer les colis en attente",
+  "commands.ecocraft_ah.ah.admin.reload": "Recharger la configuration de l'hotel des ventes",
+  "commands.ecocraft_ah.ah.admin.expire": "Forcer l'expiration des anciennes annonces"
+}
