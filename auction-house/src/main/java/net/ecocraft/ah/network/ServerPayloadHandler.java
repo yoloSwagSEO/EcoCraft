@@ -88,7 +88,9 @@ public final class ServerPayloadHandler {
                 ListingDetailResponsePayload.PriceInfo priceInfo;
                 if (storage != null) {
                     // Use first listing's currency for price history
-                    String currencyId = listings.isEmpty() ? "default" : listings.get(0).currencyId();
+                    String currencyId = listings.isEmpty()
+                            ? net.ecocraft.core.EcoServerEvents.getCurrencyRegistry().getDefault().id()
+                            : listings.get(0).currencyId();
                     AuctionStorageProvider.PriceStats stats = storage.getPriceHistory(payload.itemId(), currencyId, SEVEN_DAYS_MS);
                     if (stats != null) {
                         priceInfo = new ListingDetailResponsePayload.PriceInfo(
@@ -131,6 +133,7 @@ public final class ServerPayloadHandler {
                 ListingType type = ListingType.valueOf(payload.listingType());
                 BigDecimal price = BigDecimal.valueOf(payload.price());
 
+                String currencyId = net.ecocraft.core.EcoServerEvents.getCurrencyRegistry().getDefault().id();
                 service.createListing(
                         player.getUUID(),
                         player.getName().getString(),
@@ -141,7 +144,7 @@ public final class ServerPayloadHandler {
                         type,
                         price,
                         payload.durationHours(),
-                        "default",
+                        currencyId,
                         ItemCategory.MISC
                 );
 

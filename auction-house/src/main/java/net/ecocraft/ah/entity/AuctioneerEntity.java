@@ -1,6 +1,7 @@
 package net.ecocraft.ah.entity;
 
 import net.ecocraft.ah.network.payload.OpenAHPayload;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -22,6 +23,8 @@ public class AuctioneerEntity extends PathfinderMob {
         super(type, level);
         this.setNoGravity(true);
         this.setInvulnerable(true);
+        this.setCustomName(Component.literal("§6Commissaire-priseur"));
+        this.setCustomNameVisible(true);
     }
 
     @Override
@@ -64,6 +67,12 @@ public class AuctioneerEntity extends PathfinderMob {
     public boolean skipAttackInteraction(net.minecraft.world.entity.Entity attacker) {
         // Prevent attack interactions from consuming left-click events
         return true;
+    }
+
+    @Override
+    public boolean canBeCollidedWith() {
+        // Don't intercept raycasts when the player tries to break/place blocks nearby
+        return false;
     }
 
     @Override

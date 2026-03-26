@@ -1,35 +1,22 @@
 package net.ecocraft.ah.entity;
 
-import com.mojang.blaze3d.vertex.PoseStack;
-import net.minecraft.client.model.HumanoidModel;
-import net.minecraft.client.model.geom.ModelLayers;
-import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
-import net.minecraft.client.renderer.entity.HumanoidMobRenderer;
-import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 
 /**
- * Renders the auctioneer NPC using a humanoid model with a villager-like texture.
+ * Renders the auctioneer NPC as a floating nametag only.
+ * No body is rendered — the nametag "§6Commissaire-priseur" is always visible.
  */
-public class AuctioneerRenderer extends HumanoidMobRenderer<AuctioneerEntity, HumanoidModel<AuctioneerEntity>> {
-
-    private static final ResourceLocation TEXTURE =
-            ResourceLocation.withDefaultNamespace("textures/entity/steve.png");
+public class AuctioneerRenderer extends EntityRenderer<AuctioneerEntity> {
 
     public AuctioneerRenderer(EntityRendererProvider.Context context) {
-        super(context, new HumanoidModel<>(context.bakeLayer(ModelLayers.PLAYER)), 0.5f);
+        super(context);
     }
 
     @Override
     public ResourceLocation getTextureLocation(AuctioneerEntity entity) {
-        return TEXTURE;
-    }
-
-    @Override
-    public void render(AuctioneerEntity entity, float entityYaw, float partialTick,
-                       PoseStack poseStack, MultiBufferSource buffer, int packedLight) {
-        super.render(entity, entityYaw, partialTick, poseStack, buffer, packedLight);
+        return ResourceLocation.withDefaultNamespace("textures/entity/steve.png");
     }
 
     @Override
