@@ -1,0 +1,68 @@
+package net.ecocraft.core.command;
+
+import com.mojang.brigadier.Command;
+import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.arguments.DoubleArgumentType;
+import net.ecocraft.api.EconomyProvider;
+import net.ecocraft.api.currency.Currency;
+import net.ecocraft.api.currency.CurrencyRegistry;
+import net.ecocraft.core.permission.PermissionChecker;
+import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.commands.Commands;
+import net.minecraft.commands.arguments.EntityArgument;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerPlayer;
+
+import java.math.BigDecimal;
+
+public class PayCommand {
+
+    public static void register(CommandDispatcher<CommandSourceStack> dispatcher,
+                                EconomyProvider economy,
+                                CurrencyRegistry currencies,
+                                PermissionChecker permissions) {
+        dispatcher.register(Commands.literal("pay")
+            .then(Commands.argument("player", EntityArgument.player())
+                .then(Commands.argument("amount", DoubleArgumentType.doubleArg(0.01))
+                    .executes(ctx -> {
+                        ServerPlayer sender = ctx.getSource().getPlayerOrException();
+                        ServerPlayer target = EntityArgument.getPlayer(ctx, "player");
+                        double amount = DoubleArgumentType.getDouble(ctx, "amount");
+                        return pay(ctx.getSource(), sender, target, amount, economy, currencies, permissions);
+                    })
+                )
+            )
+        );
+    }
+
+    private static int pay(CommandSourceStack source, ServerPlayer sender, ServerPlayer target,
+                           double amount, EconomyProvider economy, CurrencyRegistry currencies,
+                           PermissionChecker permissions) {
+        if (!permissions.hasPermission(sender, "economy.pay")) {
+            source.sendFailure(Component.literal("You don't have permission to pay"));
+            return 0;
+        }
+
+        if (sender.getUUID().equals(target.getUUID())) {
+            source.sendFailure(Component.literal("You can't pay yourself"));
+            return 0;
+        }
+
+        Currency currency = currencies.getDefault();
+        var result = economy.transfer(sender.getUUID(), target.getUUID(),
+            BigDecimal.valueOf(amount), currency);
+
+        if (result.successful()) {
+            source.sendSuccess(() -> Component.literal(
+                "Paid " + amount + " " + currency.symbol() + " to " + target.getName().getString()
+            ), false);
+            target.sendSystemMessage(Component.literal(
+                "Received " + amount + " " + currency.symbol() + " from " + sender.getName().getString()
+            ));
+            return Command.SINGLE_SUCCESS;
+        } else {
+            source.sendFailure(Component.literal(result.errorMessage()));
+            return 0;
+        }
+    }
+}
