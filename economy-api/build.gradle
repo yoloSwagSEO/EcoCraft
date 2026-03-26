@@ -1,0 +1,16 @@
+plugins {
+    id 'net.neoforged.moddev' version '2.0.141'
+}
+
+base {
+    archivesName = 'ecocraft-economy-api'
+}
+
+neoForge {
+    neoFormVersion = project.neoform_version
+
+    parchment {
+        mappingsVersion = project.parchment_mappings_version
+        minecraftVersion = project.parchment_minecraft_version
+    }
+}
