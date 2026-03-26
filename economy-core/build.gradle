@@ -35,6 +35,9 @@ dependencies {
     implementation project(':economy-api')
     implementation project(':gui-lib')
     implementation 'org.xerial:sqlite-jdbc:3.47.1.0'
+    jarJar('org.xerial:sqlite-jdbc:[3.47.0.0,4.0.0.0)') {
+        version { prefer '3.47.1.0' }
+    }
 }
 
 var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {
