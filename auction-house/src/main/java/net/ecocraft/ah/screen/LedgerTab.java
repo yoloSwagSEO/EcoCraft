@@ -86,29 +86,29 @@ public class LedgerTab {
         // Stats row
         int statsY = y + 46;
         int cardW = (w - 16) / 4;
-        int cardH = 32;
+        int cardH = 30;
 
         profitCard = new EcoStatCard(x, statsY, cardW, cardH,
                 Component.literal("Profit net"),
-                Component.literal(BuyTab.formatPrice(netProfit)),
+                Component.literal(formatStatPrice(netProfit)),
                 netProfit >= 0 ? EcoColors.SUCCESS : EcoColors.DANGER);
         addWidget.accept(profitCard);
 
         salesCard = new EcoStatCard(x + cardW + 4, statsY, cardW, cardH,
                 Component.literal("Ventes"),
-                Component.literal(BuyTab.formatPrice(totalSales)),
+                Component.literal(formatStatPrice(totalSales)),
                 EcoColors.SUCCESS);
         addWidget.accept(salesCard);
 
         purchasesCard = new EcoStatCard(x + (cardW + 4) * 2, statsY, cardW, cardH,
                 Component.literal("Achats"),
-                Component.literal(BuyTab.formatPrice(totalPurchases)),
+                Component.literal(formatStatPrice(totalPurchases)),
                 EcoColors.INFO);
         addWidget.accept(purchasesCard);
 
         taxCard = new EcoStatCard(x + (cardW + 4) * 3, statsY, cardW, cardH,
                 Component.literal("Taxes"),
-                Component.literal(BuyTab.formatPrice(taxesPaid)),
+                Component.literal(formatStatPrice(taxesPaid)),
                 EcoColors.DANGER);
         addWidget.accept(taxCard);
 
@@ -210,17 +210,25 @@ public class LedgerTab {
     private void updateTable() {
         if (table == null) return;
 
+        Font font = Minecraft.getInstance().font;
+        // Estimate name column width: ~31% of table width (2.5/8 ratio)
+        int nameColWidth = (int) (w * 2.5f / 8f) - 10;
+        int counterpartyColWidth = (int) (w * 1.5f / 8f) - 10;
+
         List<TableRow> rows = new ArrayList<>();
         for (var entry : entries) {
             int typeColor = getTypeColor(entry.type());
             boolean isIncome = "SALE".equals(entry.type()) || "OUTBID".equals(entry.type());
 
+            String truncatedName = AuctionHouseScreen.truncateText(font, entry.itemName(), nameColWidth);
+            String truncatedCounterparty = AuctionHouseScreen.truncateText(font, entry.counterparty(), counterpartyColWidth);
+
             rows.add(TableRow.of(List.of(
-                    TableRow.Cell.of(Component.literal(entry.itemName()), entry.rarityColor()),
+                    TableRow.Cell.of(Component.literal(truncatedName), entry.rarityColor()),
                     TableRow.Cell.of(Component.literal(translateType(entry.type())), typeColor),
                     TableRow.Cell.of(Component.literal((isIncome ? "+" : "-") + BuyTab.formatPrice(entry.amount())),
                             isIncome ? EcoColors.SUCCESS : EcoColors.DANGER),
-                    TableRow.Cell.of(Component.literal(entry.counterparty()), EcoColors.TEXT_LIGHT),
+                    TableRow.Cell.of(Component.literal(truncatedCounterparty), EcoColors.TEXT_LIGHT),
                     TableRow.Cell.of(Component.literal(formatDate(entry.timestamp())), EcoColors.TEXT_DIM)
             ), null));
         }
@@ -229,21 +237,29 @@ public class LedgerTab {
 
     private void updateStats() {
         if (profitCard != null) {
-            profitCard.setValue(Component.literal(BuyTab.formatPrice(netProfit)),
+            profitCard.setValue(Component.literal(formatStatPrice(netProfit)),
                     netProfit >= 0 ? EcoColors.SUCCESS : EcoColors.DANGER);
         }
         if (salesCard != null) {
-            salesCard.setValue(Component.literal(BuyTab.formatPrice(totalSales)), EcoColors.SUCCESS);
+            salesCard.setValue(Component.literal(formatStatPrice(totalSales)), EcoColors.SUCCESS);
         }
         if (purchasesCard != null) {
-            purchasesCard.setValue(Component.literal(BuyTab.formatPrice(totalPurchases)), EcoColors.INFO);
+            purchasesCard.setValue(Component.literal(formatStatPrice(totalPurchases)), EcoColors.INFO);
         }
         if (taxCard != null) {
-            taxCard.setValue(Component.literal(BuyTab.formatPrice(taxesPaid)), EcoColors.DANGER);
+            taxCard.setValue(Component.literal(formatStatPrice(taxesPaid)), EcoColors.DANGER);
         }
     }
 
     // --- Helpers ---
+
+    /**
+     * Format price for stat cards: show "0 G" instead of "N/A" when value is 0.
+     */
+    private static String formatStatPrice(long price) {
+        if (price == 0) return "0 G";
+        return BuyTab.formatPrice(price);
+    }
 
     private static int getTypeColor(String type) {
         return switch (type) {

@@ -75,9 +75,32 @@ public class MyAuctionsTab {
                 this::onCollectClicked);
         addWidget.accept(collectBtn);
 
+        // Footer stat cards - calculate first to know how much space table gets
+        int cardH = 30;
+        int footerY = y + h - cardH - 2;
+        int cardW = (w - 12) / 3;
+
+        revenueCard = new EcoStatCard(x, footerY, cardW, cardH,
+                Component.literal("Revenus 7j"),
+                Component.literal(BuyTab.formatPrice(revenue7d)),
+                EcoColors.SUCCESS);
+        addWidget.accept(revenueCard);
+
+        taxCard = new EcoStatCard(x + cardW + 4, footerY, cardW, cardH,
+                Component.literal("Taxes 7j"),
+                Component.literal(BuyTab.formatPrice(taxesPaid7d)),
+                EcoColors.DANGER);
+        addWidget.accept(taxCard);
+
+        parcelsCard = new EcoStatCard(x + (cardW + 4) * 2, footerY, cardW, cardH,
+                Component.literal("Colis"),
+                Component.literal(String.valueOf(parcelsToCollect)),
+                EcoColors.INFO);
+        addWidget.accept(parcelsCard);
+
         // Table
         int tableY = y + 24;
-        int tableH = h - 62;
+        int tableH = footerY - tableY - 4;
         List<TableColumn> columns = List.of(
                 TableColumn.left(Component.literal("Objet"), 2.5f),
                 TableColumn.right(Component.literal("Prix"), 1.5f),
@@ -89,28 +112,6 @@ public class MyAuctionsTab {
         table = new EcoPaginatedTable(x, tableY, w, tableH, columns);
         addWidget.accept(table);
         updateTable();
-
-        // Footer stat cards
-        int footerY = y + h - 34;
-        int cardW = (w - 12) / 3;
-
-        revenueCard = new EcoStatCard(x, footerY, cardW, 32,
-                Component.literal("Revenus 7j"),
-                Component.literal(BuyTab.formatPrice(revenue7d)),
-                EcoColors.SUCCESS);
-        addWidget.accept(revenueCard);
-
-        taxCard = new EcoStatCard(x + cardW + 4, footerY, cardW, 32,
-                Component.literal("Taxes 7j"),
-                Component.literal(BuyTab.formatPrice(taxesPaid7d)),
-                EcoColors.DANGER);
-        addWidget.accept(taxCard);
-
-        parcelsCard = new EcoStatCard(x + (cardW + 4) * 2, footerY, cardW, 32,
-                Component.literal("Colis"),
-                Component.literal(String.valueOf(parcelsToCollect)),
-                EcoColors.INFO);
-        addWidget.accept(parcelsCard);
 
         // Request data
         requestData();
@@ -164,6 +165,10 @@ public class MyAuctionsTab {
     private void updateTable() {
         if (table == null) return;
 
+        Font font = Minecraft.getInstance().font;
+        // Estimate name column width: ~29% of table width (2.5/8.5 ratio)
+        int nameColWidth = (int) (w * 2.5f / 8.5f) - 10;
+
         List<TableRow> rows = new ArrayList<>();
         for (var entry : entries) {
             int statusColor = getStatusColor(entry.status());
@@ -178,8 +183,10 @@ public class MyAuctionsTab {
                 action = () -> onCancelClicked(lid);
             }
 
+            String truncatedName = AuctionHouseScreen.truncateText(font, entry.itemName(), nameColWidth);
+
             rows.add(TableRow.of(List.of(
-                    TableRow.Cell.of(Component.literal(entry.itemName()), entry.rarityColor()),
+                    TableRow.Cell.of(Component.literal(truncatedName), entry.rarityColor()),
                     TableRow.Cell.of(Component.literal(BuyTab.formatPrice(entry.price())), EcoColors.GOLD),
                     TableRow.Cell.of(Component.literal("AUCTION".equals(entry.type()) ? "Ench\u00e8re" : "Achat"),
                             "AUCTION".equals(entry.type()) ? EcoColors.WARNING : EcoColors.SUCCESS),

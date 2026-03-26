@@ -6,6 +6,7 @@ import net.ecocraft.gui.theme.EcoColors;
 import net.ecocraft.gui.theme.EcoTheme;
 import net.ecocraft.gui.widget.EcoTabBar;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
@@ -20,9 +21,6 @@ import java.util.List;
 public class AuctionHouseScreen extends Screen {
 
     private static final Logger LOGGER = LogUtils.getLogger();
-
-    private static final int MAX_GUI_WIDTH = 400;
-    private static final int MAX_GUI_HEIGHT = 280;
 
     private int guiWidth;
     private int guiHeight;
@@ -41,10 +39,23 @@ public class AuctionHouseScreen extends Screen {
         super(Component.literal("Auction House"));
     }
 
+    /**
+     * Truncate text to fit within maxWidth pixels, appending "..." if needed.
+     */
+    public static String truncateText(Font font, String text, int maxWidth) {
+        if (font.width(text) <= maxWidth) return text;
+        String ellipsis = "...";
+        int ellipsisWidth = font.width(ellipsis);
+        while (text.length() > 1 && font.width(text) + ellipsisWidth > maxWidth) {
+            text = text.substring(0, text.length() - 1);
+        }
+        return text + ellipsis;
+    }
+
     @Override
     protected void init() {
-        guiWidth = Math.min(MAX_GUI_WIDTH, (int) (width * 0.8));
-        guiHeight = Math.min(MAX_GUI_HEIGHT, (int) (height * 0.8));
+        guiWidth = (int) (width * 0.9);
+        guiHeight = (int) (height * 0.9);
         guiLeft = (width - guiWidth) / 2;
         guiTop = (height - guiHeight) / 2;
 

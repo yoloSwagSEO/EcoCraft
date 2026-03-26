@@ -57,7 +57,7 @@ public class BuyTab {
     private EcoButton backButton;
     private EcoPaginatedTable detailTable;
 
-    private static final int SIDEBAR_WIDTH = 80;
+    private static final int SIDEBAR_WIDTH = 90;
 
     public BuyTab(AuctionHouseScreen parent, int x, int y, int w, int h) {
         this.parent = parent;
@@ -85,7 +85,7 @@ public class BuyTab {
         for (int i = 0; i < categories.length; i++) {
             final int catIndex = i;
             EcoButton btn = new EcoButton(
-                    x, btnY, SIDEBAR_WIDTH - 4, 14,
+                    x + 2, btnY, SIDEBAR_WIDTH - 6, 14,
                     Component.literal(categories[i]),
                     catIndex == getCategoryIndex() ? EcoButton.Style.PRIMARY : EcoButton.Style.GHOST,
                     () -> onCategoryClicked(catIndex)
@@ -134,13 +134,15 @@ public class BuyTab {
     }
 
     private void initDetail(Consumer<AbstractWidget> addWidget) {
+        Font font = Minecraft.getInstance().font;
+
         // Back button
         backButton = EcoButton.primary(x, y, 60, 14, Component.literal("\u25C0 Retour"), this::onBackToBrowse);
         addWidget.accept(backButton);
 
         // Detail table
         int tableY = y + 30;
-        int tableH = h - 34;
+        int tableH = h - 54; // leave room for price history below
         int tableW = w - 4;
         List<TableColumn> columns = List.of(
                 TableColumn.left(Component.literal("Vendeur"), 2f),
@@ -183,20 +185,37 @@ public class BuyTab {
     }
 
     private void renderDetail(GuiGraphics graphics, Font font, int mouseX, int mouseY) {
-        // Item header
+        // Item header (truncated)
         int headerY = y + 18;
-        graphics.drawString(font, Component.literal(detailItemName), x + 64, headerY,
+        int maxNameWidth = w - 170; // leave room for price info on the right
+        String truncatedName = AuctionHouseScreen.truncateText(font, detailItemName, maxNameWidth);
+        graphics.drawString(font, Component.literal(truncatedName), x + 64, headerY,
                 detailRarityColor, false);
 
         // Price info panel (right side)
-        if (detailPriceInfo != null && detailPriceInfo.volume7d() > 0) {
-            int infoX = x + w - 100;
+        if (detailPriceInfo != null) {
+            int infoX = x + w - 120;
             graphics.drawString(font, "Moy: " + formatPrice(detailPriceInfo.avgPrice()),
                     infoX, y + 2, EcoColors.TEXT_GREY, false);
             graphics.drawString(font, "Min: " + formatPrice(detailPriceInfo.minPrice()),
                     infoX, y + 12, EcoColors.SUCCESS, false);
             graphics.drawString(font, "Max: " + formatPrice(detailPriceInfo.maxPrice()),
                     infoX, y + 22, EcoColors.DANGER, false);
+        }
+
+        // Price history summary below the table
+        int historyY = y + h - 18;
+        if (detailPriceInfo != null) {
+            String historyLine = "Moy: " + formatPrice(detailPriceInfo.avgPrice())
+                    + " | Min: " + formatPrice(detailPriceInfo.minPrice())
+                    + " | Max: " + formatPrice(detailPriceInfo.maxPrice())
+                    + " | Ventes 7j: " + detailPriceInfo.volume7d();
+            int historyW = font.width(historyLine);
+            graphics.drawString(font, historyLine, x + (w - historyW) / 2, historyY, EcoColors.TEXT_GREY, false);
+        } else {
+            String noData = "Aucune donn\u00e9e de prix disponible";
+            int noDataW = font.width(noData);
+            graphics.drawString(font, noData, x + (w - noDataW) / 2, historyY, EcoColors.TEXT_DIM, false);
         }
     }
 
@@ -312,10 +331,16 @@ public class BuyTab {
     private void updateBrowseTable() {
         if (browseTable == null) return;
 
+        Font font = Minecraft.getInstance().font;
+        // Estimate available width for item name column: ~42% of table width (3/7 ratio)
+        int tableContentW = w - SIDEBAR_WIDTH;
+        int nameColWidth = (int) (tableContentW * 3f / 7f) - 10;
+
         List<TableRow> rows = new ArrayList<>();
         for (var item : currentItems) {
+            String truncatedName = AuctionHouseScreen.truncateText(font, item.itemName(), nameColWidth);
             rows.add(TableRow.of(List.of(
-                    TableRow.Cell.of(Component.literal(item.itemName()), item.rarityColor()),
+                    TableRow.Cell.of(Component.literal(truncatedName), item.rarityColor()),
                     TableRow.Cell.of(Component.literal(formatPrice(item.bestPrice())), EcoColors.GOLD),
                     TableRow.Cell.of(Component.literal(String.valueOf(item.listingCount())), EcoColors.TEXT_LIGHT),
                     TableRow.Cell.of(Component.literal(String.valueOf(item.totalAvailable())), EcoColors.TEXT_LIGHT)
@@ -327,11 +352,15 @@ public class BuyTab {
     private void updateDetailTable() {
         if (detailTable == null) return;
 
+        Font font = Minecraft.getInstance().font;
+        int sellerColWidth = (int) (w * 2f / 9f) - 10;
+
         List<TableRow> rows = new ArrayList<>();
         for (var entry : detailEntries) {
             boolean isAuction = "AUCTION".equals(entry.type());
+            String truncatedSeller = AuctionHouseScreen.truncateText(font, entry.sellerName(), sellerColWidth);
             rows.add(TableRow.of(List.of(
-                    TableRow.Cell.of(Component.literal(entry.sellerName()), EcoColors.TEXT_LIGHT),
+                    TableRow.Cell.of(Component.literal(truncatedSeller), EcoColors.TEXT_LIGHT),
                     TableRow.Cell.of(Component.literal(String.valueOf(entry.quantity())), EcoColors.TEXT_LIGHT),
                     TableRow.Cell.of(Component.literal(formatPrice(entry.unitPrice())), EcoColors.GOLD),
                     TableRow.Cell.of(Component.literal(isAuction ? "Ench\u00e8re" : "Achat"),
@@ -347,7 +376,7 @@ public class BuyTab {
     // --- Formatting helpers ---
 
     static String formatPrice(long price) {
-        if (price <= 0) return "N/A";
+        if (price <= 0) return "0 G";
         long whole = price / 100;
         long cents = price % 100;
         if (cents == 0) return whole + " G";

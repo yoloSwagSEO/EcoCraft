@@ -69,28 +69,38 @@ public class SellTab {
     public void init(Consumer<AbstractWidget> addWidget) {
         Font font = Minecraft.getInstance().font;
         int centerX = x + w / 2;
+        int currentY = y + 4;
 
-        // Item slot showing selected item
-        itemSlot = new EcoItemSlot(centerX - 16, y + 4, 32);
+        // 1. Item slot (32x32) centered
+        itemSlot = new EcoItemSlot(centerX - 16, currentY, 32);
         updateSelectedItem();
         addWidget.accept(itemSlot);
+        currentY += 36; // 32 slot + 4 gap
 
-        // Type toggle: Buyout / Auction
-        int toggleY = y + 42;
-        buyoutBtn = new EcoButton(centerX - 82, toggleY, 80, 16,
+        // Item name label space (rendered in render())
+        currentY += 12; // text height + gap
+
+        // 2. GAP
+        currentY += 4;
+
+        // 3. Type toggle: Achat imm\u00e9diat / Ench\u00e8re
+        buyoutBtn = new EcoButton(centerX - 82, currentY, 80, 16,
                 Component.literal("Achat imm\u00e9diat"),
                 isBuyout ? EcoButton.Style.SUCCESS : EcoButton.Style.GHOST,
                 () -> { isBuyout = true; parent.rebuildCurrentTab(); });
-        auctionBtn = new EcoButton(centerX + 2, toggleY, 80, 16,
+        auctionBtn = new EcoButton(centerX + 2, currentY, 80, 16,
                 Component.literal("Ench\u00e8re"),
                 !isBuyout ? EcoButton.Style.AUCTION : EcoButton.Style.GHOST,
                 () -> { isBuyout = false; parent.rebuildCurrentTab(); });
         addWidget.accept(buyoutBtn);
         addWidget.accept(auctionBtn);
+        currentY += 20; // 16 button + 4 gap
 
-        // Price input
-        int priceY = toggleY + 22;
-        priceInput = new EditBox(font, centerX - 60, priceY, 120, 14, Component.literal("Prix"));
+        // 4. GAP
+        currentY += 4;
+
+        // 5. Price input with label
+        priceInput = new EditBox(font, centerX - 60, currentY, 120, 14, Component.literal("Prix"));
         priceInput.setHint(Component.literal("Prix (en G)"));
         priceInput.setMaxLength(12);
         priceInput.setFilter(SellTab::isValidPriceChar);
@@ -99,34 +109,51 @@ public class SellTab {
             priceInput.setValue(String.valueOf(priceValue));
         }
         addWidget.accept(priceInput);
+        currentY += 18; // 14 input + 4 gap
 
-        // Duration selector
-        int durationY = priceY + 22;
+        // 6. GAP
+        currentY += 4;
+
+        // 7. Duration selector
         List<Component> durationLabels = List.of(
                 Component.literal(DURATION_LABELS[0]),
                 Component.literal(DURATION_LABELS[1]),
                 Component.literal(DURATION_LABELS[2])
         );
-        durationTags = new EcoFilterTags(centerX - 60, durationY, durationLabels, idx -> selectedDuration = idx);
+        durationTags = new EcoFilterTags(centerX - 60, currentY, durationLabels, idx -> selectedDuration = idx);
         durationTags.setActiveTag(selectedDuration);
         addWidget.accept(durationTags);
+        currentY += 18; // tags height + gap
 
-        // Sell button
-        int sellY = durationY + 22;
-        sellButton = EcoButton.success(centerX - 60, sellY, 120, 18,
+        // 8. GAP
+        currentY += 4;
+
+        // 9. Tax summary panel (rendered in render()) - reserve space
+        int summaryY = currentY;
+        int summaryH = 56;
+        currentY += summaryH + 4;
+
+        // 10. GAP
+        currentY += 4;
+
+        // 11. "Mettre en vente" button
+        sellButton = EcoButton.success(centerX - 60, currentY, 120, 18,
                 Component.literal("Mettre en vente"), this::onSellClicked);
         addWidget.accept(sellButton);
+        currentY += 22; // 18 button + 4 gap
 
-        // Inventory grid
-        int invStartY = sellY + 24;
-        int availableHeight = (y + h) - invStartY;
+        // 12. GAP
+        currentY += 6;
+
+        // 13. "Inventaire:" label + inventory grid
+        invGridY = currentY + 12; // 12 for the label
+        int availableHeight = (y + h) - invGridY - 14; // 14 for status message at bottom
 
         // Calculate grid layout
         int cellSize = SLOT_SIZE + SLOT_PADDING;
         invGridCols = Math.min(9, (w - 8) / cellSize);
         int totalGridWidth = invGridCols * cellSize - SLOT_PADDING;
         invGridX = x + (w - totalGridWidth) / 2;
-        invGridY = invStartY;
 
         // Build inventory slot widgets from player inventory
         inventorySlots.clear();
@@ -165,49 +192,62 @@ public class SellTab {
         Font font = Minecraft.getInstance().font;
         int centerX = x + w / 2;
 
-        // Item name
+        // Item name (below the slot)
+        int nameY = y + 40;
         ItemStack selected = getSelectedItem();
         if (selected.isEmpty()) {
-            String msg = "Cliquez sur un objet ci-dessous";
+            String msg = "S\u00e9lectionnez un objet";
             int msgW = font.width(msg);
-            graphics.drawString(font, msg, centerX - msgW / 2, y + 38, EcoColors.TEXT_GREY, false);
+            graphics.drawString(font, msg, centerX - msgW / 2, nameY, EcoColors.TEXT_GREY, false);
         } else {
             String itemName = selected.getHoverName().getString();
-            int nameW = font.width(itemName);
-            graphics.drawString(font, itemName, centerX - nameW / 2, y + 38, EcoColors.TEXT_LIGHT, false);
+            int maxNameWidth = w - 40;
+            String truncatedName = AuctionHouseScreen.truncateText(font, itemName, maxNameWidth);
+            int nameW = font.width(truncatedName);
+            graphics.drawString(font, truncatedName, centerX - nameW / 2, nameY, EcoColors.TEXT_LIGHT, false);
         }
 
-        // Summary section (only if price > 0)
+        // "Prix:" label left of the price input
+        int priceInputY = priceInput != null ? priceInput.getY() : 0;
+        if (priceInput != null) {
+            graphics.drawString(font, "Prix:", priceInput.getX() - font.width("Prix: ") - 2, priceInputY + 3, EcoColors.TEXT_GREY, false);
+        }
+
+        // Tax summary panel
+        int summaryX = x + 20;
+        int summaryW = w - 40;
+        // Calculate summaryY based on duration tags position
+        int summaryY = (durationTags != null) ? durationTags.getY() + 22 : y + 120;
+
         if (priceValue > 0 && !selected.isEmpty()) {
-            int summaryX = x + 20;
-            int summaryW = w - 40;
-            int summaryY = y + 108;
+            EcoTheme.drawPanel(graphics, summaryX, summaryY, summaryW, 56);
 
-            // Only draw summary if it fits above the inventory grid
-            if (summaryY + 52 <= invGridY) {
-                EcoTheme.drawPanel(graphics, summaryX, summaryY, summaryW, 52);
+            long price = priceValue;
+            long tax = (long) (price * TAX_RATE);
+            long deposit = (long) (price * DEPOSIT_RATE);
+            long net = price - tax;
 
-                long price = priceValue;
-                long tax = (long) (price * TAX_RATE);
-                long deposit = (long) (price * DEPOSIT_RATE);
-                long net = price - tax;
+            int labelX = summaryX + 10;
+            int valueX = summaryX + summaryW - 10;
 
-                int labelX = summaryX + 10;
-                int valueX = summaryX + summaryW - 10;
-
-                drawSummaryLine(graphics, font, "Prix de vente:", BuyTab.formatPrice(price), labelX, valueX, summaryY + 4, EcoColors.TEXT_LIGHT, EcoColors.GOLD);
-                drawSummaryLine(graphics, font, "Taxe (5%):", "-" + BuyTab.formatPrice(tax), labelX, valueX, summaryY + 16, EcoColors.TEXT_GREY, EcoColors.DANGER);
-                drawSummaryLine(graphics, font, "D\u00e9p\u00f4t (2%):", BuyTab.formatPrice(deposit), labelX, valueX, summaryY + 28, EcoColors.TEXT_GREY, EcoColors.WARNING);
-                EcoTheme.drawGoldSeparator(graphics, summaryX + 4, summaryY + 39, summaryW - 8);
-                drawSummaryLine(graphics, font, "Net:", BuyTab.formatPrice(net), labelX, valueX, summaryY + 42, EcoColors.TEXT_LIGHT, EcoColors.SUCCESS);
-            }
+            drawSummaryLine(graphics, font, "Prix de vente:", BuyTab.formatPrice(price), labelX, valueX, summaryY + 4, EcoColors.TEXT_LIGHT, EcoColors.GOLD);
+            drawSummaryLine(graphics, font, "Taxe (5%):", "-" + BuyTab.formatPrice(tax), labelX, valueX, summaryY + 16, EcoColors.TEXT_GREY, EcoColors.DANGER);
+            drawSummaryLine(graphics, font, "D\u00e9p\u00f4t (2%):", BuyTab.formatPrice(deposit), labelX, valueX, summaryY + 28, EcoColors.TEXT_GREY, EcoColors.WARNING);
+            EcoTheme.drawGoldSeparator(graphics, summaryX + 4, summaryY + 39, summaryW - 8);
+            drawSummaryLine(graphics, font, "Net:", BuyTab.formatPrice(net), labelX, valueX, summaryY + 44, EcoColors.TEXT_LIGHT, EcoColors.SUCCESS);
+        } else {
+            // Draw empty summary placeholder
+            EcoTheme.drawPanel(graphics, summaryX, summaryY, summaryW, 56);
+            String placeholder = "Entrez un prix pour voir le r\u00e9sum\u00e9";
+            int phW = font.width(placeholder);
+            graphics.drawString(font, placeholder, summaryX + (summaryW - phW) / 2, summaryY + 22, EcoColors.TEXT_DIM, false);
         }
 
         // Inventory label
         String invLabel = "Inventaire:";
         graphics.drawString(font, invLabel, invGridX, invGridY - 10, EcoColors.TEXT_GREY, false);
 
-        // Status message
+        // Status message at very bottom
         if (!lastMessage.isEmpty()) {
             int msgColor = lastSuccess ? EcoColors.SUCCESS : EcoColors.DANGER;
             int msgW = font.width(lastMessage);
@@ -259,12 +299,12 @@ public class SellTab {
     private void onSellClicked() {
         ItemStack selected = getSelectedItem();
         if (selected.isEmpty()) {
-            lastMessage = "Aucun objet s\u00e9lectionn\u00e9!";
+            lastMessage = "Aucun objet s\u00e9lectionn\u00e9 !";
             lastSuccess = false;
             return;
         }
         if (priceValue <= 0) {
-            lastMessage = "Entrez un prix valide!";
+            lastMessage = "Entrez un prix valide !";
             lastSuccess = false;
             return;
         }
@@ -278,7 +318,22 @@ public class SellTab {
     }
 
     public void onActionResult(AHActionResultPayload payload) {
-        lastMessage = payload.message();
+        // Translate known English messages to French
+        String msg = payload.message();
+        if ("Listing created successfully.".equals(msg)) {
+            msg = "Objet mis en vente !";
+        } else if ("You must hold an item to sell.".equals(msg)) {
+            msg = "Aucun objet s\u00e9lectionn\u00e9 !";
+        } else if ("Price must be positive.".equals(msg)) {
+            msg = "Le prix doit \u00eatre positif !";
+        } else if ("Invalid item.".equals(msg)) {
+            msg = "Objet invalide !";
+        } else if ("Not enough funds.".equals(msg)) {
+            msg = "Fonds insuffisants !";
+        } else if ("Listing not found.".equals(msg)) {
+            msg = "Annonce introuvable !";
+        }
+        lastMessage = msg;
         lastSuccess = payload.success();
     }
 
