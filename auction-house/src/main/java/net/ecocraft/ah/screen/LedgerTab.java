@@ -218,7 +218,7 @@ public class LedgerTab {
         List<TableRow> rows = new ArrayList<>();
         for (var entry : entries) {
             int typeColor = getTypeColor(entry.type());
-            boolean isIncome = "SALE".equals(entry.type()) || "OUTBID".equals(entry.type());
+            boolean isIncome = entry.type().contains("SALE") || entry.type().contains("OUTBID");
 
             String truncatedName = AuctionHouseScreen.truncateText(font, entry.itemName(), nameColWidth);
             String truncatedCounterparty = AuctionHouseScreen.truncateText(font, entry.counterparty(), counterpartyColWidth);
@@ -263,20 +263,23 @@ public class LedgerTab {
 
     private static int getTypeColor(String type) {
         return switch (type) {
-            case "PURCHASE" -> EcoColors.INFO;
-            case "SALE" -> EcoColors.SUCCESS;
-            case "EXPIRED" -> EcoColors.TEXT_DIM;
-            case "OUTBID" -> EcoColors.WARNING;
+            case "PURCHASE", "HDV_PURCHASE" -> EcoColors.INFO;
+            case "SALE", "HDV_SALE" -> EcoColors.SUCCESS;
+            case "EXPIRED", "HDV_EXPIRED" -> EcoColors.TEXT_DIM;
+            case "OUTBID", "HDV_OUTBID" -> EcoColors.WARNING;
+            case "TAX" -> EcoColors.DANGER;
             default -> EcoColors.TEXT_GREY;
         };
     }
 
     private static String translateType(String type) {
         return switch (type) {
-            case "PURCHASE" -> "Achat";
-            case "SALE" -> "Vente";
-            case "EXPIRED" -> "Expir\u00e9";
-            case "OUTBID" -> "Surench.";
+            case "PURCHASE", "HDV_PURCHASE" -> "Achat";
+            case "SALE", "HDV_SALE" -> "Vente";
+            case "EXPIRED", "HDV_EXPIRED" -> "Expiration";
+            case "OUTBID", "HDV_OUTBID" -> "Surench.";
+            case "TAX" -> "Taxe";
+            case "LISTING_FEE", "HDV_LISTING_FEE" -> "D\u00e9p\u00f4t";
             default -> type;
         };
     }

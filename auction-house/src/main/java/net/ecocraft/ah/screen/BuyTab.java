@@ -377,10 +377,7 @@ public class BuyTab {
 
     static String formatPrice(long price) {
         if (price <= 0) return "0 G";
-        long whole = price / 100;
-        long cents = price % 100;
-        if (cents == 0) return whole + " G";
-        return whole + "." + String.format("%02d", cents) + " G";
+        return price + " G";
     }
 
     static String formatTimeRemaining(long expiresInMs) {
