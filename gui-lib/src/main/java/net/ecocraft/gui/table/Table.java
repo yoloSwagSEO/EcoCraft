@@ -12,6 +12,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -48,6 +49,16 @@ public class Table extends AbstractWidget {
     // Scroll state
     private int scrollOffset = 0; // row index offset for SCROLL mode
     private Scrollbar scrollbar;
+
+    // Sort state
+    private int sortColumn = -1;       // -1 = no sort active
+    private boolean sortAscending = true;
+    private final List<TableRow> sortedRows = new ArrayList<>();
+    private boolean sortDirty = true;
+
+    // Selection state
+    private int selectedRow = -1;
+    private java.util.function.IntConsumer selectionListener;
 
     // Shared state
     private int hoveredRow = -1;
@@ -88,9 +99,38 @@ public class Table extends AbstractWidget {
     public void setRows(List<TableRow> rows) {
         this.rows.clear();
         this.rows.addAll(rows);
+        this.sortDirty = true;
         this.page = 0;
         this.scrollOffset = 0;
         updateScrollbar();
+    }
+
+    private List<TableRow> getDisplayRows() {
+        if (sortColumn < 0 || sortColumn >= columns.size() || !columns.get(sortColumn).sortable()) {
+            return rows;
+        }
+        if (sortDirty) {
+            sortedRows.clear();
+            sortedRows.addAll(rows);
+            int col = sortColumn;
+            sortedRows.sort((a, b) -> {
+                if (col >= a.cells().size() || col >= b.cells().size()) return 0;
+                var cellA = a.cells().get(col);
+                var cellB = b.cells().get(col);
+                int cmp = compareCells(cellA, cellB);
+                return sortAscending ? cmp : -cmp;
+            });
+            sortDirty = false;
+        }
+        return sortedRows;
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private int compareCells(TableRow.Cell a, TableRow.Cell b) {
+        if (a.sortValue() != null && b.sortValue() != null) {
+            return ((Comparable) a.sortValue()).compareTo(b.sortValue());
+        }
+        return a.text().getString().compareToIgnoreCase(b.text().getString());
     }
 
     // --- Pagination API (for PAGINATED mode) ---
@@ -115,11 +155,25 @@ public class Table extends AbstractWidget {
 
     /** Returns the hovered row's icon, or null if no row is hovered or row has no icon. */
     public ItemStack getHoveredIcon() {
-        if (hoveredRow >= 0 && hoveredRow < rows.size()) {
-            ItemStack icon = rows.get(hoveredRow).icon();
+        List<TableRow> display = getDisplayRows();
+        if (hoveredRow >= 0 && hoveredRow < display.size()) {
+            ItemStack icon = display.get(hoveredRow).icon();
             return icon != null ? icon : null;
         }
         return null;
+    }
+
+    /** Returns the currently selected row index, or -1 if none. */
+    public int getSelectedRow() { return selectedRow; }
+
+    /** Programmatically selects a row. Pass -1 to clear selection. */
+    public void setSelectedRow(int index) {
+        this.selectedRow = index;
+    }
+
+    /** Sets a listener called when the user clicks a row (receives row index in display order). */
+    public void setSelectionListener(java.util.function.IntConsumer listener) {
+        this.selectionListener = listener;
     }
 
     // --- Rendering ---
@@ -132,7 +186,8 @@ public class Table extends AbstractWidget {
 
         DrawUtils.drawPanel(graphics, getX(), getY(), width, height, theme);
 
-        boolean hasIcon = rows.stream().anyMatch(r -> r.icon() != null);
+        List<TableRow> displayRows = getDisplayRows();
+        boolean hasIcon = displayRows.stream().anyMatch(r -> r.icon() != null);
         int iconSpace = hasIcon ? ICON_SIZE + ICON_MARGIN : 0;
 
         float totalWeight = 0;
@@ -156,9 +211,17 @@ public class Table extends AbstractWidget {
 
         for (int i = 0; i < columns.size(); i++) {
             var col = columns.get(i);
-            int textX = getAlignedX(font, col.header(), colX[i], colW[i], col.align());
+            Component headerText;
+            if (col.sortable() && sortColumn == i) {
+                String arrow = sortAscending ? " \u25B2" : " \u25BC";
+                headerText = Component.literal(col.header().getString() + arrow);
+            } else {
+                headerText = col.header();
+            }
+            int textX = getAlignedX(font, headerText, colX[i], colW[i], col.align());
             int textY = headerY + (HEADER_HEIGHT - 8) / 2;
-            graphics.drawString(font, col.header(), textX, textY, theme.accent, false);
+            int headerColor = col.sortable() && sortColumn == i ? theme.textWhite : theme.accent;
+            graphics.drawString(font, headerText, textX, textY, headerColor, false);
         }
 
         // Row rendering with scissor clipping
@@ -172,22 +235,22 @@ public class Table extends AbstractWidget {
         switch (navigation) {
             case PAGINATED -> {
                 startIdx = page * rowsPerPage;
-                endIdx = Math.min(startIdx + rowsPerPage, rows.size());
+                endIdx = Math.min(startIdx + rowsPerPage, displayRows.size());
             }
             case SCROLL -> {
                 startIdx = scrollOffset;
-                endIdx = Math.min(startIdx + rowsPerPage + 1, rows.size()); // +1 for partial row
+                endIdx = Math.min(startIdx + rowsPerPage + 1, displayRows.size()); // +1 for partial row
             }
             default -> { // NONE
                 startIdx = 0;
-                endIdx = rows.size();
+                endIdx = displayRows.size();
             }
         }
 
         hoveredRow = -1;
 
         for (int i = startIdx; i < endIdx; i++) {
-            var row = rows.get(i);
+            var row = displayRows.get(i);
             int rowIndex = i - startIdx;
             int rowY = rowAreaY + rowIndex * ROW_HEIGHT;
 
@@ -196,9 +259,12 @@ public class Table extends AbstractWidget {
                     && mouseY >= rowY && mouseY < rowY + ROW_HEIGHT
                     && mouseY >= rowAreaY && mouseY < rowAreaY + rowAreaH;
 
+            boolean isSelected = (i == selectedRow);
             if (isHovered) {
                 hoveredRow = i;
                 graphics.fill(getX() + 1, rowY, getX() + width - 1, rowY + ROW_HEIGHT, theme.bgMedium);
+            } else if (isSelected) {
+                graphics.fill(getX() + 1, rowY, getX() + width - 1, rowY + ROW_HEIGHT, theme.accentBg);
             } else if (alt) {
                 graphics.fill(getX() + 1, rowY, getX() + width - 1, rowY + ROW_HEIGHT, theme.bgRowAlt);
             }
@@ -242,8 +308,8 @@ public class Table extends AbstractWidget {
         }
 
         // Built-in tooltip for hovered row with icon (if enabled)
-        if (tooltipsEnabled && hoveredRow >= 0 && hoveredRow < rows.size()) {
-            ItemStack hoveredIcon = rows.get(hoveredRow).icon();
+        if (tooltipsEnabled && hoveredRow >= 0 && hoveredRow < displayRows.size()) {
+            ItemStack hoveredIcon = displayRows.get(hoveredRow).icon();
             if (hoveredIcon != null && !hoveredIcon.isEmpty()) {
                 graphics.renderTooltip(font, hoveredIcon, mouseX, mouseY);
             }
@@ -260,13 +326,62 @@ public class Table extends AbstractWidget {
                 return true;
             }
         }
-        if (button != 0 || hoveredRow < 0 || hoveredRow >= rows.size()) return false;
-        var row = rows.get(hoveredRow);
+
+        // Header click for sorting
+        if (button == 0 && mouseY >= getY() + 1 && mouseY < getY() + 1 + HEADER_HEIGHT) {
+            int clickedCol = getColumnAtX((int) mouseX);
+            if (clickedCol >= 0 && columns.get(clickedCol).sortable()) {
+                if (sortColumn == clickedCol) {
+                    if (!sortAscending) {
+                        // 3rd click: remove sort
+                        sortColumn = -1;
+                        sortAscending = true;
+                    } else {
+                        // 2nd click: descending
+                        sortAscending = false;
+                    }
+                } else {
+                    sortColumn = clickedCol;
+                    sortAscending = true;
+                }
+                sortDirty = true;
+                page = 0;
+                scrollOffset = 0;
+                updateScrollbar();
+                return true;
+            }
+        }
+
+        List<TableRow> display = getDisplayRows();
+        if (button != 0 || hoveredRow < 0 || hoveredRow >= display.size()) return false;
+        selectedRow = hoveredRow;
+        if (selectionListener != null) {
+            selectionListener.accept(hoveredRow);
+        }
+        var row = display.get(hoveredRow);
         if (row.onClick() != null) {
             row.onClick().run();
             return true;
         }
-        return false;
+        return true;
+    }
+
+    private int getColumnAtX(int mouseX) {
+        boolean hasIcon = rows.stream().anyMatch(r -> r.icon() != null);
+        int iconSpace = hasIcon ? ICON_SIZE + ICON_MARGIN : 0;
+        int scrollbarSpace = (navigation == Navigation.SCROLL && showScrollbar) ? SCROLLBAR_WIDTH + 2 : 0;
+        int contentWidth = width - 2 - iconSpace - scrollbarSpace;
+
+        float totalWeight = 0;
+        for (var col : columns) totalWeight += col.weight();
+
+        int cx = getX() + 1 + iconSpace;
+        for (int i = 0; i < columns.size(); i++) {
+            int colW = (int) (contentWidth * columns.get(i).weight() / totalWeight);
+            if (mouseX >= cx && mouseX < cx + colW) return i;
+            cx += colW;
+        }
+        return -1;
     }
 
     @Override
