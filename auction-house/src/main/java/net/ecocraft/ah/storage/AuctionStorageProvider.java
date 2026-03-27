@@ -345,8 +345,8 @@ public class AuctionStorageProvider {
                 INSERT INTO ah_listings
                 (id, seller_uuid, seller_name, item_id, item_name, item_nbt, quantity,
                  listing_type, buyout_price, starting_bid, current_bid, current_bidder,
-                 currency_id, category, expires_at, status, tax_amount, created_at, item_fingerprint)
-                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                 currency_id, category, expires_at, status, tax_amount, created_at, item_fingerprint, ah_id)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             """)) {
             int i = 1;
             ps.setString(i++, listing.id());
@@ -367,7 +367,8 @@ public class AuctionStorageProvider {
             ps.setString(i++, listing.status().name());
             ps.setLong(i++, listing.taxAmount());
             ps.setLong(i++, listing.createdAt());
-            ps.setString(i, listing.itemFingerprint());
+            ps.setString(i++, listing.itemFingerprint());
+            ps.setString(i, listing.ahId() != null ? listing.ahId() : AHInstance.DEFAULT_ID);
             ps.executeUpdate();
         } catch (SQLException e) {
             throw new RuntimeException("Failed to create listing", e);
@@ -429,17 +430,18 @@ public class AuctionStorageProvider {
      * Returns the lowest buyout price for ACTIVE listings matching the fingerprint,
      * falling back to itemId if no fingerprint match is found. Returns -1 if none found.
      */
-    public long getBestPrice(String fingerprint, String itemId) {
+    public long getBestPrice(String ahId, String fingerprint, String itemId) {
         // Try exact fingerprint match first
-        long price = queryMinPrice("SELECT MIN(buyout_price) FROM ah_listings WHERE item_fingerprint = ? AND status = 'ACTIVE' AND buyout_price > 0", fingerprint);
+        long price = queryMinPrice("SELECT MIN(buyout_price) FROM ah_listings WHERE ah_id = ? AND item_fingerprint = ? AND status = 'ACTIVE' AND buyout_price > 0", ahId, fingerprint);
         if (price > 0) return price;
         // Fallback: match by itemId only
-        return queryMinPrice("SELECT MIN(buyout_price) FROM ah_listings WHERE item_id = ? AND status = 'ACTIVE' AND buyout_price > 0", itemId);
+        return queryMinPrice("SELECT MIN(buyout_price) FROM ah_listings WHERE ah_id = ? AND item_id = ? AND status = 'ACTIVE' AND buyout_price > 0", ahId, itemId);
     }
 
-    private long queryMinPrice(String sql, String param) {
+    private long queryMinPrice(String sql, String ahId, String param) {
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
-            ps.setString(1, param);
+            ps.setString(1, ahId);
+            ps.setString(2, param);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
                     long val = rs.getLong(1);
@@ -564,6 +566,7 @@ public class AuctionStorageProvider {
      * Each row contains: item_id, item_name, best_price, listing_count, total_quantity.
      */
     public List<ListingGroupSummary> getListingsGroupedByItem(
+            String ahId,
             @Nullable String search,
             @Nullable ItemCategory category,
             int page,
@@ -576,9 +579,10 @@ public class AuctionStorageProvider {
                        SUM(quantity)    AS total_quantity,
                        category
                 FROM ah_listings
-                WHERE status = 'ACTIVE' AND buyout_price > 0
+                WHERE status = 'ACTIVE' AND buyout_price > 0 AND ah_id = ?
             """);
         var params = new ArrayList<Object>();
+        params.add(ahId);
 
         if (search != null && !search.isBlank()) {
             sql.append(" AND (item_name LIKE ? OR item_id LIKE ?)");
@@ -620,9 +624,9 @@ public class AuctionStorageProvider {
     /**
      * Returns all ACTIVE listings for a specific item (detail view).
      */
-    public List<AuctionListing> getListingsForItem(String itemId) {
-        String sql = "SELECT * FROM ah_listings WHERE status = 'ACTIVE' AND item_id = ? ORDER BY buyout_price ASC";
-        return queryListings(sql, List.of(itemId));
+    public List<AuctionListing> getListingsForItem(String ahId, String itemId) {
+        String sql = "SELECT * FROM ah_listings WHERE status = 'ACTIVE' AND ah_id = ? AND item_id = ? ORDER BY buyout_price ASC";
+        return queryListings(sql, List.of(ahId, itemId));
     }
 
     /**
@@ -778,10 +782,10 @@ public class AuctionStorageProvider {
     // Price History
     // -------------------------------------------------------------------------
 
-    public void logPriceHistory(String id, String itemId, String currencyId, long salePrice, int quantity, long soldAt) {
+    public void logPriceHistory(String ahId, String id, String itemId, String currencyId, long salePrice, int quantity, long soldAt) {
         try (PreparedStatement ps = connection.prepareStatement("""
-                INSERT INTO ah_price_history (id, item_id, currency_id, sale_price, quantity, sold_at)
-                VALUES (?,?,?,?,?,?)
+                INSERT INTO ah_price_history (id, item_id, currency_id, sale_price, quantity, sold_at, ah_id)
+                VALUES (?,?,?,?,?,?,?)
             """)) {
             ps.setString(1, id);
             ps.setString(2, itemId);
@@ -789,6 +793,7 @@ public class AuctionStorageProvider {
             ps.setLong(4, salePrice);
             ps.setInt(5, quantity);
             ps.setLong(6, soldAt);
+            ps.setString(7, ahId != null ? ahId : AHInstance.DEFAULT_ID);
             ps.executeUpdate();
         } catch (SQLException e) {
             throw new RuntimeException("Failed to log price history", e);
@@ -1010,9 +1015,9 @@ public class AuctionStorageProvider {
      * If enchantmentFilters is empty, returns all listings (same as {@link #getListingsForItem(String)}).
      * Uses OR logic: listings that have ANY of the specified enchantments are included.
      */
-    public List<AuctionListing> getListingsForItemFiltered(String itemId, Set<String> enchantmentFilters, int page, int pageSize) {
+    public List<AuctionListing> getListingsForItemFiltered(String ahId, String itemId, Set<String> enchantmentFilters, int page, int pageSize) {
         if (enchantmentFilters == null || enchantmentFilters.isEmpty()) {
-            return getListingsForItem(itemId);
+            return getListingsForItem(ahId, itemId);
         }
 
         String placeholders = enchantmentFilters.stream()
@@ -1022,13 +1027,14 @@ public class AuctionStorageProvider {
         String sql = """
                 SELECT DISTINCT l.* FROM ah_listings l
                 JOIN ah_listing_enchantments le ON le.listing_id = l.id
-                WHERE l.status = 'ACTIVE' AND l.item_id = ?
+                WHERE l.status = 'ACTIVE' AND l.ah_id = ? AND l.item_id = ?
                   AND le.display_name IN (%s)
                 ORDER BY l.buyout_price ASC
                 LIMIT ? OFFSET ?
             """.formatted(placeholders);
 
         List<Object> params = new ArrayList<>();
+        params.add(ahId);
         params.add(itemId);
         params.addAll(enchantmentFilters);
         params.add(pageSize);
@@ -1063,6 +1069,8 @@ public class AuctionStorageProvider {
 
     private AuctionListing mapListing(ResultSet rs) throws SQLException {
         String bidderStr = rs.getString("current_bidder");
+        String ahId = null;
+        try { ahId = rs.getString("ah_id"); } catch (SQLException ignored) {}
         return new AuctionListing(
                 rs.getString("id"),
                 UUID.fromString(rs.getString("seller_uuid")),
@@ -1082,7 +1090,8 @@ public class AuctionStorageProvider {
                 ListingStatus.valueOf(rs.getString("status")),
                 rs.getLong("tax_amount"),
                 rs.getLong("created_at"),
-                rs.getString("item_fingerprint")
+                rs.getString("item_fingerprint"),
+                ahId
         );
     }
 

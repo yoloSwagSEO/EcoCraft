@@ -143,7 +143,8 @@ public class AuctionService {
                 ListingStatus.ACTIVE,
                 taxUnits,
                 now,
-                fingerprint
+                fingerprint,
+                null // ahId — will be set to DEFAULT_ID by storage
         );
 
         storage.createListing(listing);
@@ -263,6 +264,7 @@ public class AuctionService {
 
         // Log price history
         storage.logPriceHistory(
+                listing.ahId() != null ? listing.ahId() : AHInstance.DEFAULT_ID,
                 UUID.randomUUID().toString(),
                 listing.itemId(),
                 listing.currencyId(),
@@ -445,6 +447,7 @@ public class AuctionService {
 
         // Log price history
         storage.logPriceHistory(
+                listing.ahId() != null ? listing.ahId() : AHInstance.DEFAULT_ID,
                 UUID.randomUUID().toString(),
                 listing.itemId(),
                 listing.currencyId(),
@@ -492,18 +495,19 @@ public class AuctionService {
      * Returns a paginated grouped view of active listings for the browse tab.
      */
     public List<AuctionStorageProvider.ListingGroupSummary> searchListings(
+            String ahId,
             @Nullable String query,
             @Nullable ItemCategory category,
             int page,
             int pageSize) {
-        return storage.getListingsGroupedByItem(query, category, page, pageSize);
+        return storage.getListingsGroupedByItem(ahId, query, category, page, pageSize);
     }
 
     /**
      * Returns all active individual listings for a specific item (detail view).
      */
-    public List<AuctionListing> getListingDetail(String itemId) {
-        return storage.getListingsForItem(itemId);
+    public List<AuctionListing> getListingDetail(String ahId, String itemId) {
+        return storage.getListingsForItem(ahId, itemId);
     }
 
     // -------------------------------------------------------------------------
@@ -571,8 +575,8 @@ public class AuctionService {
     }
 
     /** Returns the best (lowest) active buyout price for an item, or -1 if none. */
-    public long getBestPrice(String fingerprint, String itemId) {
-        return storage.getBestPrice(fingerprint, itemId);
+    public long getBestPrice(String ahId, String fingerprint, String itemId) {
+        return storage.getBestPrice(ahId, fingerprint, itemId);
     }
 
     /** Returns the default currency's id. */

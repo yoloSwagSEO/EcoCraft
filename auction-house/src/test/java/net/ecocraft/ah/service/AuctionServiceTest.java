@@ -481,7 +481,7 @@ class AuctionServiceTest {
                 UUID.randomUUID().toString(), seller, "Seller",
                 "minecraft:diamond", "Diamond", null, 1,
                 ListingType.BUYOUT, 1000L, 0L, 0L, null, "gold",
-                ItemCategory.MISC, past, ListingStatus.ACTIVE, 20L, past - 86_400_000L, null);
+                ItemCategory.MISC, past, ListingStatus.ACTIVE, 20L, past - 86_400_000L, null, null);
         storage.createListing(listing);
 
         service.expireListings();
@@ -508,7 +508,7 @@ class AuctionServiceTest {
                 UUID.randomUUID().toString(), seller, "Seller",
                 "minecraft:netherite_sword", "Netherite Sword", null, 1,
                 ListingType.AUCTION, 0L, 5000L, 8000L, winner, "gold",
-                ItemCategory.WEAPONS, past, ListingStatus.ACTIVE, 400L, past - 86_400_000L, null);
+                ItemCategory.WEAPONS, past, ListingStatus.ACTIVE, 400L, past - 86_400_000L, null, null);
         storage.createListing(listing);
 
         BigDecimal sellerBalanceBefore = economy.getBalance(seller, GOLD);
@@ -584,7 +584,7 @@ class AuctionServiceTest {
         service.createListing(seller, "Seller", "minecraft:emerald", "Emerald", null,
                 1, ListingType.BUYOUT, new BigDecimal("80.00"), 24, "gold", ItemCategory.MISC, null);
 
-        List<AuctionStorageProvider.ListingGroupSummary> results = service.searchListings(null, null, 0, 10);
+        List<AuctionStorageProvider.ListingGroupSummary> results = service.searchListings(AHInstance.DEFAULT_ID, null, null, 0, 10);
         assertEquals(2, results.size()); // diamond and emerald grouped
     }
 
@@ -598,7 +598,7 @@ class AuctionServiceTest {
         service.createListing(seller, "Seller", "minecraft:iron_ingot", "Iron Ingot", null,
                 10, ListingType.BUYOUT, new BigDecimal("4.50"), 24, "gold", ItemCategory.MISC, null);
 
-        List<AuctionListing> detail = service.getListingDetail("minecraft:iron_ingot");
+        List<AuctionListing> detail = service.getListingDetail(AHInstance.DEFAULT_ID, "minecraft:iron_ingot");
         assertEquals(2, detail.size());
     }
 }

@@ -38,7 +38,7 @@ public final class ServerPayloadHandler {
 
                 // Fetch all results (no category filter in SQL) and filter dynamically
                 List<AuctionStorageProvider.ListingGroupSummary> allResults =
-                        service.searchListings(search, null, 0, Integer.MAX_VALUE);
+                        service.searchListings(AHInstance.DEFAULT_ID, search, null, 0, Integer.MAX_VALUE);
 
                 // Filter by dynamically detected category if requested
                 List<AuctionStorageProvider.ListingGroupSummary> filtered;
@@ -99,9 +99,9 @@ public final class ServerPayloadHandler {
                         ? new LinkedHashSet<>(payload.enchantmentFilters()) : Set.of();
 
                 if (!enchantFilters.isEmpty() && storage != null) {
-                    listings = storage.getListingsForItemFiltered(payload.itemId(), enchantFilters, 0, Integer.MAX_VALUE);
+                    listings = storage.getListingsForItemFiltered(AHInstance.DEFAULT_ID, payload.itemId(), enchantFilters, 0, Integer.MAX_VALUE);
                 } else {
-                    listings = service.getListingDetail(payload.itemId());
+                    listings = service.getListingDetail(AHInstance.DEFAULT_ID, payload.itemId());
                 }
 
                 // Group by seller UUID + itemNbt hash + price
@@ -390,7 +390,7 @@ public final class ServerPayloadHandler {
         context.enqueueWork(() -> {
             try {
                 AuctionService service = requireService();
-                long bestPrice = service.getBestPrice(payload.fingerprint(), payload.itemId());
+                long bestPrice = service.getBestPrice(AHInstance.DEFAULT_ID, payload.fingerprint(), payload.itemId());
                 context.reply(new BestPriceResponsePayload(payload.itemId(), bestPrice));
             } catch (Exception e) {
                 LOGGER.error("Error handling RequestBestPrice", e);
