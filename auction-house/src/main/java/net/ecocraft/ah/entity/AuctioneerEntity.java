@@ -1,8 +1,15 @@
 package net.ecocraft.ah.entity;
 
+import com.mojang.authlib.GameProfile;
+import com.mojang.authlib.properties.PropertyMap;
 import net.ecocraft.ah.network.ServerPayloadHandler;
 import net.ecocraft.ah.network.payload.OpenAHPayload;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtOps;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.syncher.EntityDataAccessor;
+import net.minecraft.network.syncher.EntityDataSerializers;
+import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -11,14 +18,22 @@ import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.goal.LookAtPlayerGoal;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.component.ResolvableProfile;
 import net.minecraft.world.level.Level;
 import net.neoforged.neoforge.network.PacketDistributor;
+
+import java.util.Optional;
 
 /**
  * A stationary NPC auctioneer. Uses Mob (not PathfinderMob) to avoid
  * pathfinding-related issues. Invulnerable, no gravity, no collision.
  */
 public class AuctioneerEntity extends Mob {
+
+    private static final EntityDataAccessor<CompoundTag> DATA_SKIN_PROFILE =
+            SynchedEntityData.defineId(AuctioneerEntity.class, EntityDataSerializers.COMPOUND_TAG);
+
+    private String skinPlayerName = "";
 
     public AuctioneerEntity(EntityType<? extends Mob> type, Level level) {
         super(type, level);
@@ -38,7 +53,7 @@ public class AuctioneerEntity extends Mob {
     public InteractionResult mobInteract(Player player, InteractionHand hand) {
         if (!level().isClientSide && hand == InteractionHand.MAIN_HAND
                 && player instanceof ServerPlayer serverPlayer) {
-            PacketDistributor.sendToPlayer(serverPlayer, new OpenAHPayload());
+            PacketDistributor.sendToPlayer(serverPlayer, new OpenAHPayload(this.getId()));
             ServerPayloadHandler.sendBalanceUpdate(serverPlayer);
             ServerPayloadHandler.sendAHSettings(serverPlayer);
         }
@@ -71,17 +86,52 @@ public class AuctioneerEntity extends Mob {
     }
 
     @Override
-    protected void defineSynchedData(net.minecraft.network.syncher.SynchedEntityData.Builder builder) {
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {
         super.defineSynchedData(builder);
+        builder.define(DATA_SKIN_PROFILE, new CompoundTag());
     }
 
     @Override
-    public void readAdditionalSaveData(net.minecraft.nbt.CompoundTag tag) {
-        super.readAdditionalSaveData(tag);
-    }
-
-    @Override
-    public void addAdditionalSaveData(net.minecraft.nbt.CompoundTag tag) {
+    public void addAdditionalSaveData(CompoundTag tag) {
         super.addAdditionalSaveData(tag);
+        tag.putString("SkinPlayerName", skinPlayerName);
+        CompoundTag profileTag = entityData.get(DATA_SKIN_PROFILE);
+        if (!profileTag.isEmpty()) {
+            tag.put("SkinProfile", profileTag);
+        }
+    }
+
+    @Override
+    public void readAdditionalSaveData(CompoundTag tag) {
+        super.readAdditionalSaveData(tag);
+        skinPlayerName = tag.getString("SkinPlayerName");
+        if (tag.contains("SkinProfile")) {
+            entityData.set(DATA_SKIN_PROFILE, tag.getCompound("SkinProfile"));
+        }
+    }
+
+    public String getSkinPlayerName() { return skinPlayerName; }
+
+    public void setSkinPlayerName(String name) { this.skinPlayerName = name; }
+
+    public Optional<GameProfile> getSkinProfile() {
+        CompoundTag tag = entityData.get(DATA_SKIN_PROFILE);
+        if (tag.isEmpty()) {
+            return Optional.empty();
+        }
+        return ResolvableProfile.CODEC.parse(NbtOps.INSTANCE, tag)
+                .result()
+                .map(ResolvableProfile::gameProfile);
+    }
+
+    public void setSkinProfile(GameProfile profile) {
+        if (profile != null) {
+            ResolvableProfile resolvable = new ResolvableProfile(profile);
+            ResolvableProfile.CODEC.encodeStart(NbtOps.INSTANCE, resolvable)
+                    .result()
+                    .ifPresent(nbt -> entityData.set(DATA_SKIN_PROFILE, (CompoundTag) nbt));
+        } else {
+            entityData.set(DATA_SKIN_PROFILE, new CompoundTag());
+        }
     }
 }
