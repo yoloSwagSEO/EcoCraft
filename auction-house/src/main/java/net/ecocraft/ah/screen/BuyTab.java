@@ -43,6 +43,7 @@ public class BuyTab {
     private String selectedCategory = "";
     private int currentPage = 0;
     private int totalPages = 0;
+    private int browseRowsPerPage = 14; // calculated from table height
     private List<ListingsResponsePayload.ListingSummary> currentItems = List.of();
 
     // Browse mode widgets
@@ -130,7 +131,7 @@ public class BuyTab {
         int contentW = w - SIDEBAR_WIDTH - 2;
 
         // Search bar
-        searchBar = new TextInput(font, contentX + 2, y + 2, contentW - 4, 12,
+        searchBar = new TextInput(font, contentX + 2, y + 1, contentW - 4, 16,
                 Component.literal("Rechercher..."), THEME);
         searchBar.responder(this::onSearchChanged);
         searchBar.setValue(searchText);
@@ -139,6 +140,7 @@ public class BuyTab {
         // Browse table
         int tableY = y + 20;
         int tableH = h - 38;
+        browseRowsPerPage = Math.max(1, (tableH - 22) / 24); // 22=header, 24=row height
         List<TableColumn> columns = List.of(
                 TableColumn.sortableLeft(Component.literal("Objet"), 3f),
                 TableColumn.sortableRight(Component.literal("Meilleur prix"), 2f),
@@ -148,8 +150,8 @@ public class BuyTab {
         browseTable = Table.builder()
                 .columns(columns)
                 .theme(THEME)
-                .navigation(Table.Navigation.PAGINATED)
-                .tooltips(false) // tooltips only in detail view
+                .navigation(Table.Navigation.NONE)
+                .tooltips(false)
                 .build(contentX, tableY, contentW, tableH);
         addWidget.accept(browseTable);
 
@@ -291,6 +293,14 @@ public class BuyTab {
     public void renderBackground(GuiGraphics graphics) {
         if (mode == Mode.BROWSE) {
             DrawUtils.drawPanel(graphics, x, y, SIDEBAR_WIDTH - 4, h, THEME);
+        } else {
+            // Detail mode: draw right panel background BEFORE widgets
+            int panelW = (int) (w * PANEL_WIDTH_RATIO / 100.0);
+            int tableW = w - panelW - 6;
+            int panelX = x + tableW + 6;
+            int panelY = y + 16;
+            int panelH = h - 40;
+            DrawUtils.drawPanel(graphics, panelX, panelY, panelW, panelH, THEME);
         }
     }
 
@@ -323,12 +333,10 @@ public class BuyTab {
         String truncatedName = DrawUtils.truncateText(font, detailItemName, tableW - 70);
         graphics.drawString(font, Component.literal(truncatedName), x + 64, headerY, detailRarityColor, false);
 
-        // Right panel background
+        // Right panel labels (background drawn in renderBackground)
         int panelW = (int) (w * PANEL_WIDTH_RATIO / 100.0);
         int panelX = x + tableW + 6;
         int panelY = y + 16;
-        int panelH = h - 40;
-        DrawUtils.drawPanel(graphics, panelX, panelY, panelW, panelH, THEME);
 
         // Panel title
         String title = "Offre sélectionnée";
@@ -343,53 +351,54 @@ public class BuyTab {
             boolean isAuction = "AUCTION".equals(entry.type());
             int labelX = panelX + 8;
             int valueX = panelX + panelW - 8;
-            int lineY = panelY + 42;
 
-            // Item name
+            // Item name (below item slot)
             String itemName = DrawUtils.truncateText(font, detailItemName, panelW - 16);
             int nameW = font.width(itemName);
-            graphics.drawString(font, itemName, panelX + (panelW - nameW) / 2, panelY + 38, detailRarityColor, false);
+            graphics.drawString(font, itemName, panelX + (panelW - nameW) / 2, panelY + 52, detailRarityColor, false);
+
+            // Separator
+            DrawUtils.drawAccentSeparator(graphics, panelX + 8, panelY + 62, panelW - 16, THEME);
 
             // Seller
-            lineY += 14;
-            graphics.drawString(font, "Vendeur:", labelX, lineY, THEME.textGrey, false);
+            graphics.drawString(font, "Vendeur:", labelX, panelY + 66, THEME.textGrey, false);
             String seller = DrawUtils.truncateText(font, entry.sellerName(), panelW / 2);
-            graphics.drawString(font, seller, valueX - font.width(seller), lineY, THEME.textLight, false);
+            graphics.drawString(font, seller, valueX - font.width(seller), panelY + 66, THEME.textLight, false);
 
             if (isAuction) {
-                lineY += 12;
-                graphics.drawString(font, "Enchère actuelle:", labelX, lineY, THEME.textGrey, false);
+                // Current bid
+                graphics.drawString(font, "Enchère actuelle:", labelX, panelY + 80, THEME.textGrey, false);
                 String bid = entry.unitPrice() > 0 ? formatPrice(entry.unitPrice()) : "Aucune";
-                graphics.drawString(font, bid, valueX - font.width(bid), lineY, THEME.warning, false);
+                graphics.drawString(font, bid, valueX - font.width(bid), panelY + 80, THEME.warning, false);
 
-                lineY += 12;
+                // Min bid
                 long minBid = entry.unitPrice() > 0 ? entry.unitPrice() + 1 : 1;
-                graphics.drawString(font, "Enchère min:", labelX, lineY, THEME.textGrey, false);
+                graphics.drawString(font, "Enchère min:", labelX, panelY + 94, THEME.textGrey, false);
                 String minStr = formatPrice(minBid);
-                graphics.drawString(font, minStr, valueX - font.width(minStr), lineY, THEME.textLight, false);
+                graphics.drawString(font, minStr, valueX - font.width(minStr), panelY + 94, THEME.textLight, false);
 
-                lineY += 14;
-                graphics.drawString(font, "Montant:", labelX, lineY + 4, THEME.textGrey, false);
+                // Label for bid input (widget at panelY + 108)
+                graphics.drawString(font, "Montant:", labelX, panelY + 112, THEME.textGrey, false);
 
-                lineY += 22;
-                graphics.drawString(font, "Expire:", labelX, lineY, THEME.textGrey, false);
+                // Expire
+                graphics.drawString(font, "Expire:", labelX, panelY + 134, THEME.textGrey, false);
                 String expire = formatTimeRemaining(entry.expiresInMs());
-                graphics.drawString(font, expire, valueX - font.width(expire), lineY, THEME.textGrey, false);
+                graphics.drawString(font, expire, valueX - font.width(expire), panelY + 134, THEME.textGrey, false);
             } else {
-                lineY += 12;
-                graphics.drawString(font, "Prix unitaire:", labelX, lineY, THEME.textGrey, false);
+                // Unit price
+                graphics.drawString(font, "Prix unitaire:", labelX, panelY + 80, THEME.textGrey, false);
                 String price = formatPrice(entry.unitPrice());
-                graphics.drawString(font, price, valueX - font.width(price), lineY, THEME.accent, false);
+                graphics.drawString(font, price, valueX - font.width(price), panelY + 80, THEME.accent, false);
 
-                lineY += 14;
-                graphics.drawString(font, "Quantité:", labelX, lineY + 4, THEME.textGrey, false);
+                // Label for quantity input (widget at panelY + 108)
+                graphics.drawString(font, "Quantité:", labelX, panelY + 96, THEME.textGrey, false);
 
-                lineY += 22;
+                // Total price (below input widget which is 18px tall)
                 long qty = panelQuantityInput != null ? panelQuantityInput.getValue() : entry.quantity();
                 long total = entry.unitPrice() * qty;
-                graphics.drawString(font, "Prix total:", labelX, lineY, THEME.textLight, false);
+                graphics.drawString(font, "Prix total:", labelX, panelY + 132, THEME.textLight, false);
                 String totalStr = formatPrice(total);
-                graphics.drawString(font, totalStr, valueX - font.width(totalStr), lineY, THEME.accent, false);
+                graphics.drawString(font, totalStr, valueX - font.width(totalStr), panelY + 132, THEME.accent, false);
             }
         }
 
@@ -507,14 +516,15 @@ public class BuyTab {
             long bidAmount = panelBidInput.getValue();
             PacketDistributor.sendToServer(new PlaceBidPayload(entry.listingId(), bidAmount));
         } else {
-            PacketDistributor.sendToServer(new BuyListingPayload(entry.listingId()));
+            int qty = (int) panelQuantityInput.getValue();
+            PacketDistributor.sendToServer(new BuyListingPayload(entry.listingId(), qty));
         }
     }
 
     // --- Network ---
 
     private void requestListings() {
-        PacketDistributor.sendToServer(new RequestListingsPayload(searchText, selectedCategory, currentPage));
+        PacketDistributor.sendToServer(new RequestListingsPayload(searchText, selectedCategory, currentPage, browseRowsPerPage));
     }
 
     /**
@@ -523,6 +533,13 @@ public class BuyTab {
     private void requestListingDetail() {
         List<String> filters = new ArrayList<>(selectedEnchantFilters);
         PacketDistributor.sendToServer(new RequestListingDetailPayload(detailItemId, filters));
+    }
+
+    public void onActionResult(AHActionResultPayload payload) {
+        // Refresh detail view after buy/bid action
+        if (mode == Mode.DETAIL) {
+            requestListingDetail();
+        }
     }
 
     public void onReceiveListings(ListingsResponsePayload payload) {
@@ -637,40 +654,44 @@ public class BuyTab {
     private void initPurchasePanel(Consumer<AbstractWidget> addWidget, int px, int py, int pw) {
         Font font = Minecraft.getInstance().font;
 
-        // Item slot (centered)
+        // Layout constants matching renderDetailForeground label positions:
+        // Title at py+2, separator at py+12, item slot at py+16,
+        // item name at py+52, vendeur at py+66, prix at py+80,
+        // input label at py+96, input widget at py+108,
+        // total at py+130, button at py+152
         int slotSize = 32;
         int slotX = px + (pw - slotSize) / 2;
-        panelItemSlot = new ItemSlot(slotX, py + 4, slotSize, THEME);
+        panelItemSlot = new ItemSlot(slotX, py + 16, slotSize, THEME);
         addWidget.accept(panelItemSlot);
 
         // Quantity input (for BUYOUT)
-        int inputY = py + 100;
-        panelQuantityInput = new NumberInput(font, px + 4, inputY, pw - 8, 16, THEME);
+        int inputY = py + 108;
+        panelQuantityInput = new NumberInput(font, px + 8, inputY, pw - 16, 18, THEME);
         panelQuantityInput.min(1).max(1).step(1);
         panelQuantityInput.setValue(1);
         panelQuantityInput.responder(val -> updatePanelTotal());
         addWidget.accept(panelQuantityInput);
 
         // Bid input (for AUCTION — overlaps quantity, only one visible at a time)
-        panelBidInput = new NumberInput(font, px + 4, inputY, pw - 8, 16, THEME);
+        panelBidInput = new NumberInput(font, px + 8, inputY, pw - 16, 18, THEME);
         panelBidInput.min(1).max(Long.MAX_VALUE).step(1);
         panelBidInput.setValue(1);
         panelBidInput.visible = false;
         addWidget.accept(panelBidInput);
 
         // Action button
-        int btnY = inputY + 40;
+        int btnY = py + 152;
         panelBuyButton = Button.success(THEME, Component.literal("Acheter"), () -> onPanelAction());
-        panelBuyButton.setX(px + 4);
+        panelBuyButton.setX(px + 8);
         panelBuyButton.setY(btnY);
-        panelBuyButton.setWidth(pw - 8);
+        panelBuyButton.setWidth(pw - 16);
         panelBuyButton.setHeight(20);
         addWidget.accept(panelBuyButton);
 
         panelBidButton = Button.warning(THEME, Component.literal("Enchérir"), () -> onPanelAction());
-        panelBidButton.setX(px + 4);
+        panelBidButton.setX(px + 8);
         panelBidButton.setY(btnY);
-        panelBidButton.setWidth(pw - 8);
+        panelBidButton.setWidth(pw - 16);
         panelBidButton.setHeight(20);
         panelBidButton.visible = false;
         addWidget.accept(panelBidButton);
@@ -715,7 +736,7 @@ public class BuyTab {
         } else {
             panelQuantityInput.visible = true;
             panelBidInput.visible = false;
-            panelQuantityInput.max(entry.quantity()).setValue(entry.quantity());
+            panelQuantityInput.max(entry.quantity()).setValue(1);
             panelQuantityInput.setEnabled(entry.quantity() > 1);
             panelBuyButton.visible = true;
             panelBidButton.visible = false;

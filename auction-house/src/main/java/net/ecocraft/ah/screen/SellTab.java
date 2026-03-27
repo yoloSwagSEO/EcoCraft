@@ -135,7 +135,15 @@ public class SellTab {
         for (int d : activeDurations) {
             durationLabels.add(Component.literal(d + "h"));
         }
-        durationTags = new FilterTags(leftCenterX - 60, currentY, durationLabels, idx -> selectedDuration = idx);
+        // Calculate total width matching FilterTags layout: (font.width + 24px padding) + 6px gap
+        int totalTagsW = 0;
+        for (var label : durationLabels) {
+            totalTagsW += Minecraft.getInstance().font.width(label) + 24 + 6;
+        }
+        totalTagsW -= 6; // no gap after last tag
+        int tagsX = leftCenterX - totalTagsW / 2;
+        if (selectedDuration >= activeDurations.length) selectedDuration = 0;
+        durationTags = new FilterTags(tagsX, currentY, durationLabels, idx -> selectedDuration = idx);
         durationTags.setActiveTag(selectedDuration);
         addWidget.accept(durationTags);
         currentY += 18;

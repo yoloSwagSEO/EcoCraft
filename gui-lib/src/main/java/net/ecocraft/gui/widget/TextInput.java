@@ -1,5 +1,6 @@
 package net.ecocraft.gui.widget;
 
+import net.ecocraft.gui.theme.DrawUtils;
 import net.ecocraft.gui.theme.Theme;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -10,17 +11,28 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 /**
- * Generic themed text input. Replaces EcoSearchBar.
- * Supports placeholder, optional filter, responder callback, and disabled state.
+ * Generic themed text input. Wraps an EditBox with automatic text centering
+ * regardless of widget height. The text is always vertically and horizontally
+ * padded inside the themed border.
  */
 public class TextInput extends EditBox {
 
+    private static final int H_PADDING = 4;
+
     private final Theme theme;
+    private final int outerX, outerY, outerW, outerH;
     private boolean enabled = true;
 
     public TextInput(Font font, int x, int y, int width, int height,
                      Component placeholder, Theme theme) {
-        super(font, x, y, width, height, placeholder);
+        // EditBox without border renders text at (x, y) directly.
+        // We offset to center text vertically and add horizontal padding.
+        super(font, x + H_PADDING, y + (height - font.lineHeight) / 2,
+                width - H_PADDING * 2, font.lineHeight, placeholder);
+        this.outerX = x;
+        this.outerY = y;
+        this.outerW = width;
+        this.outerH = height;
         this.theme = theme;
         this.setHint(placeholder);
         this.setBordered(false);
@@ -73,18 +85,19 @@ public class TextInput extends EditBox {
             border = theme.border;
         }
 
-        graphics.fill(getX() - 2, getY() - 2, getX() + width + 2, getY() + height + 2, bg);
-        graphics.fill(getX() - 2, getY() - 2, getX() + width + 2, getY() - 1, border);
-        graphics.fill(getX() - 2, getY() + height + 1, getX() + width + 2, getY() + height + 2, border);
-        graphics.fill(getX() - 2, getY() - 2, getX() - 1, getY() + height + 2, border);
-        graphics.fill(getX() + width + 1, getY() - 2, getX() + width + 2, getY() + height + 2, border);
-
+        DrawUtils.drawPanel(graphics, outerX, outerY, outerW, outerH, bg, border);
         super.renderWidget(graphics, mouseX, mouseY, partialTick);
     }
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (!enabled) return false;
+        // Use outer bounds for click detection since inner EditBox is smaller
+        if (mouseX >= outerX && mouseX < outerX + outerW
+                && mouseY >= outerY && mouseY < outerY + outerH) {
+            // Forward click to inner EditBox coordinates to ensure focus
+            return super.mouseClicked(getX() + 1, getY() + 1, button);
+        }
         return super.mouseClicked(mouseX, mouseY, button);
     }
 

@@ -36,9 +36,12 @@ public class NumberInput extends AbstractWidget {
     private @Nullable Consumer<Long> responder;
     private boolean enabled = true;
 
+    private final int fontHeight;
+
     public NumberInput(Font font, int x, int y, int width, int height, Theme theme) {
         super(x, y, width, height, Component.empty());
         this.theme = theme;
+        this.fontHeight = font.lineHeight;
         this.min = 0;
         this.max = Long.MAX_VALUE;
         this.step = 1;
@@ -47,7 +50,8 @@ public class NumberInput extends AbstractWidget {
 
         int editX = showButtons ? x + BUTTON_WIDTH : x;
         int editW = showButtons ? width - BUTTON_WIDTH * 2 : width;
-        this.editBox = new EditBox(font, editX + 2, y + 2, editW - 4, height - 4, Component.empty());
+        int editY = y + (height - fontHeight) / 2;
+        this.editBox = new EditBox(font, editX + 2, editY, editW - 4, fontHeight, Component.empty());
         this.editBox.setBordered(false);
         this.editBox.setTextColor(theme.textLight & 0x00FFFFFF);
         this.editBox.setValue("0");
@@ -82,10 +86,16 @@ public class NumberInput extends AbstractWidget {
         return enabled;
     }
 
+    /** Force the internal EditBox to be focused. Used by Repeater to maintain focus. */
+    public void forceEditFocus() {
+        editBox.setFocused(true);
+    }
+
     private void recalcLayout() {
         int editX = showButtons ? getX() + BUTTON_WIDTH : getX();
         int editW = showButtons ? width - BUTTON_WIDTH * 2 : width;
         editBox.setX(editX + 2);
+        editBox.setY(getY() + (height - fontHeight) / 2);
         editBox.setWidth(editW - 4);
     }
 
@@ -154,7 +164,7 @@ public class NumberInput extends AbstractWidget {
             graphics.fill(minusBtnX, getY() + 1, minusBtnX + BUTTON_WIDTH, getY() + height - 1, minusBg);
             graphics.fill(minusBtnX + BUTTON_WIDTH - 1, getY() + 1, minusBtnX + BUTTON_WIDTH, getY() + height - 1, border);
             int minusTextX = minusBtnX + (BUTTON_WIDTH - font.width("-")) / 2;
-            int textY = getY() + (height - 8) / 2;
+            int textY = getY() + (height - font.lineHeight) / 2;
             graphics.drawString(font, "-", minusTextX, textY, btnText, false);
 
             // Plus button (right)
@@ -192,7 +202,20 @@ public class NumberInput extends AbstractWidget {
             }
         }
 
-        return editBox.mouseClicked(mouseX, mouseY, button);
+        // Click anywhere in the center area (between +/- buttons) → focus the editBox
+        int editAreaX = showButtons ? getX() + BUTTON_WIDTH : getX();
+        int editAreaW = showButtons ? width - BUTTON_WIDTH * 2 : width;
+        if (mouseX >= editAreaX && mouseX < editAreaX + editAreaW
+                && mouseY >= getY() && mouseY < getY() + height) {
+            this.setFocused(true);
+            editBox.setFocused(true);
+            return true;
+        }
+        if (editBox.mouseClicked(mouseX, mouseY, button)) {
+            this.setFocused(true);
+            return true;
+        }
+        return false;
     }
 
     @Override

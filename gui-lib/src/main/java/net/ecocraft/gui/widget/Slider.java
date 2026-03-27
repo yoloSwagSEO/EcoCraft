@@ -32,6 +32,9 @@ public class Slider extends AbstractWidget {
     private Orientation orientation = Orientation.HORIZONTAL;
     private LabelPosition labelPosition = LabelPosition.AFTER;
     private int cursorSize = DEFAULT_CURSOR_SIZE;
+    private int trackColor;
+    private int cursorColor;
+    private int cursorBorderColor;
     private Consumer<Double> responder;
     private boolean dragging = false;
 
@@ -39,6 +42,9 @@ public class Slider extends AbstractWidget {
         super(x, y, width, height, Component.empty());
         this.font = font;
         this.theme = theme;
+        this.trackColor = theme.success;
+        this.cursorColor = theme.success;
+        this.cursorBorderColor = theme.textWhite;
     }
 
     // --- Fluent API ---
@@ -56,6 +62,9 @@ public class Slider extends AbstractWidget {
     public Slider orientation(Orientation orientation) { this.orientation = orientation; return this; }
     public Slider labelPosition(LabelPosition labelPosition) { this.labelPosition = labelPosition; return this; }
     public Slider cursorSize(int cursorSize) { this.cursorSize = cursorSize; return this; }
+    public Slider trackColor(int color) { this.trackColor = color; return this; }
+    public Slider cursorColor(int color) { this.cursorColor = color; return this; }
+    public Slider cursorBorderColor(int color) { this.cursorBorderColor = color; return this; }
 
     public Slider responder(Consumer<Double> responder) {
         this.responder = responder;
@@ -175,20 +184,20 @@ public class Slider extends AbstractWidget {
         int railEnd = bounds[1];
 
         // Background rail
-        graphics.fill(railStart, railY, railEnd, railY + RAIL_THICKNESS, theme.bgMedium);
+        graphics.fill(railStart, railY, railEnd, railY + RAIL_THICKNESS, theme.bgLight);
 
         // Filled portion (min to current value)
         int filledEnd = railStart + (int) ((railEnd - railStart) * ratio);
-        graphics.fill(railStart, railY, filledEnd, railY + RAIL_THICKNESS, theme.accent);
+        graphics.fill(railStart, railY, filledEnd, railY + RAIL_THICKNESS, trackColor);
 
         // Cursor
         int halfCursor = cursorSize / 2;
         int cursorTop = getY() + height / 2 - halfCursor;
         int cursorLeft = cursorX - halfCursor;
         // Border
-        graphics.fill(cursorLeft, cursorTop, cursorLeft + cursorSize, cursorTop + cursorSize, theme.borderAccent);
+        graphics.fill(cursorLeft, cursorTop, cursorLeft + cursorSize, cursorTop + cursorSize, cursorBorderColor);
         // Inner fill
-        graphics.fill(cursorLeft + 1, cursorTop + 1, cursorLeft + cursorSize - 1, cursorTop + cursorSize - 1, theme.accent);
+        graphics.fill(cursorLeft + 1, cursorTop + 1, cursorLeft + cursorSize - 1, cursorTop + cursorSize - 1, cursorColor);
 
         // Label
         String label = formatValue(value);
@@ -229,9 +238,9 @@ public class Slider extends AbstractWidget {
         int cursorLeft = getX() + width / 2 - halfCursor;
         int cursorTop = cursorY - halfCursor;
         // Border
-        graphics.fill(cursorLeft, cursorTop, cursorLeft + cursorSize, cursorTop + cursorSize, theme.borderAccent);
+        graphics.fill(cursorLeft, cursorTop, cursorLeft + cursorSize, cursorTop + cursorSize, cursorBorderColor);
         // Inner fill
-        graphics.fill(cursorLeft + 1, cursorTop + 1, cursorLeft + cursorSize - 1, cursorTop + cursorSize - 1, theme.accent);
+        graphics.fill(cursorLeft + 1, cursorTop + 1, cursorLeft + cursorSize - 1, cursorTop + cursorSize - 1, cursorColor);
 
         // Label
         String label = formatValue(value);

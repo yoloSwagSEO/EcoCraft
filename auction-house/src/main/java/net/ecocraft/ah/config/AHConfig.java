@@ -22,11 +22,11 @@ public class AHConfig {
     private AHConfig(ModConfigSpec.Builder builder) {
         builder.push("taxes");
         saleRate = builder
-            .comment("Sale tax rate as percentage (0-50)")
-            .defineInRange("saleRate", 5, 0, 50);
+            .comment("Sale tax rate as percentage (0-100)")
+            .defineInRange("saleRate", 5, 0, 100);
         depositRate = builder
-            .comment("Listing deposit rate as percentage (0-20)")
-            .defineInRange("depositRate", 2, 0, 20);
+            .comment("Listing deposit rate as percentage (0-100)")
+            .defineInRange("depositRate", 2, 0, 100);
         builder.pop();
 
         builder.push("listings");

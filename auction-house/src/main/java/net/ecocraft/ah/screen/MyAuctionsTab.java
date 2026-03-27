@@ -39,6 +39,8 @@ public class MyAuctionsTab {
 
     // State
     private int activeSubTab = 0;
+    private int activeStatusFilter = 0; // 0=Tout, 1=Actif, 2=Vendu, 3=Expiré, 4=Annulé
+    private static final String[] STATUS_FILTERS = {"", "ACTIVE", "SOLD", "EXPIRED", "CANCELLED"};
     private List<MyListingsResponsePayload.MyListingEntry> entries = List.of();
     private long revenue7d = 0;
     private long taxesPaid7d = 0;
@@ -46,6 +48,7 @@ public class MyAuctionsTab {
 
     // Widgets
     private FilterTags subTabTags;
+    private FilterTags statusFilterTags;
     private Table table;
     private Button collectBtn;
     private StatCard revenueCard;
@@ -109,8 +112,25 @@ public class MyAuctionsTab {
                 THEME.info, THEME);
         addWidget.accept(parcelsCard);
 
+        // Status filter (only on "Mes ventes" sub-tab)
+        int filterY = y + 24;
+        statusFilterTags = null;
+        if (activeSubTab == 0) {
+            List<Component> statusLabels = List.of(
+                    Component.literal("Tout"),
+                    Component.literal("Actif"),
+                    Component.literal("Vendu"),
+                    Component.literal("Expiré"),
+                    Component.literal("Annulé")
+            );
+            statusFilterTags = new FilterTags(x, filterY, statusLabels, this::onStatusFilterChanged);
+            statusFilterTags.setActiveTag(activeStatusFilter);
+            addWidget.accept(statusFilterTags);
+            filterY += 22;
+        }
+
         // Table
-        int tableY = y + 24;
+        int tableY = filterY;
         int tableH = footerY - tableY - 4;
         List<TableColumn> columns = List.of(
                 TableColumn.sortableLeft(Component.literal("Objet"), 2.5f),
@@ -150,7 +170,14 @@ public class MyAuctionsTab {
 
     private void onSubTabChanged(int idx) {
         activeSubTab = idx;
+        activeStatusFilter = 0;
         requestData();
+        parent.rebuildCurrentTab();
+    }
+
+    private void onStatusFilterChanged(int idx) {
+        activeStatusFilter = idx;
+        updateTable();
     }
 
     private void onCollectClicked() {
@@ -167,9 +194,7 @@ public class MyAuctionsTab {
                 () -> PacketDistributor.sendToServer(new CancelListingPayload(listingId)),
                 () -> { /* cancelled, do nothing */ }
         );
-        if (widgetAdder != null) {
-            widgetAdder.accept(dialog);
-        }
+        parent.openDialog(dialog);
     }
 
     // --- Network ---
@@ -197,8 +222,11 @@ public class MyAuctionsTab {
     private void updateTable() {
         if (table == null) return;
 
+        String statusFilter = STATUS_FILTERS[activeStatusFilter];
         List<TableRow> rows = new ArrayList<>();
         for (var entry : entries) {
+            // Apply status filter
+            if (!statusFilter.isEmpty() && !statusFilter.equals(entry.status())) continue;
             int statusColor = getStatusColor(entry.status());
             String actionLabel = getActionLabel(entry);
             int actionColor = entry.canCollect() ? THEME.success : THEME.danger;
