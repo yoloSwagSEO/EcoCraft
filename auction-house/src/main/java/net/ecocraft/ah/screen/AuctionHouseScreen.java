@@ -221,8 +221,8 @@ public class AuctionHouseScreen extends Screen {
             if (mouseX >= gearX - 2 && mouseX <= gearX + gearW + 2
                     && mouseY >= gearY - 2 && mouseY <= gearY + font.lineHeight + 2) {
                 Minecraft.getInstance().setScreen(new AHSettingsScreen(
-                        this, settingsSaleRate, settingsDepositRate, settingsDurations,
-                        npcEntityId, npcSkinName));
+                        this, npcEntityId, npcSkinName,
+                        currentAhId, new java.util.ArrayList<>(ahInstances)));
                 return true;
             }
         }
