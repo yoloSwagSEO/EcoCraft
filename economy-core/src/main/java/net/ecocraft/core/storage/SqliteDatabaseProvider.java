@@ -28,7 +28,33 @@ public class SqliteDatabaseProvider implements DatabaseProvider {
                 stmt.execute("PRAGMA journal_mode=WAL");
                 stmt.execute("PRAGMA foreign_keys=ON");
             }
-            DatabaseSchema.createTables(connection);
+            DatabaseMigrator migrator = new DatabaseMigrator("ecocraft-economy");
+            migrator.addMigration(1, "Initial schema - balances and transactions tables", conn -> {
+                try (Statement stmt = conn.createStatement()) {
+                    stmt.execute("""
+                        CREATE TABLE IF NOT EXISTS balances (
+                            player_uuid TEXT NOT NULL,
+                            currency_id TEXT NOT NULL,
+                            amount TEXT NOT NULL DEFAULT '0',
+                            PRIMARY KEY (player_uuid, currency_id)
+                        )
+                    """);
+                    stmt.execute("""
+                        CREATE TABLE IF NOT EXISTS transactions (
+                            id TEXT PRIMARY KEY,
+                            from_uuid TEXT,
+                            to_uuid TEXT,
+                            amount TEXT NOT NULL,
+                            currency_id TEXT NOT NULL,
+                            type TEXT NOT NULL,
+                            timestamp INTEGER NOT NULL
+                        )
+                    """);
+                    stmt.execute("CREATE INDEX IF NOT EXISTS idx_tx_from ON transactions(from_uuid, timestamp DESC)");
+                    stmt.execute("CREATE INDEX IF NOT EXISTS idx_tx_to ON transactions(to_uuid, timestamp DESC)");
+                }
+            });
+            migrator.migrate(connection);
         } catch (SQLException e) {
             throw new RuntimeException("Failed to initialize SQLite database", e);
         }
