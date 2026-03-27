@@ -27,6 +27,7 @@ public class AuctionTerminalBlock extends Block {
         if (!level.isClientSide && player instanceof ServerPlayer serverPlayer) {
             PacketDistributor.sendToPlayer(serverPlayer, new OpenAHPayload());
             ServerPayloadHandler.sendBalanceUpdate(serverPlayer);
+            ServerPayloadHandler.sendAHSettings(serverPlayer);
         }
         return InteractionResult.sidedSuccess(level.isClientSide);
     }

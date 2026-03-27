@@ -34,6 +34,7 @@ public final class AHCommand {
                     ServerPlayer player = ctx.getSource().getPlayerOrException();
                     PacketDistributor.sendToPlayer(player, new OpenAHPayload());
                     ServerPayloadHandler.sendBalanceUpdate(player);
+                    ServerPayloadHandler.sendAHSettings(player);
                     return 1;
                 })
 
@@ -56,6 +57,7 @@ public final class AHCommand {
                                     // For now, just open the AH — search pre-fill can come later
                                     PacketDistributor.sendToPlayer(player, new OpenAHPayload());
                                     ServerPayloadHandler.sendBalanceUpdate(player);
+                                    ServerPayloadHandler.sendAHSettings(player);
                                     return 1;
                                 })
                         )

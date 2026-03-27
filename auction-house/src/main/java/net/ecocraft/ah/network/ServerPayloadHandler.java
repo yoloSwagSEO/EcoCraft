@@ -460,6 +460,43 @@ public final class ServerPayloadHandler {
         });
     }
 
+    public static void sendAHSettings(ServerPlayer player) {
+        try {
+            var config = net.ecocraft.ah.config.AHConfig.CONFIG;
+            boolean isAdmin = player.hasPermissions(2);
+            int saleRate = config.saleRate.get();
+            int depositRate = config.depositRate.get();
+            List<Integer> durations = new ArrayList<>(config.durations.get());
+            PacketDistributor.sendToPlayer(player, new AHSettingsPayload(isAdmin, saleRate, depositRate, durations));
+        } catch (Exception e) {
+            LOGGER.error("Error sending AH settings", e);
+        }
+    }
+
+    public static void handleUpdateAHSettings(UpdateAHSettingsPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            ServerPlayer player = (ServerPlayer) context.player();
+            if (!player.hasPermissions(2)) {
+                context.reply(new AHActionResultPayload(false, "Permission denied."));
+                return;
+            }
+            try {
+                var config = net.ecocraft.ah.config.AHConfig.CONFIG;
+                config.saleRate.set(Math.max(0, Math.min(50, payload.saleRate())));
+                config.depositRate.set(Math.max(0, Math.min(20, payload.depositRate())));
+                List<Integer> validDurations = payload.durations().stream()
+                        .filter(d -> d >= 1 && d <= 168).toList();
+                if (!validDurations.isEmpty()) {
+                    config.durations.set(validDurations);
+                }
+                context.reply(new AHActionResultPayload(true, "Paramètres sauvegardés."));
+            } catch (Exception e) {
+                LOGGER.error("Error updating AH settings", e);
+                context.reply(new AHActionResultPayload(false, "Erreur lors de la sauvegarde."));
+            }
+        });
+    }
+
     public static void sendBalanceUpdate(ServerPlayer player) {
         try {
             AuctionService service = AHServerEvents.getService();

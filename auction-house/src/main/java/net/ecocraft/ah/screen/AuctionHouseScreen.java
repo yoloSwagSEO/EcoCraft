@@ -34,6 +34,9 @@ public class AuctionHouseScreen extends Screen {
     private TabBar tabBar;
     private int activeTab = 0;
 
+    // Modal dialog overlay — when non-null, captures all input
+    private net.ecocraft.gui.dialog.Dialog activeDialog;
+
     // Balance display
     private long playerBalance = -1; // -1 = not yet received
     private String currencySymbol = "";
@@ -124,8 +127,11 @@ public class AuctionHouseScreen extends Screen {
             case 3 -> ledgerTab.renderBackground(graphics);
         }
 
-        // Render widgets (buttons, tables, etc.)
-        super.render(graphics, mouseX, mouseY, partialTick);
+        // Render widgets — hide mouse from widgets when dialog is open (prevents tooltips)
+        boolean dialogOpen = activeDialog != null && !activeDialog.isClosed();
+        int wmx = dialogOpen ? -1 : mouseX;
+        int wmy = dialogOpen ? -1 : mouseY;
+        super.render(graphics, wmx, wmy, partialTick);
 
         // Render balance in top-right corner (after widgets so it's on top)
         if (playerBalance >= 0) {
@@ -144,10 +150,23 @@ public class AuctionHouseScreen extends Screen {
             case 2 -> myAuctionsTab.renderForeground(graphics, mouseX, mouseY, partialTick);
             case 3 -> ledgerTab.renderForeground(graphics, mouseX, mouseY, partialTick);
         }
+
+        // Dialog overlay — rendered last, on top of everything
+        if (activeDialog != null) {
+            if (activeDialog.isClosed()) {
+                activeDialog = null;
+            } else {
+                activeDialog.renderWidget(graphics, mouseX, mouseY, partialTick);
+            }
+        }
     }
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        // Modal dialog captures all input
+        if (activeDialog != null && !activeDialog.isClosed()) {
+            return activeDialog.mouseClicked(mouseX, mouseY, button);
+        }
         boolean handled = super.mouseClicked(mouseX, mouseY, button);
         if (!handled) {
             switch (activeTab) {
@@ -162,6 +181,9 @@ public class AuctionHouseScreen extends Screen {
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (activeDialog != null && !activeDialog.isClosed()) {
+            return activeDialog.keyPressed(keyCode, scanCode, modifiers);
+        }
         boolean handled = false;
         switch (activeTab) {
             case 0 -> handled = buyTab.keyPressed(keyCode, scanCode, modifiers);
@@ -173,6 +195,9 @@ public class AuctionHouseScreen extends Screen {
 
     @Override
     public boolean charTyped(char codePoint, int modifiers) {
+        if (activeDialog != null && !activeDialog.isClosed()) {
+            return activeDialog.charTyped(codePoint, modifiers);
+        }
         boolean handled = false;
         switch (activeTab) {
             case 0 -> handled = buyTab.charTyped(codePoint, modifiers);
@@ -187,6 +212,13 @@ public class AuctionHouseScreen extends Screen {
      */
     public void rebuildCurrentTab() {
         activateTab(activeTab);
+    }
+
+    /**
+     * Opens a modal dialog overlay. While open, all input is captured by the dialog.
+     */
+    public void openDialog(net.ecocraft.gui.dialog.Dialog dialog) {
+        this.activeDialog = dialog;
     }
 
     @Override
@@ -230,9 +262,21 @@ public class AuctionHouseScreen extends Screen {
         }
     }
 
+    public static void receiveBestPrice(BestPriceResponsePayload payload) {
+        if (Minecraft.getInstance().screen instanceof AuctionHouseScreen screen) {
+            screen.onReceiveBestPrice(payload);
+        }
+    }
+
     public static void receiveBalanceUpdate(BalanceUpdatePayload payload) {
         if (Minecraft.getInstance().screen instanceof AuctionHouseScreen screen) {
             screen.onReceiveBalanceUpdate(payload);
+        }
+    }
+
+    public static void receiveSettings(AHSettingsPayload payload) {
+        if (Minecraft.getInstance().screen instanceof AuctionHouseScreen screen) {
+            screen.onReceiveSettings(payload);
         }
     }
 
@@ -249,6 +293,7 @@ public class AuctionHouseScreen extends Screen {
     protected void onReceiveActionResult(AHActionResultPayload payload) {
         LOGGER.debug("ActionResult: success={} message='{}'", payload.success(), payload.message());
         // Could show a toast/notification; for now tabs can refresh data
+        if (activeTab == 0) buyTab.onActionResult(payload);
         if (activeTab == 1) sellTab.onActionResult(payload);
         if (activeTab == 2) myAuctionsTab.onActionResult(payload);
     }
@@ -261,8 +306,16 @@ public class AuctionHouseScreen extends Screen {
         ledgerTab.onReceiveLedger(payload);
     }
 
+    protected void onReceiveBestPrice(BestPriceResponsePayload payload) {
+        sellTab.onReceiveBestPrice(payload);
+    }
+
     protected void onReceiveBalanceUpdate(BalanceUpdatePayload payload) {
         this.playerBalance = payload.balance();
         this.currencySymbol = payload.currencySymbol();
+    }
+
+    protected void onReceiveSettings(AHSettingsPayload payload) {
+        // Will be implemented in Task 4
     }
 }

@@ -36,13 +36,13 @@ public class AuctioneerEntity extends Mob {
 
     @Override
     public InteractionResult mobInteract(Player player, InteractionHand hand) {
-        if (hand == InteractionHand.MAIN_HAND && !level().isClientSide
+        if (!level().isClientSide && hand == InteractionHand.MAIN_HAND
                 && player instanceof ServerPlayer serverPlayer) {
             PacketDistributor.sendToPlayer(serverPlayer, new OpenAHPayload());
             ServerPayloadHandler.sendBalanceUpdate(serverPlayer);
-            return InteractionResult.SUCCESS;
+            ServerPayloadHandler.sendAHSettings(serverPlayer);
         }
-        return InteractionResult.PASS;
+        return InteractionResult.SUCCESS;
     }
 
     @Override

@@ -59,6 +59,18 @@ public final class AHNetworkHandler {
                 ClientPayloadHandler::handleBalanceUpdate
         );
 
+        registrar.playToClient(
+                BestPriceResponsePayload.TYPE,
+                BestPriceResponsePayload.STREAM_CODEC,
+                ClientPayloadHandler::handleBestPriceResponse
+        );
+
+        registrar.playToClient(
+                AHSettingsPayload.TYPE,
+                AHSettingsPayload.STREAM_CODEC,
+                ClientPayloadHandler::handleAHSettings
+        );
+
         // Client → Server
         registrar.playToServer(
                 RequestListingsPayload.TYPE,
@@ -109,9 +121,21 @@ public final class AHNetworkHandler {
         );
 
         registrar.playToServer(
+                RequestBestPricePayload.TYPE,
+                RequestBestPricePayload.STREAM_CODEC,
+                ServerPayloadHandler::handleRequestBestPrice
+        );
+
+        registrar.playToServer(
                 RequestLedgerPayload.TYPE,
                 RequestLedgerPayload.STREAM_CODEC,
                 ServerPayloadHandler::handleRequestLedger
+        );
+
+        registrar.playToServer(
+                UpdateAHSettingsPayload.TYPE,
+                UpdateAHSettingsPayload.STREAM_CODEC,
+                ServerPayloadHandler::handleUpdateAHSettings
         );
     }
 }
