@@ -1,12 +1,14 @@
 package net.ecocraft.ah.screen;
 
 import net.ecocraft.ah.network.payload.UpdateAHSettingsPayload;
+import net.ecocraft.ah.network.payload.UpdateNPCSkinPayload;
 import net.ecocraft.gui.theme.DrawUtils;
 import net.ecocraft.gui.theme.Theme;
 import net.ecocraft.gui.widget.Button;
 import net.ecocraft.gui.widget.NumberInput;
 import net.ecocraft.gui.widget.Repeater;
 import net.ecocraft.gui.widget.Slider;
+import net.ecocraft.gui.widget.TextInput;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -23,19 +25,29 @@ public class AHSettingsScreen extends Screen {
 
     private int guiWidth, guiHeight, guiLeft, guiTop;
 
+    private final Screen parentScreen;
     private int saleRate;
     private int depositRate;
     private List<Integer> durations;
+
+    private final int npcEntityId;
+    private String skinPlayerName;
+    private TextInput skinInput;
+    private int skinSectionY;
 
     private Slider saleRateSlider;
     private Slider depositRateSlider;
     private Repeater<Integer> durationsRepeater;
 
-    public AHSettingsScreen(int saleRate, int depositRate, List<Integer> durations) {
+    public AHSettingsScreen(Screen parent, int saleRate, int depositRate, List<Integer> durations,
+                            int npcEntityId, String skinPlayerName) {
         super(Component.literal("AH Settings"));
+        this.parentScreen = parent;
         this.saleRate = saleRate;
         this.depositRate = depositRate;
         this.durations = new ArrayList<>(durations);
+        this.npcEntityId = npcEntityId;
+        this.skinPlayerName = skinPlayerName != null ? skinPlayerName : "";
     }
 
     @Override
@@ -63,7 +75,7 @@ public class AHSettingsScreen extends Screen {
 
         // Sale rate slider
         saleRateSlider = new Slider(font, contentX, y, contentW, 16, THEME);
-        saleRateSlider.min(0).max(50).step(1).value(saleRate).suffix("%")
+        saleRateSlider.min(0).max(100).step(1).value(saleRate).suffix("%")
                 .labelPosition(Slider.LabelPosition.AFTER);
         saleRateSlider.responder(val -> saleRate = val.intValue());
         addRenderableWidget(saleRateSlider);
@@ -74,7 +86,7 @@ public class AHSettingsScreen extends Screen {
 
         // Deposit rate slider
         depositRateSlider = new Slider(font, contentX, y, contentW, 16, THEME);
-        depositRateSlider.min(0).max(20).step(1).value(depositRate).suffix("%")
+        depositRateSlider.min(0).max(100).step(1).value(depositRate).suffix("%")
                 .labelPosition(Slider.LabelPosition.AFTER);
         depositRateSlider.responder(val -> depositRate = val.intValue());
         addRenderableWidget(depositRateSlider);
@@ -84,8 +96,11 @@ public class AHSettingsScreen extends Screen {
         y += 16;
 
         // Durations repeater
-        int repeaterH = Math.min(160, guiTop + guiHeight - y - 40);
+        int skinReserve = (npcEntityId != -1) ? 70 : 0;
+        int repeaterH = Math.min(160, guiTop + guiHeight - y - 40 - skinReserve);
         durationsRepeater = new Repeater<>(contentX, y, contentW, repeaterH, THEME);
+        durationsRepeater.widgetAdder(this::addRenderableWidget);
+        durationsRepeater.widgetRemover(this::removeWidget);
         durationsRepeater.itemFactory(() -> 24);
         durationsRepeater.rowHeight(22);
         durationsRepeater.maxItems(10);
@@ -96,9 +111,21 @@ public class AHSettingsScreen extends Screen {
             input.responder(newVal -> ctx.setValue(newVal.intValue()));
             ctx.addWidget(input);
         });
-        durationsRepeater.values(durations);
         durationsRepeater.responder(vals -> durations = new ArrayList<>(vals));
         addRenderableWidget(durationsRepeater);
+        // values() AFTER addRenderableWidget so row widgets render on top of the Repeater background
+        durationsRepeater.values(durations);
+
+        // Section: PNJ (only if opened via NPC)
+        if (npcEntityId != -1) {
+            skinSectionY = y + repeaterH + 20;
+
+            skinInput = new TextInput(font, contentX, skinSectionY + 28, contentW, 16,
+                    Component.literal("Pseudo Minecraft..."), THEME);
+            skinInput.setValue(skinPlayerName);
+            skinInput.responder(val -> skinPlayerName = val);
+            addRenderableWidget(skinInput);
+        }
 
         // Footer buttons
         int footerY = guiTop + guiHeight - 30;
@@ -157,15 +184,25 @@ public class AHSettingsScreen extends Screen {
         int durSectionY = depositLabelY + 14 + 16 + 20;
         graphics.drawString(font, "Dur\u00e9es de listing (heures)", contentX, durSectionY, THEME.textWhite, false);
         DrawUtils.drawAccentSeparator(graphics, contentX, durSectionY + 10, contentW, THEME);
+
+        // Section: PNJ
+        if (npcEntityId != -1 && skinInput != null) {
+            graphics.drawString(font, "PNJ", contentX, skinSectionY, THEME.textWhite, false);
+            DrawUtils.drawAccentSeparator(graphics, contentX, skinSectionY + 10, contentW, THEME);
+            graphics.drawString(font, "Pseudo du skin:", contentX, skinSectionY + 14, THEME.textGrey, false);
+        }
     }
 
     private void onSave() {
         PacketDistributor.sendToServer(new UpdateAHSettingsPayload(saleRate, depositRate, durations));
-        Minecraft.getInstance().setScreen(new AuctionHouseScreen());
+        if (npcEntityId != -1) {
+            PacketDistributor.sendToServer(new UpdateNPCSkinPayload(npcEntityId, skinPlayerName));
+        }
+        Minecraft.getInstance().setScreen(parentScreen);
     }
 
     private void onCancel() {
-        Minecraft.getInstance().setScreen(new AuctionHouseScreen());
+        Minecraft.getInstance().setScreen(parentScreen);
     }
 
     @Override

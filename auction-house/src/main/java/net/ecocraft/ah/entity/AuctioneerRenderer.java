@@ -1,43 +1,42 @@
 package net.ecocraft.ah.entity;
 
-import com.mojang.blaze3d.vertex.PoseStack;
-import net.minecraft.client.model.CowModel;
+import com.mojang.authlib.GameProfile;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.model.PlayerModel;
 import net.minecraft.client.model.geom.ModelLayers;
-import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.client.renderer.entity.MobRenderer;
+import net.minecraft.client.resources.DefaultPlayerSkin;
+import net.minecraft.client.resources.PlayerSkin;
 import net.minecraft.resources.ResourceLocation;
 
-/**
- * Renders the auctioneer NPC using the cow model as a placeholder.
- * The cow model is simple and guaranteed to work with any Mob entity.
- */
-public class AuctioneerRenderer extends MobRenderer<AuctioneerEntity, CowModel<AuctioneerEntity>> {
+import java.util.Optional;
 
-    private static final ResourceLocation TEXTURE =
-            ResourceLocation.withDefaultNamespace("textures/entity/cow/cow.png");
+/**
+ * Renders the auctioneer NPC using the player model.
+ * Uses the configured skin profile if available, otherwise falls back to the default Steve skin.
+ */
+public class AuctioneerRenderer extends MobRenderer<AuctioneerEntity, PlayerModel<AuctioneerEntity>> {
 
     public AuctioneerRenderer(EntityRendererProvider.Context context) {
-        super(context, new CowModel<>(context.bakeLayer(ModelLayers.COW)), 0.5f);
+        super(context, new PlayerModel<>(context.bakeLayer(ModelLayers.PLAYER), false), 0.5f);
     }
 
     @Override
     public ResourceLocation getTextureLocation(AuctioneerEntity entity) {
-        return TEXTURE;
+        Optional<GameProfile> profile = entity.getSkinProfile();
+        if (profile.isPresent()) {
+            GameProfile gp = profile.get();
+            if (gp.getProperties().containsKey("textures")) {
+                PlayerSkin skin = Minecraft.getInstance().getSkinManager().getInsecureSkin(gp);
+                return skin.texture();
+            }
+        }
+        return DefaultPlayerSkin.getDefaultTexture();
     }
 
     @Override
     protected boolean shouldShowName(AuctioneerEntity entity) {
         return true;
-    }
-
-    @Override
-    public void render(AuctioneerEntity entity, float entityYaw, float partialTick,
-                       PoseStack poseStack, MultiBufferSource buffer, int packedLight) {
-        // Scale down to roughly human proportions
-        poseStack.pushPose();
-        poseStack.scale(0.7f, 0.7f, 0.7f);
-        super.render(entity, entityYaw, partialTick, poseStack, buffer, packedLight);
-        poseStack.popPose();
     }
 }
