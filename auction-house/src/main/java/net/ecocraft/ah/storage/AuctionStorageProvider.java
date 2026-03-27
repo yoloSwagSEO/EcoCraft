@@ -6,6 +6,7 @@ import org.jetbrains.annotations.Nullable;
 import java.nio.file.Path;
 import java.sql.*;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * JDBC-backed storage provider for the auction house.
@@ -582,6 +583,89 @@ public class AuctionStorageProvider {
             throw new RuntimeException("Failed to get player ledger", e);
         }
         return results;
+    }
+
+    // -------------------------------------------------------------------------
+    // Enchantment Index
+    // -------------------------------------------------------------------------
+
+    /**
+     * Indexes the enchantments of a listing for server-side filtering.
+     */
+    public void indexEnchantments(String listingId, List<EnchantmentEntry> enchantments) {
+        if (enchantments == null || enchantments.isEmpty()) return;
+        try (PreparedStatement ps = connection.prepareStatement("""
+                INSERT OR IGNORE INTO ah_listing_enchantments
+                (listing_id, enchantment_name, enchantment_level, display_name)
+                VALUES (?,?,?,?)
+            """)) {
+            for (EnchantmentEntry e : enchantments) {
+                ps.setString(1, listingId);
+                ps.setString(2, e.name());
+                ps.setInt(3, e.level());
+                ps.setString(4, e.displayName());
+                ps.addBatch();
+            }
+            ps.executeBatch();
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to index enchantments for listing " + listingId, e);
+        }
+    }
+
+    /**
+     * Returns all unique enchantment display names for ACTIVE listings of the given item type.
+     */
+    public List<String> getAvailableEnchantments(String itemId) {
+        List<String> results = new ArrayList<>();
+        try (PreparedStatement ps = connection.prepareStatement("""
+                SELECT DISTINCT le.display_name
+                FROM ah_listing_enchantments le
+                JOIN ah_listings l ON l.id = le.listing_id
+                WHERE l.item_id = ? AND l.status = 'ACTIVE'
+                ORDER BY le.display_name
+            """)) {
+            ps.setString(1, itemId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    results.add(rs.getString("display_name"));
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to get available enchantments for item " + itemId, e);
+        }
+        return results;
+    }
+
+    /**
+     * Returns ACTIVE listings for a specific item, optionally filtered by enchantment display names.
+     * If enchantmentFilters is empty, returns all listings (same as {@link #getListingsForItem(String)}).
+     * Uses OR logic: listings that have ANY of the specified enchantments are included.
+     */
+    public List<AuctionListing> getListingsForItemFiltered(String itemId, Set<String> enchantmentFilters, int page, int pageSize) {
+        if (enchantmentFilters == null || enchantmentFilters.isEmpty()) {
+            return getListingsForItem(itemId);
+        }
+
+        String placeholders = enchantmentFilters.stream()
+                .map(f -> "?")
+                .collect(Collectors.joining(","));
+
+        String sql = """
+                SELECT DISTINCT l.* FROM ah_listings l
+                JOIN ah_listing_enchantments le ON le.listing_id = l.id
+                WHERE l.status = 'ACTIVE' AND l.item_id = ?
+                  AND le.display_name IN (%s)
+                ORDER BY l.buyout_price ASC
+                LIMIT ? OFFSET ?
+            """.formatted(placeholders);
+
+        List<Object> params = new ArrayList<>();
+        params.add(itemId);
+        params.addAll(enchantmentFilters);
+        params.add(pageSize);
+        params.add((long) page * pageSize);
+
+        return queryListings(sql, params);
     }
 
     // -------------------------------------------------------------------------

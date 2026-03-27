@@ -120,6 +120,23 @@ public class AuctionDatabaseSchema {
                 CREATE INDEX IF NOT EXISTS idx_price_history_item
                     ON ah_price_history(item_id, currency_id, sold_at DESC)
             """);
+
+            // --- Listing Enchantments (enchantment index for filtering) ---
+            stmt.execute("""
+                CREATE TABLE IF NOT EXISTS ah_listing_enchantments (
+                    listing_id       TEXT NOT NULL,
+                    enchantment_name TEXT NOT NULL,
+                    enchantment_level INTEGER NOT NULL,
+                    display_name     TEXT NOT NULL,
+                    PRIMARY KEY (listing_id, enchantment_name),
+                    FOREIGN KEY (listing_id) REFERENCES ah_listings(id)
+                )
+            """);
+
+            stmt.execute("""
+                CREATE INDEX IF NOT EXISTS idx_le_enchant
+                    ON ah_listing_enchantments(enchantment_name)
+            """);
         }
     }
 }

@@ -13,8 +13,17 @@ public record ListingDetailResponsePayload(
         String itemName,
         int rarityColor,
         List<ListingEntry> entries,
-        PriceInfo priceInfo
+        PriceInfo priceInfo,
+        List<String> availableEnchantments
 ) implements CustomPacketPayload {
+
+    /**
+     * Backward-compatible constructor: no available enchantments.
+     */
+    public ListingDetailResponsePayload(String itemId, String itemName, int rarityColor,
+                                         List<ListingEntry> entries, PriceInfo priceInfo) {
+        this(itemId, itemName, rarityColor, entries, priceInfo, List.of());
+    }
 
     public record ListingEntry(String listingId, String sellerName, int quantity, long unitPrice, String type, long expiresInMs, String itemNbt) {}
 
@@ -62,6 +71,7 @@ public record ListingDetailResponsePayload(
             ByteBufCodecs.VAR_INT, ListingDetailResponsePayload::rarityColor,
             ENTRY_CODEC.apply(ByteBufCodecs.list()), ListingDetailResponsePayload::entries,
             PRICE_INFO_CODEC, ListingDetailResponsePayload::priceInfo,
+            ByteBufCodecs.STRING_UTF8.apply(ByteBufCodecs.list()), ListingDetailResponsePayload::availableEnchantments,
             ListingDetailResponsePayload::new
     );
 

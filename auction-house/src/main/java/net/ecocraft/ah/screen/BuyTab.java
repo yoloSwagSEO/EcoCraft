@@ -15,12 +15,8 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
-import net.minecraft.core.Holder;
-import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.enchantment.Enchantment;
-import net.minecraft.world.item.enchantment.ItemEnchantments;
 import net.neoforged.neoforge.network.PacketDistributor;
 
 import java.util.*;
@@ -67,7 +63,7 @@ public class BuyTab {
 
     // Detail mode filter state
     private List<ItemStack> detailStacks = new ArrayList<>();
-    private String selectedEnchantFilter = "";
+    private Set<String> selectedEnchantFilters = new LinkedHashSet<>();
     private int selectedDurabilityFilter = 0;
     private FilterTags enchantFilterTags;
     private FilterTags durabilityFilterTags;
@@ -181,21 +177,21 @@ public class BuyTab {
         enchantFilterTags = null;
         durabilityFilterTags = null;
 
-        // Enchantment filter (only if enchantments found)
+        // Enchantment filter (only if enchantments found) — multi-select mode
         if (!availableEnchantments.isEmpty()) {
             List<Component> enchantLabels = new ArrayList<>();
-            enchantLabels.add(Component.literal("Tout"));
             for (String ench : availableEnchantments) {
                 enchantLabels.add(Component.literal(ench));
             }
-            enchantFilterTags = new FilterTags(x, filterY, enchantLabels, this::onEnchantFilterChanged, THEME);
+            enchantFilterTags = new FilterTags(x, filterY, enchantLabels,
+                    this::onEnchantFilterChanged, THEME, true);
             // Restore selection
-            int activeIdx = 0;
-            if (!selectedEnchantFilter.isEmpty()) {
-                int idx = availableEnchantments.indexOf(selectedEnchantFilter);
-                if (idx >= 0) activeIdx = idx + 1;
+            Set<Integer> restoredSelection = new LinkedHashSet<>();
+            for (String selected : selectedEnchantFilters) {
+                int idx = availableEnchantments.indexOf(selected);
+                if (idx >= 0) restoredSelection.add(idx);
             }
-            enchantFilterTags.setActiveTag(activeIdx);
+            enchantFilterTags.setSelectedTags(restoredSelection);
             addWidget.accept(enchantFilterTags);
             filterY += 22;
         }
@@ -247,13 +243,16 @@ public class BuyTab {
         updateDetailTable();
     }
 
-    private void onEnchantFilterChanged(int index) {
-        if (index == 0) {
-            selectedEnchantFilter = "";
-        } else {
-            selectedEnchantFilter = availableEnchantments.get(index - 1);
+    private void onEnchantFilterChanged(Set<Integer> selectedIndices) {
+        // Convert indices to enchantment display names
+        selectedEnchantFilters.clear();
+        for (int idx : selectedIndices) {
+            if (idx >= 0 && idx < availableEnchantments.size()) {
+                selectedEnchantFilters.add(availableEnchantments.get(idx));
+            }
         }
-        updateDetailTable();
+        // Send server request with the selected enchantment filters
+        requestListingDetail();
     }
 
     private void onDurabilityFilterChanged(int index) {
@@ -269,14 +268,14 @@ public class BuyTab {
 
     // --- Rendering ---
 
-    /** Called BEFORE widgets render — draw background panels here. */
+    /** Called BEFORE widgets render -- draw background panels here. */
     public void renderBackground(GuiGraphics graphics) {
         if (mode == Mode.BROWSE) {
             DrawUtils.drawPanel(graphics, x, y, SIDEBAR_WIDTH - 4, h, THEME);
         }
     }
 
-    /** Called AFTER widgets render — draw text overlays here. */
+    /** Called AFTER widgets render -- draw text overlays here. */
     public void renderForeground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         Font font = Minecraft.getInstance().font;
         if (mode == Mode.BROWSE) {
@@ -293,7 +292,7 @@ public class BuyTab {
         }
     }
 
-    /** Keep old render for backward compat — delegates to background+foreground. */
+    /** Keep old render for backward compat -- delegates to background+foreground. */
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         // no-op: AuctionHouseScreen now calls renderBackground + renderForeground separately
     }
@@ -402,7 +401,7 @@ public class BuyTab {
 
     private void onBackToBrowse() {
         mode = Mode.BROWSE;
-        selectedEnchantFilter = "";
+        selectedEnchantFilters.clear();
         selectedDurabilityFilter = 0;
         availableEnchantments = new ArrayList<>();
         showDurabilityFilter = false;
@@ -425,6 +424,14 @@ public class BuyTab {
         PacketDistributor.sendToServer(new RequestListingsPayload(searchText, selectedCategory, currentPage));
     }
 
+    /**
+     * Sends a detail request to the server with the current enchantment filters.
+     */
+    private void requestListingDetail() {
+        List<String> filters = new ArrayList<>(selectedEnchantFilters);
+        PacketDistributor.sendToServer(new RequestListingDetailPayload(detailItemId, filters));
+    }
+
     public void onReceiveListings(ListingsResponsePayload payload) {
         this.currentItems = payload.items();
         this.currentPage = payload.page();
@@ -441,12 +448,11 @@ public class BuyTab {
         this.detailEntries = payload.entries();
         this.detailPriceInfo = payload.priceInfo();
 
-        // Reset filters
-        this.selectedEnchantFilter = "";
-        this.selectedDurabilityFilter = 0;
+        // Read available enchantments from server response
+        this.availableEnchantments = new ArrayList<>(payload.availableEnchantments());
 
-        // Parse enchantments and durability from received listings
-        parseDetailFilters();
+        // Parse durability info from received listings (stays client-side)
+        parseDurabilityFilter();
 
         if (mode == Mode.DETAIL) {
             // Rebuild the entire detail view so filter widgets are created
@@ -454,9 +460,8 @@ public class BuyTab {
         }
     }
 
-    private void parseDetailFilters() {
+    private void parseDurabilityFilter() {
         detailStacks = new ArrayList<>();
-        Set<String> enchantSet = new LinkedHashSet<>();
         boolean hasDamageable = false;
         Set<Integer> durabilityLevels = new HashSet<>();
 
@@ -471,13 +476,6 @@ public class BuyTab {
             detailStacks.add(stack);
 
             if (!stack.isEmpty()) {
-                // Extract enchantments (regular items + enchanted books)
-                ItemEnchantments enchants = getEffectiveEnchantments(stack);
-                for (var e : enchants.entrySet()) {
-                    String name = getEnchantmentName(e.getKey(), e.getIntValue());
-                    enchantSet.add(name);
-                }
-
                 // Extract durability
                 if (stack.isDamageableItem()) {
                     hasDamageable = true;
@@ -489,30 +487,8 @@ public class BuyTab {
             }
         }
 
-        this.availableEnchantments = new ArrayList<>(enchantSet);
         // Show durability filter only if items are damageable and there is variation
         this.showDurabilityFilter = hasDamageable && durabilityLevels.size() > 1;
-    }
-
-    private ItemEnchantments getEffectiveEnchantments(ItemStack stack) {
-        // Enchanted books use STORED_ENCHANTMENTS, regular items use normal enchantments
-        ItemEnchantments stored = stack.get(DataComponents.STORED_ENCHANTMENTS);
-        if (stored != null && !stored.isEmpty()) {
-            return stored;
-        }
-        return stack.getEnchantments();
-    }
-
-    private String getEnchantmentName(Holder<Enchantment> holder, int level) {
-        try {
-            Component name = Enchantment.getFullname(holder, level);
-            return name.getString();
-        } catch (Exception e) {
-            // Fallback: use registry key path
-            return holder.unwrapKey()
-                    .map(key -> key.location().getPath())
-                    .orElse("unknown") + " " + level;
-        }
     }
 
     // --- Table population ---
@@ -541,8 +517,8 @@ public class BuyTab {
             var entry = detailEntries.get(i);
             ItemStack stack = i < detailStacks.size() ? detailStacks.get(i) : ItemStack.EMPTY;
 
-            // Apply filters
-            if (!matchesFilters(stack)) continue;
+            // Apply durability filter (client-side only)
+            if (!matchesDurabilityFilter(stack)) continue;
 
             boolean isAuction = "AUCTION".equals(entry.type());
 
@@ -563,23 +539,8 @@ public class BuyTab {
         detailTable.setRows(rows);
     }
 
-    private boolean matchesFilters(ItemStack stack) {
-        // Enchantment filter
-        if (!selectedEnchantFilter.isEmpty()) {
-            if (stack.isEmpty()) return false;
-            boolean hasEnchant = false;
-            ItemEnchantments enchants = getEffectiveEnchantments(stack);
-            for (var e : enchants.entrySet()) {
-                String name = getEnchantmentName(e.getKey(), e.getIntValue());
-                if (name.equals(selectedEnchantFilter)) {
-                    hasEnchant = true;
-                    break;
-                }
-            }
-            if (!hasEnchant) return false;
-        }
-
-        // Durability filter
+    private boolean matchesDurabilityFilter(ItemStack stack) {
+        // Durability filter (client-side)
         if (selectedDurabilityFilter > 0) {
             if (stack.isEmpty() || !stack.isDamageableItem()) return false;
             float pct = (float) (stack.getMaxDamage() - stack.getDamageValue()) / stack.getMaxDamage() * 100f;

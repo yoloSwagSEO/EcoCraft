@@ -8,11 +8,18 @@ import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.network.chat.Component;
 
-import java.util.List;
+import java.util.*;
+import java.util.function.Consumer;
 import java.util.function.IntConsumer;
 
 /**
  * Clickable filter pill tags with Theme and disabled state support.
+ *
+ * <p>Supports two modes:</p>
+ * <ul>
+ *   <li><b>Radio mode</b> (default): clicking a tag deselects the previous one (single selection)</li>
+ *   <li><b>Multi-select mode</b>: clicking a tag toggles it on/off, multiple can be selected simultaneously</li>
+ * </ul>
  */
 public class FilterTags extends AbstractWidget {
 
@@ -22,20 +29,48 @@ public class FilterTags extends AbstractWidget {
 
     private final List<Component> tags;
     private final Theme theme;
-    private int activeTag = 0;
-    private final IntConsumer onTagChanged;
     private boolean enabled = true;
 
+    // Radio mode fields
+    private int activeTag = 0;
+    private final IntConsumer onTagChanged;
+
+    // Multi-select mode fields
+    private final boolean multiSelect;
+    private final Set<Integer> selectedTags = new LinkedHashSet<>();
+    private final Consumer<Set<Integer>> onMultiTagChanged;
+
+    /**
+     * Radio mode constructor (backward compatible) — single tag selection.
+     */
     public FilterTags(int x, int y, List<Component> tags, IntConsumer onTagChanged, Theme theme) {
         super(x, y, 0, TAG_HEIGHT, Component.empty());
         this.tags = tags;
         this.onTagChanged = onTagChanged;
         this.theme = theme;
+        this.multiSelect = false;
+        this.onMultiTagChanged = null;
         this.width = calculateTotalWidth();
     }
 
+    /**
+     * Radio mode constructor with default theme (backward compatible).
+     */
     public FilterTags(int x, int y, List<Component> tags, IntConsumer onTagChanged) {
         this(x, y, tags, onTagChanged, Theme.dark());
+    }
+
+    /**
+     * Multi-select mode constructor — multiple tags can be toggled on/off.
+     */
+    public FilterTags(int x, int y, List<Component> tags, Consumer<Set<Integer>> onMultiTagChanged, Theme theme, boolean multiSelect) {
+        super(x, y, 0, TAG_HEIGHT, Component.empty());
+        this.tags = tags;
+        this.theme = theme;
+        this.multiSelect = multiSelect;
+        this.onMultiTagChanged = onMultiTagChanged;
+        this.onTagChanged = null;
+        this.width = calculateTotalWidth();
     }
 
     private int calculateTotalWidth() {
@@ -47,6 +82,8 @@ public class FilterTags extends AbstractWidget {
         return total - TAG_GAP;
     }
 
+    // --- Radio mode accessors ---
+
     public int getActiveTag() {
         return activeTag;
     }
@@ -55,6 +92,32 @@ public class FilterTags extends AbstractWidget {
         if (index >= 0 && index < tags.size()) {
             this.activeTag = index;
         }
+    }
+
+    // --- Multi-select mode accessors ---
+
+    /**
+     * Returns the set of currently selected tag indices (multi-select mode).
+     * Returns a copy to prevent external modification.
+     */
+    public Set<Integer> getSelectedTags() {
+        return new LinkedHashSet<>(selectedTags);
+    }
+
+    /**
+     * Sets the selected tags (multi-select mode).
+     */
+    public void setSelectedTags(Set<Integer> indices) {
+        selectedTags.clear();
+        for (int idx : indices) {
+            if (idx >= 0 && idx < tags.size()) {
+                selectedTags.add(idx);
+            }
+        }
+    }
+
+    public boolean isMultiSelect() {
+        return multiSelect;
     }
 
     public void setEnabled(boolean enabled) {
@@ -73,7 +136,7 @@ public class FilterTags extends AbstractWidget {
         for (int i = 0; i < tags.size(); i++) {
             Component label = tags.get(i);
             int tagWidth = font.width(label) + TAG_PADDING_H * 2;
-            boolean isActive = i == activeTag;
+            boolean isActive = multiSelect ? selectedTags.contains(i) : (i == activeTag);
             boolean isHovered = enabled && mouseX >= currentX && mouseX < currentX + tagWidth
                     && mouseY >= getY() && mouseY < getY() + TAG_HEIGHT;
 
@@ -112,9 +175,24 @@ public class FilterTags extends AbstractWidget {
         for (int i = 0; i < tags.size(); i++) {
             int tagWidth = font.width(tags.get(i)) + TAG_PADDING_H * 2;
             if (mouseX >= currentX && mouseX < currentX + tagWidth) {
-                if (i != activeTag) {
-                    activeTag = i;
-                    onTagChanged.accept(i);
+                if (multiSelect) {
+                    // Toggle selection
+                    if (selectedTags.contains(i)) {
+                        selectedTags.remove(i);
+                    } else {
+                        selectedTags.add(i);
+                    }
+                    if (onMultiTagChanged != null) {
+                        onMultiTagChanged.accept(getSelectedTags());
+                    }
+                } else {
+                    // Radio mode
+                    if (i != activeTag) {
+                        activeTag = i;
+                        if (onTagChanged != null) {
+                            onTagChanged.accept(i);
+                        }
+                    }
                 }
                 return true;
             }

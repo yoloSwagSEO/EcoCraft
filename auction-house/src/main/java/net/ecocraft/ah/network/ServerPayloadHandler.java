@@ -6,15 +6,19 @@ import net.ecocraft.ah.data.*;
 import net.ecocraft.ah.network.payload.*;
 import net.ecocraft.ah.service.AuctionService;
 import net.ecocraft.ah.storage.AuctionStorageProvider;
+import net.minecraft.core.Holder;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.enchantment.Enchantment;
+import net.minecraft.world.item.enchantment.ItemEnchantments;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import org.slf4j.Logger;
 
 import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 /**
  * Handles client-to-server packets for the auction house.
@@ -84,30 +88,55 @@ public final class ServerPayloadHandler {
         context.enqueueWork(() -> {
             try {
                 AuctionService service = requireService();
-                List<AuctionListing> listings = service.getListingDetail(payload.itemId());
+                AuctionStorageProvider storage = AHServerEvents.getStorage();
 
+                // Fetch available enchantments for this item type
+                List<String> availableEnchantments = List.of();
+                if (storage != null) {
+                    availableEnchantments = storage.getAvailableEnchantments(payload.itemId());
+                }
+
+                // Fetch listings, optionally filtered by enchantments
+                List<AuctionListing> listings;
+                Set<String> enchantFilters = payload.enchantmentFilters() != null
+                        ? new LinkedHashSet<>(payload.enchantmentFilters()) : Set.of();
+
+                if (!enchantFilters.isEmpty() && storage != null) {
+                    listings = storage.getListingsForItemFiltered(payload.itemId(), enchantFilters, 0, Integer.MAX_VALUE);
+                } else {
+                    listings = service.getListingDetail(payload.itemId());
+                }
+
+                // Group by seller UUID + itemNbt hash
+                Map<String, List<AuctionListing>> groups = new LinkedHashMap<>();
+                for (AuctionListing l : listings) {
+                    String key = l.sellerUuid() + "|" + (l.itemNbt() != null ? l.itemNbt() : "");
+                    groups.computeIfAbsent(key, k -> new ArrayList<>()).add(l);
+                }
+
+                // Build entries from groups
                 List<ListingDetailResponsePayload.ListingEntry> entries = new ArrayList<>();
                 String itemName = "";
-                for (AuctionListing l : listings) {
-                    if (itemName.isEmpty()) itemName = l.itemName();
-                    long displayPrice = l.listingType() == ListingType.BUYOUT ? l.buyoutPrice() : l.currentBid();
-                    long expiresInMs = Math.max(0, l.expiresAt() - System.currentTimeMillis());
+                for (var group : groups.values()) {
+                    AuctionListing first = group.get(0);
+                    if (itemName.isEmpty()) itemName = first.itemName();
+                    int totalQty = group.stream().mapToInt(AuctionListing::quantity).sum();
+                    long displayPrice = first.listingType() == ListingType.BUYOUT ? first.buyoutPrice() : first.currentBid();
+                    long expiresInMs = Math.max(0, first.expiresAt() - System.currentTimeMillis());
                     entries.add(new ListingDetailResponsePayload.ListingEntry(
-                            l.id(),
-                            l.sellerName(),
-                            l.quantity(),
+                            first.id(),
+                            first.sellerName(),
+                            totalQty,
                             displayPrice,
-                            l.listingType().name(),
+                            first.listingType().name(),
                             expiresInMs,
-                            l.itemNbt() != null ? l.itemNbt() : ""
+                            first.itemNbt() != null ? first.itemNbt() : ""
                     ));
                 }
 
                 // Price history
-                AuctionStorageProvider storage = AHServerEvents.getStorage();
                 ListingDetailResponsePayload.PriceInfo priceInfo;
                 if (storage != null) {
-                    // Use first listing's currency for price history
                     String currencyId = listings.isEmpty()
                             ? net.ecocraft.core.EcoServerEvents.getCurrencyRegistry().getDefault().id()
                             : listings.get(0).currencyId();
@@ -123,12 +152,12 @@ public final class ServerPayloadHandler {
                 }
 
                 context.reply(new ListingDetailResponsePayload(
-                        payload.itemId(), itemName, 0xFFFFFFFF, entries, priceInfo));
+                        payload.itemId(), itemName, 0xFFFFFFFF, entries, priceInfo, availableEnchantments));
             } catch (Exception e) {
                 LOGGER.error("Error handling RequestListingDetail", e);
                 context.reply(new ListingDetailResponsePayload(
                         payload.itemId(), "", 0xFFFFFFFF, List.of(),
-                        new ListingDetailResponsePayload.PriceInfo(0, 0, 0, 0)));
+                        new ListingDetailResponsePayload.PriceInfo(0, 0, 0, 0), List.of()));
             }
         });
     }
@@ -150,9 +179,12 @@ public final class ServerPayloadHandler {
                 }
 
                 if (itemToSell.isEmpty()) {
-                    context.reply(new AHActionResultPayload(false, "Aucun objet sélectionné!"));
+                    context.reply(new AHActionResultPayload(false, "Aucun objet s\u00e9lectionn\u00e9!"));
                     return;
                 }
+
+                // Extract enchantments from the ItemStack before removing it
+                List<EnchantmentEntry> enchantments = extractEnchantments(itemToSell);
 
                 String itemId = BuiltInRegistries.ITEM.getKey(itemToSell.getItem()).toString();
                 String itemName = itemToSell.getHoverName().getString();
@@ -163,7 +195,7 @@ public final class ServerPayloadHandler {
 
                 String currencyId = net.ecocraft.core.EcoServerEvents.getCurrencyRegistry().getDefault().id();
                 ItemCategory category = ItemCategoryDetector.detect(itemToSell);
-                service.createListing(
+                AuctionListing listing = service.createListing(
                         player.getUUID(),
                         player.getName().getString(),
                         itemId,
@@ -176,6 +208,12 @@ public final class ServerPayloadHandler {
                         currencyId,
                         category
                 );
+
+                // Index enchantments for server-side filtering
+                AuctionStorageProvider storage = AHServerEvents.getStorage();
+                if (storage != null && !enchantments.isEmpty()) {
+                    storage.indexEnchantments(listing.id(), enchantments);
+                }
 
                 // Remove item from the correct slot
                 if (slotIndex >= 0) {
@@ -192,6 +230,34 @@ public final class ServerPayloadHandler {
                 context.reply(new AHActionResultPayload(false, "Internal error creating listing."));
             }
         });
+    }
+
+    /**
+     * Extracts enchantments from an ItemStack for indexing.
+     * Handles both regular enchantments and stored enchantments (enchanted books).
+     */
+    private static List<EnchantmentEntry> extractEnchantments(ItemStack stack) {
+        ItemEnchantments enchants = stack.getEnchantments();
+        ItemEnchantments storedEnchants = stack.getOrDefault(DataComponents.STORED_ENCHANTMENTS, ItemEnchantments.EMPTY);
+
+        // Use whichever has data (stored enchantments for enchanted books)
+        ItemEnchantments toProcess = storedEnchants.isEmpty() ? enchants : storedEnchants;
+
+        List<EnchantmentEntry> entries = new ArrayList<>();
+        toProcess.entrySet().forEach(e -> {
+            Holder<Enchantment> holder = e.getKey();
+            int level = e.getIntValue();
+            String displayName;
+            try {
+                Component name = Enchantment.getFullname(holder, level);
+                displayName = name.getString();
+            } catch (Exception ex) {
+                displayName = holder.unwrapKey().map(k -> k.location().getPath()).orElse("unknown") + " " + level;
+            }
+            String enchantName = holder.unwrapKey().map(k -> k.location().toString()).orElse("unknown");
+            entries.add(new EnchantmentEntry(enchantName, level, displayName));
+        });
+        return entries;
     }
 
     public static void handleBuyListing(BuyListingPayload payload, IPayloadContext context) {
