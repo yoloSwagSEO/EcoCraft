@@ -6,6 +6,7 @@ import net.ecocraft.gui.theme.DrawUtils;
 import net.ecocraft.gui.theme.Theme;
 import net.ecocraft.gui.widget.Button;
 import net.ecocraft.gui.widget.FilterTags;
+import net.ecocraft.gui.widget.InventoryGrid;
 import net.ecocraft.gui.widget.ItemSlot;
 import net.ecocraft.gui.widget.NumberInput;
 import net.minecraft.client.Minecraft;
@@ -13,11 +14,9 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.network.chat.Component;
-import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.network.PacketDistributor;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 
@@ -33,10 +32,7 @@ public class SellTab {
     private static final double DEPOSIT_RATE = 0.02;
     private static final int[] DURATIONS = {12, 24, 48};
     private static final String[] DURATION_LABELS = {"12h", "24h", "48h"};
-    private static final int SLOT_SIZE = 18;
-    private static final int SLOT_PADDING = 2;
     private static final int INV_COLS = 9;
-    private static final int INV_ROWS = 4;
 
     private final AuctionHouseScreen parent;
     private final int x, y, w, h;
@@ -56,7 +52,7 @@ public class SellTab {
     private NumberInput priceInput;
     private FilterTags durationTags;
     private Button sellButton;
-    private final List<InventorySlotWidget> inventorySlots = new ArrayList<>();
+    private InventoryGrid inventoryGrid;
 
     // Layout positions computed in init
     private int leftColX, leftColW;
@@ -173,33 +169,23 @@ public class SellTab {
     }
 
     private void buildInventoryGrid(Consumer<AbstractWidget> addWidget) {
-        inventorySlots.clear();
         var player = Minecraft.getInstance().player;
         if (player == null) return;
 
-        Inventory inv = player.getInventory();
-        int cellSize = SLOT_SIZE + SLOT_PADDING;
-        int totalGridWidth = INV_COLS * cellSize - SLOT_PADDING;
-        int gridX = rightColX + (rightColW - totalGridWidth) / 2;
+        inventoryGrid = InventoryGrid.builder()
+                .inventory(player.getInventory())
+                .columns(INV_COLS)
+                .slotSize(InventoryGrid.SlotSize.MEDIUM)
+                .scrollable(true)
+                .onSlotClicked(this::onInventorySlotClicked)
+                .theme(THEME)
+                .build();
+
         int gridY = y + 18; // leave room for "Inventaire" title
-
-        // Show ALL 36 slots (9 hotbar + 27 main) as a proper 9x4 grid
-        for (int i = 0; i < INV_ROWS * INV_COLS; i++) {
-            int col = i % INV_COLS;
-            int row = i / INV_COLS;
-            int slotX = gridX + col * cellSize;
-            int slotY = gridY + row * cellSize;
-
-            ItemStack stack = inv.getItem(i);
-            boolean isSelected = (selectedInventorySlot == i);
-            final int inventoryIndex = i;
-
-            InventorySlotWidget slotWidget = new InventorySlotWidget(
-                    slotX, slotY, SLOT_SIZE, stack, isSelected,
-                    () -> onInventorySlotClicked(inventoryIndex));
-            inventorySlots.add(slotWidget);
-            addWidget.accept(slotWidget);
-        }
+        int gridH = h - 22; // remaining height
+        inventoryGrid.setBounds(rightColX, gridY, rightColW, gridH);
+        inventoryGrid.setSelectedSlot(selectedInventorySlot);
+        addWidget.accept(inventoryGrid);
     }
 
     public void renderBackground(GuiGraphics graphics) {
@@ -374,6 +360,11 @@ public class SellTab {
             if (itemSlot != null) {
                 itemSlot.setItem(ItemStack.EMPTY);
             }
+            // Refresh the inventory grid to reflect updated inventory state
+            if (inventoryGrid != null) {
+                inventoryGrid.setSelectedSlot(-1);
+                inventoryGrid.refresh();
+            }
             parent.rebuildCurrentTab();
         }
     }
@@ -401,51 +392,4 @@ public class SellTab {
         return ItemStack.EMPTY; // No default to main hand; require explicit selection
     }
 
-    // --- Inner widget for inventory slots ---
-
-    private static class InventorySlotWidget extends AbstractWidget {
-        private final ItemStack stack;
-        private final boolean selected;
-        private final Runnable onClick;
-
-        public InventorySlotWidget(int x, int y, int size, ItemStack stack, boolean selected, Runnable onClick) {
-            super(x, y, size, size, stack.isEmpty() ? Component.literal("Vide") : stack.getHoverName());
-            this.stack = stack;
-            this.selected = selected;
-            this.onClick = onClick;
-        }
-
-        @Override
-        public void renderWidget(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-            int borderColor = selected ? THEME.accent : (isHovered() ? THEME.textLight : THEME.bgLight);
-            graphics.fill(getX(), getY(), getX() + width, getY() + height, THEME.bgDark);
-            // Border
-            graphics.fill(getX(), getY(), getX() + width, getY() + 1, borderColor);
-            graphics.fill(getX(), getY() + height - 1, getX() + width, getY() + height, borderColor);
-            graphics.fill(getX(), getY(), getX() + 1, getY() + height, borderColor);
-            graphics.fill(getX() + width - 1, getY(), getX() + width, getY() + height, borderColor);
-
-            // Item (only if not empty)
-            if (!stack.isEmpty()) {
-                int itemX = getX() + (width - 16) / 2;
-                int itemY = getY() + (height - 16) / 2;
-                graphics.renderItem(stack, itemX, itemY);
-                graphics.renderItemDecorations(Minecraft.getInstance().font, stack, itemX, itemY);
-
-                // Tooltip on hover
-                if (isHovered()) {
-                    graphics.renderTooltip(Minecraft.getInstance().font, stack, mouseX, mouseY);
-                }
-            }
-        }
-
-        @Override
-        public void onClick(double mouseX, double mouseY) {
-            onClick.run();
-        }
-
-        @Override
-        protected void updateWidgetNarration(net.minecraft.client.gui.narration.NarrationElementOutput output) {
-        }
-    }
 }
