@@ -1,5 +1,6 @@
 package net.ecocraft.ah.block;
 
+import net.ecocraft.ah.data.AHInstance;
 import net.ecocraft.ah.network.ServerPayloadHandler;
 import net.ecocraft.ah.network.payload.OpenAHPayload;
 import net.minecraft.core.BlockPos;
@@ -26,6 +27,7 @@ public class AuctionTerminalBlock extends Block {
                                                BlockHitResult hitResult) {
         if (!level.isClientSide && player instanceof ServerPlayer serverPlayer) {
             PacketDistributor.sendToPlayer(serverPlayer, new OpenAHPayload(-1));
+            ServerPayloadHandler.sendAHContext(serverPlayer, AHInstance.DEFAULT_ID);
             ServerPayloadHandler.sendBalanceUpdate(serverPlayer);
             ServerPayloadHandler.sendAHSettings(serverPlayer);
         }

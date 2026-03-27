@@ -6,12 +6,13 @@ import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 
-public record CreateListingPayload(String listingType, long price, int durationHours, int slotIndex) implements CustomPacketPayload {
+public record CreateListingPayload(String ahId, String listingType, long price, int durationHours, int slotIndex) implements CustomPacketPayload {
 
     public static final CustomPacketPayload.Type<CreateListingPayload> TYPE =
             new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath("ecocraft_ah", "create_listing"));
 
     public static final StreamCodec<ByteBuf, CreateListingPayload> STREAM_CODEC = StreamCodec.composite(
+            ByteBufCodecs.STRING_UTF8, CreateListingPayload::ahId,
             ByteBufCodecs.STRING_UTF8, CreateListingPayload::listingType,
             ByteBufCodecs.VAR_LONG, CreateListingPayload::price,
             ByteBufCodecs.VAR_INT, CreateListingPayload::durationHours,

@@ -68,6 +68,10 @@ public class SellTab {
         this.h = h;
     }
 
+    private String getAhId() {
+        return parent.getCurrentAhId();
+    }
+
     public void init(Consumer<AbstractWidget> addWidget) {
         Font font = Minecraft.getInstance().font;
 
@@ -324,7 +328,7 @@ public class SellTab {
                         .getKey(stack.getItem()).toString();
                 String fingerprint = net.ecocraft.ah.data.ItemFingerprint.compute(stack);
                 PacketDistributor.sendToServer(
-                        new net.ecocraft.ah.network.payload.RequestBestPricePayload(fingerprint, itemId));
+                        new net.ecocraft.ah.network.payload.RequestBestPricePayload(getAhId(), fingerprint, itemId));
             }
         }
         updateSelectedItem();
@@ -360,7 +364,7 @@ public class SellTab {
         String listingType = isBuyout ? "BUYOUT" : "AUCTION";
         int hours = activeDurations[selectedDuration];
         int slotToSend = selectedInventorySlot >= 0 ? selectedInventorySlot : -1;
-        PacketDistributor.sendToServer(new CreateListingPayload(listingType, priceValue, hours, slotToSend));
+        PacketDistributor.sendToServer(new CreateListingPayload(getAhId(), listingType, priceValue, hours, slotToSend));
         lastMessage = "Envoi en cours...";
         lastSuccess = true;
     }

@@ -77,6 +77,12 @@ public final class AHNetworkHandler {
                 ClientPayloadHandler::handleNPCSkin
         );
 
+        registrar.playToClient(
+                AHContextPayload.TYPE,
+                AHContextPayload.STREAM_CODEC,
+                ClientPayloadHandler::handleAHContext
+        );
+
         // Client → Server
         registrar.playToServer(
                 RequestListingsPayload.TYPE,

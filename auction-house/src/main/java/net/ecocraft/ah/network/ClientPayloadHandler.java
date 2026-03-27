@@ -82,6 +82,13 @@ public final class ClientPayloadHandler {
         });
     }
 
+    public static void handleAHContext(AHContextPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            LOGGER.debug("AH: Received context ahId={} ahName='{}'", payload.ahId(), payload.ahName());
+            AuctionHouseScreen.receiveAHContext(payload);
+        });
+    }
+
     public static void handleAHSettings(AHSettingsPayload payload, IPayloadContext context) {
         context.enqueueWork(() -> {
             LOGGER.debug("AH: Received settings isAdmin={} saleRate={} depositRate={} durations={}",

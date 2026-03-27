@@ -2,6 +2,7 @@ package net.ecocraft.ah.entity;
 
 import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.properties.PropertyMap;
+import net.ecocraft.ah.data.AHInstance;
 import net.ecocraft.ah.network.ServerPayloadHandler;
 import net.ecocraft.ah.network.payload.OpenAHPayload;
 import net.minecraft.nbt.CompoundTag;
@@ -54,6 +55,7 @@ public class AuctioneerEntity extends Mob {
         if (!level().isClientSide && hand == InteractionHand.MAIN_HAND
                 && player instanceof ServerPlayer serverPlayer) {
             PacketDistributor.sendToPlayer(serverPlayer, new OpenAHPayload(this.getId()));
+            ServerPayloadHandler.sendAHContext(serverPlayer, AHInstance.DEFAULT_ID);
             ServerPayloadHandler.sendBalanceUpdate(serverPlayer);
             ServerPayloadHandler.sendAHSettings(serverPlayer);
             ServerPayloadHandler.sendNPCSkin(serverPlayer, this.getId());

@@ -8,19 +8,20 @@ import net.minecraft.resources.ResourceLocation;
 
 import java.util.List;
 
-public record RequestListingDetailPayload(String itemId, List<String> enchantmentFilters) implements CustomPacketPayload {
+public record RequestListingDetailPayload(String ahId, String itemId, List<String> enchantmentFilters) implements CustomPacketPayload {
 
     /**
      * Backward-compatible constructor: no enchantment filters.
      */
-    public RequestListingDetailPayload(String itemId) {
-        this(itemId, List.of());
+    public RequestListingDetailPayload(String ahId, String itemId) {
+        this(ahId, itemId, List.of());
     }
 
     public static final CustomPacketPayload.Type<RequestListingDetailPayload> TYPE =
             new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath("ecocraft_ah", "request_listing_detail"));
 
     public static final StreamCodec<ByteBuf, RequestListingDetailPayload> STREAM_CODEC = StreamCodec.composite(
+            ByteBufCodecs.STRING_UTF8, RequestListingDetailPayload::ahId,
             ByteBufCodecs.STRING_UTF8, RequestListingDetailPayload::itemId,
             ByteBufCodecs.STRING_UTF8.apply(ByteBufCodecs.list()), RequestListingDetailPayload::enchantmentFilters,
             RequestListingDetailPayload::new

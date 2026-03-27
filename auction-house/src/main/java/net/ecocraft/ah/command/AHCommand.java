@@ -3,6 +3,7 @@ package net.ecocraft.ah.command;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.DoubleArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
+import net.ecocraft.ah.data.AHInstance;
 import net.ecocraft.ah.data.ItemCategory;
 import net.ecocraft.ah.data.ListingType;
 import net.ecocraft.ah.network.ServerPayloadHandler;
@@ -33,6 +34,7 @@ public final class AHCommand {
                 .executes(ctx -> {
                     ServerPlayer player = ctx.getSource().getPlayerOrException();
                     PacketDistributor.sendToPlayer(player, new OpenAHPayload(-1));
+                    ServerPayloadHandler.sendAHContext(player, AHInstance.DEFAULT_ID);
                     ServerPayloadHandler.sendBalanceUpdate(player);
                     ServerPayloadHandler.sendAHSettings(player);
                     return 1;
@@ -56,6 +58,7 @@ public final class AHCommand {
                                     ServerPlayer player = ctx.getSource().getPlayerOrException();
                                     // For now, just open the AH — search pre-fill can come later
                                     PacketDistributor.sendToPlayer(player, new OpenAHPayload(-1));
+                                    ServerPayloadHandler.sendAHContext(player, AHInstance.DEFAULT_ID);
                                     ServerPayloadHandler.sendBalanceUpdate(player);
                                     ServerPayloadHandler.sendAHSettings(player);
                                     return 1;

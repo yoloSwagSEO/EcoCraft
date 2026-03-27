@@ -1,6 +1,7 @@
 package net.ecocraft.ah.screen;
 
 import com.mojang.logging.LogUtils;
+import net.ecocraft.ah.data.AHInstance;
 import net.ecocraft.ah.network.payload.*;
 import net.ecocraft.gui.theme.DrawUtils;
 import net.ecocraft.gui.theme.Theme;
@@ -50,6 +51,10 @@ public class AuctionHouseScreen extends Screen {
     private int npcEntityId = -1;
     private String npcSkinName = "";
 
+    // AH context (received from server)
+    private String currentAhId = AHInstance.DEFAULT_ID;
+    private String currentAhName = "";
+
     private BuyTab buyTab;
     private SellTab sellTab;
     private MyAuctionsTab myAuctionsTab;
@@ -57,6 +62,15 @@ public class AuctionHouseScreen extends Screen {
 
     public AuctionHouseScreen() {
         super(Component.literal("Auction House"));
+    }
+
+    public String getCurrentAhId() { return currentAhId; }
+
+    public static void receiveAHContext(AHContextPayload payload) {
+        if (Minecraft.getInstance().screen instanceof AuctionHouseScreen screen) {
+            screen.currentAhId = payload.ahId();
+            screen.currentAhName = payload.ahName();
+        }
     }
 
     /**

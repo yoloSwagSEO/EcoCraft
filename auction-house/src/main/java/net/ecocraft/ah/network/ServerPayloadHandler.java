@@ -460,6 +460,16 @@ public final class ServerPayloadHandler {
         });
     }
 
+    public static void sendAHContext(ServerPlayer player, String ahId) {
+        AuctionStorageProvider storage = AHServerEvents.getStorage();
+        if (storage == null) return;
+        AHInstance ah = storage.getAHInstance(ahId);
+        if (ah == null) ah = storage.getDefaultAHInstance();
+        if (ah != null) {
+            PacketDistributor.sendToPlayer(player, new AHContextPayload(ah.id(), ah.name()));
+        }
+    }
+
     public static void sendAHSettings(ServerPlayer player) {
         try {
             var config = net.ecocraft.ah.config.AHConfig.CONFIG;

@@ -92,6 +92,10 @@ public class BuyTab {
         this.h = h;
     }
 
+    private String getAhId() {
+        return parent.getCurrentAhId();
+    }
+
     public void init(Consumer<AbstractWidget> addWidget) {
         if (mode == Mode.BROWSE) {
             initBrowse(addWidget);
@@ -493,7 +497,7 @@ public class BuyTab {
         detailItemId = itemId;
         mode = Mode.DETAIL;
         parent.rebuildCurrentTab();
-        PacketDistributor.sendToServer(new RequestListingDetailPayload(itemId));
+        PacketDistributor.sendToServer(new RequestListingDetailPayload(getAhId(), itemId));
     }
 
     private void onBackToBrowse() {
@@ -514,17 +518,17 @@ public class BuyTab {
 
         if (isAuction) {
             long bidAmount = panelBidInput.getValue();
-            PacketDistributor.sendToServer(new PlaceBidPayload(entry.listingId(), bidAmount));
+            PacketDistributor.sendToServer(new PlaceBidPayload(getAhId(), entry.listingId(), bidAmount));
         } else {
             int qty = (int) panelQuantityInput.getValue();
-            PacketDistributor.sendToServer(new BuyListingPayload(entry.listingId(), qty));
+            PacketDistributor.sendToServer(new BuyListingPayload(getAhId(), entry.listingId(), qty));
         }
     }
 
     // --- Network ---
 
     private void requestListings() {
-        PacketDistributor.sendToServer(new RequestListingsPayload(searchText, selectedCategory, currentPage, browseRowsPerPage));
+        PacketDistributor.sendToServer(new RequestListingsPayload(getAhId(), searchText, selectedCategory, currentPage, browseRowsPerPage));
     }
 
     /**
@@ -532,7 +536,7 @@ public class BuyTab {
      */
     private void requestListingDetail() {
         List<String> filters = new ArrayList<>(selectedEnchantFilters);
-        PacketDistributor.sendToServer(new RequestListingDetailPayload(detailItemId, filters));
+        PacketDistributor.sendToServer(new RequestListingDetailPayload(getAhId(), detailItemId, filters));
     }
 
     public void onActionResult(AHActionResultPayload payload) {
