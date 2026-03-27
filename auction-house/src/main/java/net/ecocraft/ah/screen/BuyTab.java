@@ -68,7 +68,8 @@ public class BuyTab {
     private ItemSlot panelItemSlot;
     private NumberInput panelQuantityInput;
     private NumberInput panelBidInput;
-    private Button panelActionButton;
+    private Button panelBuyButton;
+    private Button panelBidButton;
     private static final int PANEL_WIDTH_RATIO = 35;
 
     // Detail mode filter state
@@ -659,12 +660,20 @@ public class BuyTab {
 
         // Action button
         int btnY = inputY + 40;
-        panelActionButton = Button.success(THEME, Component.literal("Acheter"), () -> onPanelAction());
-        panelActionButton.setX(px + 4);
-        panelActionButton.setY(btnY);
-        panelActionButton.setWidth(pw - 8);
-        panelActionButton.setHeight(20);
-        addWidget.accept(panelActionButton);
+        panelBuyButton = Button.success(THEME, Component.literal("Acheter"), () -> onPanelAction());
+        panelBuyButton.setX(px + 4);
+        panelBuyButton.setY(btnY);
+        panelBuyButton.setWidth(pw - 8);
+        panelBuyButton.setHeight(20);
+        addWidget.accept(panelBuyButton);
+
+        panelBidButton = Button.warning(THEME, Component.literal("Enchérir"), () -> onPanelAction());
+        panelBidButton.setX(px + 4);
+        panelBidButton.setY(btnY);
+        panelBidButton.setWidth(pw - 8);
+        panelBidButton.setHeight(20);
+        panelBidButton.visible = false;
+        addWidget.accept(panelBidButton);
 
         // Apply initial selection
         updatePurchasePanel();
@@ -701,13 +710,15 @@ public class BuyTab {
             panelBidInput.visible = true;
             long minBid = entry.unitPrice() > 0 ? entry.unitPrice() + 1 : 1;
             panelBidInput.min(minBid).setValue(minBid);
-            panelActionButton.setMessage(Component.literal("Enchérir"));
+            panelBuyButton.visible = false;
+            panelBidButton.visible = true;
         } else {
             panelQuantityInput.visible = true;
             panelBidInput.visible = false;
             panelQuantityInput.max(entry.quantity()).setValue(entry.quantity());
             panelQuantityInput.setEnabled(entry.quantity() > 1);
-            panelActionButton.setMessage(Component.literal("Acheter"));
+            panelBuyButton.visible = true;
+            panelBidButton.visible = false;
         }
     }
 

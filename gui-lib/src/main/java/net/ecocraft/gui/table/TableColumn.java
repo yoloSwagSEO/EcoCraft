@@ -29,4 +29,8 @@ public record TableColumn(
     public static TableColumn sortableCenter(Component header, float weight) {
         return new TableColumn(header, weight, Align.CENTER, true);
     }
+
+    public static TableColumn sortableRight(Component header, float weight) {
+        return new TableColumn(header, weight, Align.RIGHT, true);
+    }
 }

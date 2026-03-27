@@ -91,8 +91,9 @@ public class AuctionService {
         if (currency == null) throw new AuctionException("Unknown currency: " + currencyId);
 
         long priceUnits = toSmallestUnit(price, currency);
-        long depositUnits = (long) (priceUnits * DEFAULT_DEPOSIT_RATE);
-        long taxUnits = (long) (priceUnits * DEFAULT_TAX_RATE);
+        long totalPrice = priceUnits * quantity;
+        long depositUnits = Math.max(1, (long) (totalPrice * DEFAULT_DEPOSIT_RATE));
+        long taxUnits = Math.max(1, (long) (totalPrice * DEFAULT_TAX_RATE));
 
         // --- Withdraw deposit ---
         BigDecimal depositBD = fromSmallestUnit(depositUnits, currency);
@@ -499,6 +500,27 @@ public class AuctionService {
      */
     public static BigDecimal fromSmallestUnit(long amount, Currency currency) {
         return BigDecimal.valueOf(amount);
+    }
+
+    // -------------------------------------------------------------------------
+    // Balance query
+    // -------------------------------------------------------------------------
+
+    /** Returns the player's balance in the default currency (as smallest units). */
+    public long getPlayerBalance(UUID playerUuid) {
+        Currency currency = currencies.getDefault();
+        BigDecimal balance = economy.getBalance(playerUuid, currency);
+        return toSmallestUnit(balance, currency);
+    }
+
+    /** Returns the default currency's symbol. */
+    public String getDefaultCurrencySymbol() {
+        return currencies.getDefault().symbol();
+    }
+
+    /** Returns the default currency's id. */
+    public String getDefaultCurrencyId() {
+        return currencies.getDefault().id();
     }
 
     // -------------------------------------------------------------------------

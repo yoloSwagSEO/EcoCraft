@@ -53,6 +53,12 @@ public final class AHNetworkHandler {
                 ClientPayloadHandler::handleLedgerResponse
         );
 
+        registrar.playToClient(
+                BalanceUpdatePayload.TYPE,
+                BalanceUpdatePayload.STREAM_CODEC,
+                ClientPayloadHandler::handleBalanceUpdate
+        );
+
         // Client → Server
         registrar.playToServer(
                 RequestListingsPayload.TYPE,

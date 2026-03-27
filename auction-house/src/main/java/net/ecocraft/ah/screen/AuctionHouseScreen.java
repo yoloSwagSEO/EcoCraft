@@ -34,6 +34,10 @@ public class AuctionHouseScreen extends Screen {
     private TabBar tabBar;
     private int activeTab = 0;
 
+    // Balance display
+    private long playerBalance = -1; // -1 = not yet received
+    private String currencySymbol = "";
+
     private BuyTab buyTab;
     private SellTab sellTab;
     private MyAuctionsTab myAuctionsTab;
@@ -122,6 +126,16 @@ public class AuctionHouseScreen extends Screen {
 
         // Render widgets (buttons, tables, etc.)
         super.render(graphics, mouseX, mouseY, partialTick);
+
+        // Render balance in top-right corner (after widgets so it's on top)
+        if (playerBalance >= 0) {
+            Font font = Minecraft.getInstance().font;
+            String balanceText = BuyTab.formatPrice(playerBalance);
+            int textW = font.width(balanceText);
+            int bx = guiLeft + guiWidth - textW - 8;
+            int by = guiTop + 10;
+            graphics.drawString(font, balanceText, bx, by, THEME.accent, false);
+        }
 
         // Render foreground text/overlays AFTER widgets
         switch (activeTab) {
@@ -216,6 +230,12 @@ public class AuctionHouseScreen extends Screen {
         }
     }
 
+    public static void receiveBalanceUpdate(BalanceUpdatePayload payload) {
+        if (Minecraft.getInstance().screen instanceof AuctionHouseScreen screen) {
+            screen.onReceiveBalanceUpdate(payload);
+        }
+    }
+
     // --- Instance dispatch methods ---
 
     protected void onReceiveListings(ListingsResponsePayload payload) {
@@ -239,5 +259,10 @@ public class AuctionHouseScreen extends Screen {
 
     protected void onReceiveLedger(LedgerResponsePayload payload) {
         ledgerTab.onReceiveLedger(payload);
+    }
+
+    protected void onReceiveBalanceUpdate(BalanceUpdatePayload payload) {
+        this.playerBalance = payload.balance();
+        this.currencySymbol = payload.currencySymbol();
     }
 }

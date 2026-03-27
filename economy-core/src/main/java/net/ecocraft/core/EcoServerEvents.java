@@ -21,11 +21,15 @@ import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.server.ServerStartingEvent;
 import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 
+import org.slf4j.Logger;
+import com.mojang.logging.LogUtils;
+
 import java.math.BigDecimal;
 
 @EventBusSubscriber(modid = EcoCraftCoreMod.MOD_ID)
 public class EcoServerEvents {
 
+    private static final Logger LOGGER = LogUtils.getLogger();
     private static final StorageManager storage = new StorageManager();
     private static CurrencyRegistryImpl currencyRegistry;
     private static EconomyProviderImpl economyProvider;
@@ -35,6 +39,7 @@ public class EcoServerEvents {
 
     @SubscribeEvent
     public static void onServerStarting(ServerStartingEvent event) {
+        LOGGER.info("EcoCraft Economy Core initializing...");
         var server = event.getServer();
         var worldDir = server.getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT);
 
@@ -56,6 +61,8 @@ public class EcoServerEvents {
         exchangeService = new ExchangeServiceImpl(economyProvider);
         transactionLog = new TransactionLogImpl(storage.getProvider(), currencyRegistry);
         permissions = new DefaultPermissionChecker();
+        LOGGER.info("EcoCraft Economy Core initialized with currency: {} ({})",
+                defaultCurrency.name(), defaultCurrency.symbol());
     }
 
     @SubscribeEvent
@@ -65,10 +72,11 @@ public class EcoServerEvents {
 
     @SubscribeEvent
     public static void onRegisterCommands(RegisterCommandsEvent event) {
-        if (economyProvider != null) {
-            EcoCommands.register(event.getDispatcher(), economyProvider,
-                currencyRegistry, exchangeService, permissions);
-        }
+        // Commands are registered early (before ServerStartingEvent), so use lazy accessors
+        EcoCommands.register(event.getDispatcher(),
+                () -> economyProvider, () -> currencyRegistry,
+                () -> exchangeService, () -> permissions);
+        LOGGER.info("EcoCraft Economy commands registered.");
     }
 
     @SubscribeEvent

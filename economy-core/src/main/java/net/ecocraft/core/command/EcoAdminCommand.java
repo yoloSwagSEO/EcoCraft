@@ -14,13 +14,14 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 
 import java.math.BigDecimal;
+import java.util.function.Supplier;
 
 public class EcoAdminCommand {
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher,
-                                EconomyProvider economy,
-                                CurrencyRegistry currencies,
-                                PermissionChecker permissions) {
+                                Supplier<EconomyProvider> economy,
+                                Supplier<CurrencyRegistry> currencies,
+                                Supplier<PermissionChecker> permissions) {
         dispatcher.register(Commands.literal("eco")
             .requires(source -> source.hasPermission(2))
             .then(Commands.literal("give")
@@ -29,7 +30,7 @@ public class EcoAdminCommand {
                         .executes(ctx -> {
                             ServerPlayer target = EntityArgument.getPlayer(ctx, "player");
                             double amount = DoubleArgumentType.getDouble(ctx, "amount");
-                            return give(ctx.getSource(), target, amount, economy, currencies);
+                            return give(ctx.getSource(), target, amount, economy.get(), currencies.get());
                         })
                     )
                 )
@@ -40,7 +41,7 @@ public class EcoAdminCommand {
                         .executes(ctx -> {
                             ServerPlayer target = EntityArgument.getPlayer(ctx, "player");
                             double amount = DoubleArgumentType.getDouble(ctx, "amount");
-                            return take(ctx.getSource(), target, amount, economy, currencies);
+                            return take(ctx.getSource(), target, amount, economy.get(), currencies.get());
                         })
                     )
                 )
@@ -51,7 +52,7 @@ public class EcoAdminCommand {
                         .executes(ctx -> {
                             ServerPlayer target = EntityArgument.getPlayer(ctx, "player");
                             double amount = DoubleArgumentType.getDouble(ctx, "amount");
-                            return set(ctx.getSource(), target, amount, economy, currencies);
+                            return set(ctx.getSource(), target, amount, economy.get(), currencies.get());
                         })
                     )
                 )

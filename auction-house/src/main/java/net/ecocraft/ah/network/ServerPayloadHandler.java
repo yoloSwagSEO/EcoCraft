@@ -9,6 +9,7 @@ import net.ecocraft.ah.storage.AuctionStorageProvider;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
+import net.neoforged.neoforge.network.PacketDistributor;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import org.slf4j.Logger;
 
@@ -102,10 +103,11 @@ public final class ServerPayloadHandler {
                     listings = service.getListingDetail(payload.itemId());
                 }
 
-                // Group by seller UUID + itemNbt hash
+                // Group by seller UUID + itemNbt hash + price
                 Map<String, List<AuctionListing>> groups = new LinkedHashMap<>();
                 for (AuctionListing l : listings) {
-                    String key = l.sellerUuid() + "|" + (l.itemNbt() != null ? l.itemNbt() : "");
+                    long price = l.listingType() == ListingType.BUYOUT ? l.buyoutPrice() : l.currentBid();
+                    String key = l.sellerUuid() + "|" + (l.itemNbt() != null ? l.itemNbt() : "") + "|" + price;
                     groups.computeIfAbsent(key, k -> new ArrayList<>()).add(l);
                 }
 
@@ -133,7 +135,7 @@ public final class ServerPayloadHandler {
                 ListingDetailResponsePayload.PriceInfo priceInfo;
                 if (storage != null) {
                     String currencyId = listings.isEmpty()
-                            ? net.ecocraft.core.EcoServerEvents.getCurrencyRegistry().getDefault().id()
+                            ? service.getDefaultCurrencyId()
                             : listings.get(0).currencyId();
                     AuctionStorageProvider.PriceStats stats = storage.getPriceHistory(payload.itemId(), currencyId, SEVEN_DAYS_MS);
                     if (stats != null) {
@@ -188,7 +190,7 @@ public final class ServerPayloadHandler {
                 ListingType type = ListingType.valueOf(payload.listingType());
                 BigDecimal price = BigDecimal.valueOf(payload.price());
 
-                String currencyId = net.ecocraft.core.EcoServerEvents.getCurrencyRegistry().getDefault().id();
+                String currencyId = service.getDefaultCurrencyId();
                 ItemCategory category = ItemCategoryDetector.detect(itemToSell);
                 AuctionListing listing = service.createListing(
                         player.getUUID(),
@@ -218,6 +220,7 @@ public final class ServerPayloadHandler {
                 }
 
                 context.reply(new AHActionResultPayload(true, "Listing created successfully."));
+                sendBalanceUpdate(player);
             } catch (AuctionService.AuctionException e) {
                 context.reply(new AHActionResultPayload(false, e.getMessage()));
             } catch (Exception e) {
@@ -235,6 +238,7 @@ public final class ServerPayloadHandler {
 
                 service.buyListing(player.getUUID(), player.getName().getString(), payload.listingId());
                 context.reply(new AHActionResultPayload(true, "Purchase successful! Check parcels to collect your item."));
+                sendBalanceUpdate(player);
             } catch (AuctionService.AuctionException e) {
                 context.reply(new AHActionResultPayload(false, e.getMessage()));
             } catch (Exception e) {
@@ -253,6 +257,7 @@ public final class ServerPayloadHandler {
                 BigDecimal amount = BigDecimal.valueOf(payload.amount());
                 service.placeBid(player.getUUID(), player.getName().getString(), payload.listingId(), amount);
                 context.reply(new AHActionResultPayload(true, "Bid placed successfully."));
+                sendBalanceUpdate(player);
             } catch (AuctionService.AuctionException e) {
                 context.reply(new AHActionResultPayload(false, e.getMessage()));
             } catch (Exception e) {
@@ -321,6 +326,7 @@ public final class ServerPayloadHandler {
                         ? "No parcels to collect."
                         : "Collected " + parcels.size() + " parcel(s).";
                 context.reply(new AHActionResultPayload(true, msg));
+                sendBalanceUpdate(player);
             } catch (Exception e) {
                 LOGGER.error("Error handling CollectParcels", e);
                 context.reply(new AHActionResultPayload(false, "Internal error collecting parcels."));
@@ -336,9 +342,9 @@ public final class ServerPayloadHandler {
 
                 List<AuctionListing> listings;
                 switch (payload.subTab()) {
-                    case "purchases" -> listings = service.getMyPurchases(player.getUUID(), 0, PAGE_SIZE);
+                    case "purchases" -> listings = service.getMyPurchases(player.getUUID(), 0, Integer.MAX_VALUE);
                     case "bids" -> listings = service.getMyBids(player.getUUID());
-                    default -> listings = service.getMyListings(player.getUUID(), 0, PAGE_SIZE);
+                    default -> listings = service.getMyListings(player.getUUID(), 0, Integer.MAX_VALUE);
                 }
 
                 List<MyListingsResponsePayload.MyListingEntry> entries = new ArrayList<>();
@@ -405,7 +411,7 @@ public final class ServerPayloadHandler {
                     };
                 }
 
-                var parcels = service.getLedger(player.getUUID(), sourceFilter, sinceMs, payload.page(), PAGE_SIZE);
+                var parcels = service.getLedger(player.getUUID(), sourceFilter, sinceMs, 0, Integer.MAX_VALUE);
 
                 List<LedgerResponsePayload.LedgerEntry> entries = new ArrayList<>();
                 for (var p : parcels) {
@@ -433,6 +439,18 @@ public final class ServerPayloadHandler {
                 context.reply(new LedgerResponsePayload(List.of(), 0, 0, 0, 0, payload.page(), 0));
             }
         });
+    }
+
+    public static void sendBalanceUpdate(ServerPlayer player) {
+        try {
+            AuctionService service = AHServerEvents.getService();
+            if (service == null) return;
+            long balance = service.getPlayerBalance(player.getUUID());
+            String symbol = service.getDefaultCurrencySymbol();
+            PacketDistributor.sendToPlayer(player, new BalanceUpdatePayload(balance, symbol));
+        } catch (Exception e) {
+            LOGGER.error("Error sending balance update", e);
+        }
     }
 
     private static AuctionService requireService() {

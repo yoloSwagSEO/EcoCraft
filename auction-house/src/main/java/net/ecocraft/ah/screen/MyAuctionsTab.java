@@ -113,11 +113,11 @@ public class MyAuctionsTab {
         int tableY = y + 24;
         int tableH = footerY - tableY - 4;
         List<TableColumn> columns = List.of(
-                TableColumn.left(Component.literal("Objet"), 2.5f),
-                TableColumn.right(Component.literal("Prix"), 1.5f),
+                TableColumn.sortableLeft(Component.literal("Objet"), 2.5f),
+                TableColumn.sortableRight(Component.literal("Prix"), 1.5f),
                 TableColumn.center(Component.literal("Type"), 1f),
                 TableColumn.center(Component.literal("Statut"), 1f),
-                TableColumn.center(Component.literal("Expire"), 1f),
+                TableColumn.sortableCenter(Component.literal("Expire"), 1f),
                 TableColumn.center(Component.literal("Action"), 1.5f)
         );
         table = Table.builder()
@@ -228,12 +228,12 @@ public class MyAuctionsTab {
             }
 
             rows.add(TableRow.withIcon(icon, entry.rarityColor(), List.of(
-                    TableRow.Cell.of(Component.literal(entry.itemName()), entry.rarityColor()),
-                    TableRow.Cell.of(Component.literal(BuyTab.formatPrice(entry.price())), THEME.accent),
+                    TableRow.Cell.of(Component.literal(entry.itemName()), entry.rarityColor(), entry.itemName()),
+                    TableRow.Cell.of(Component.literal(BuyTab.formatPrice(entry.price())), THEME.accent, entry.price()),
                     TableRow.Cell.of(Component.literal("AUCTION".equals(entry.type()) ? "Ench\u00e8re" : "Achat"),
                             "AUCTION".equals(entry.type()) ? THEME.warning : THEME.success),
                     TableRow.Cell.of(Component.literal(translateStatus(entry.status())), statusColor),
-                    TableRow.Cell.of(Component.literal(BuyTab.formatTimeRemaining(entry.expiresInMs())), THEME.textGrey),
+                    TableRow.Cell.of(Component.literal(BuyTab.formatTimeRemaining(entry.expiresInMs())), THEME.textGrey, entry.expiresInMs()),
                     TableRow.Cell.of(Component.literal(actionLabel), actionColor)
             ), action));
         }

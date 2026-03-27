@@ -12,25 +12,27 @@ import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 
+import java.util.function.Supplier;
+
 public class BalanceCommand {
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher,
-                                EconomyProvider economy,
-                                CurrencyRegistry currencies,
-                                PermissionChecker permissions) {
+                                Supplier<EconomyProvider> economy,
+                                Supplier<CurrencyRegistry> currencies,
+                                Supplier<PermissionChecker> permissions) {
         dispatcher.register(Commands.literal("balance")
-            .executes(ctx -> showOwnBalance(ctx.getSource(), economy, currencies))
+            .executes(ctx -> showOwnBalance(ctx.getSource(), economy.get(), currencies.get()))
             .then(Commands.argument("player", EntityArgument.player())
                 .executes(ctx -> {
                     ServerPlayer target = EntityArgument.getPlayer(ctx, "player");
-                    return showPlayerBalance(ctx.getSource(), target, economy, currencies, permissions);
+                    return showPlayerBalance(ctx.getSource(), target, economy.get(), currencies.get(), permissions.get());
                 })
             )
         );
 
         // Alias
         dispatcher.register(Commands.literal("bal")
-            .executes(ctx -> showOwnBalance(ctx.getSource(), economy, currencies))
+            .executes(ctx -> showOwnBalance(ctx.getSource(), economy.get(), currencies.get()))
         );
     }
 

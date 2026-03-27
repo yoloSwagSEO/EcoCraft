@@ -14,13 +14,14 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 
 import java.math.BigDecimal;
+import java.util.function.Supplier;
 
 public class PayCommand {
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher,
-                                EconomyProvider economy,
-                                CurrencyRegistry currencies,
-                                PermissionChecker permissions) {
+                                Supplier<EconomyProvider> economy,
+                                Supplier<CurrencyRegistry> currencies,
+                                Supplier<PermissionChecker> permissions) {
         dispatcher.register(Commands.literal("pay")
             .then(Commands.argument("player", EntityArgument.player())
                 .then(Commands.argument("amount", DoubleArgumentType.doubleArg(0.01))
@@ -28,7 +29,7 @@ public class PayCommand {
                         ServerPlayer sender = ctx.getSource().getPlayerOrException();
                         ServerPlayer target = EntityArgument.getPlayer(ctx, "player");
                         double amount = DoubleArgumentType.getDouble(ctx, "amount");
-                        return pay(ctx.getSource(), sender, target, amount, economy, currencies, permissions);
+                        return pay(ctx.getSource(), sender, target, amount, economy.get(), currencies.get(), permissions.get());
                     })
                 )
             )

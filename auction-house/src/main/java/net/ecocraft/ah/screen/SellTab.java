@@ -240,8 +240,8 @@ public class SellTab {
 
             long unitPrice = priceValue;
             long totalPrice = unitPrice * quantity;
-            long tax = (long) (totalPrice * TAX_RATE);
-            long deposit = (long) (totalPrice * DEPOSIT_RATE);
+            long tax = Math.max(1, (long) (totalPrice * TAX_RATE));
+            long deposit = Math.max(1, (long) (totalPrice * DEPOSIT_RATE));
             long net = totalPrice - tax;
 
             int labelX = panelX + 8;

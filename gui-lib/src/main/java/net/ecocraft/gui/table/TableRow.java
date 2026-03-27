@@ -12,9 +12,13 @@ public record TableRow(
         List<Cell> cells,
         @Nullable Runnable onClick
 ) {
-    public record Cell(Component text, int color) {
+    public record Cell(Component text, int color, @Nullable Comparable<?> sortValue) {
         public static Cell of(Component text, int color) {
-            return new Cell(text, color);
+            return new Cell(text, color, null);
+        }
+
+        public static Cell of(Component text, int color, Comparable<?> sortValue) {
+            return new Cell(text, color, sortValue);
         }
     }
 

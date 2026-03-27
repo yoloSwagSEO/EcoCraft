@@ -14,16 +14,17 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 
 import java.math.BigDecimal;
+import java.util.function.Supplier;
 
 public class CurrencyCommand {
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher,
-                                CurrencyRegistry currencies,
-                                ExchangeService exchange,
-                                PermissionChecker permissions) {
+                                Supplier<CurrencyRegistry> currencies,
+                                Supplier<ExchangeService> exchange,
+                                Supplier<PermissionChecker> permissions) {
         dispatcher.register(Commands.literal("currency")
             .then(Commands.literal("list")
-                .executes(ctx -> listCurrencies(ctx.getSource(), currencies))
+                .executes(ctx -> listCurrencies(ctx.getSource(), currencies.get()))
             )
             .then(Commands.literal("convert")
                 .then(Commands.argument("amount", DoubleArgumentType.doubleArg(0.01))
@@ -35,7 +36,7 @@ public class CurrencyCommand {
                                 String fromId = StringArgumentType.getString(ctx, "from");
                                 String toId = StringArgumentType.getString(ctx, "to");
                                 return convert(ctx.getSource(), player, amount, fromId, toId,
-                                    currencies, exchange, permissions);
+                                    currencies.get(), exchange.get(), permissions.get());
                             })
                         )
                     )

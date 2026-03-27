@@ -60,4 +60,11 @@ public final class ClientPayloadHandler {
             AuctionHouseScreen.receiveLedger(payload);
         });
     }
+
+    public static void handleBalanceUpdate(BalanceUpdatePayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            LOGGER.debug("AH: Received BalanceUpdate: {} {}", payload.balance(), payload.currencySymbol());
+            AuctionHouseScreen.receiveBalanceUpdate(payload);
+        });
+    }
 }

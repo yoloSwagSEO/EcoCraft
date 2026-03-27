@@ -1,5 +1,6 @@
 package net.ecocraft.ah.entity;
 
+import net.ecocraft.ah.network.ServerPayloadHandler;
 import net.ecocraft.ah.network.payload.OpenAHPayload;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
@@ -38,6 +39,7 @@ public class AuctioneerEntity extends Mob {
         if (hand == InteractionHand.MAIN_HAND && !level().isClientSide
                 && player instanceof ServerPlayer serverPlayer) {
             PacketDistributor.sendToPlayer(serverPlayer, new OpenAHPayload());
+            ServerPayloadHandler.sendBalanceUpdate(serverPlayer);
             return InteractionResult.SUCCESS;
         }
         return InteractionResult.PASS;

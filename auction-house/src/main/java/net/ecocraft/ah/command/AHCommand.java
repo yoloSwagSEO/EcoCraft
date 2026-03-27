@@ -5,6 +5,7 @@ import com.mojang.brigadier.arguments.DoubleArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import net.ecocraft.ah.data.ItemCategory;
 import net.ecocraft.ah.data.ListingType;
+import net.ecocraft.ah.network.ServerPayloadHandler;
 import net.ecocraft.ah.network.payload.OpenAHPayload;
 import net.ecocraft.ah.service.AuctionService;
 import net.minecraft.commands.CommandSourceStack;
@@ -32,6 +33,7 @@ public final class AHCommand {
                 .executes(ctx -> {
                     ServerPlayer player = ctx.getSource().getPlayerOrException();
                     PacketDistributor.sendToPlayer(player, new OpenAHPayload());
+                    ServerPayloadHandler.sendBalanceUpdate(player);
                     return 1;
                 })
 
@@ -53,6 +55,7 @@ public final class AHCommand {
                                     ServerPlayer player = ctx.getSource().getPlayerOrException();
                                     // For now, just open the AH — search pre-fill can come later
                                     PacketDistributor.sendToPlayer(player, new OpenAHPayload());
+                                    ServerPayloadHandler.sendBalanceUpdate(player);
                                     return 1;
                                 })
                         )
@@ -95,6 +98,9 @@ public final class AHCommand {
                         )
                 )
         );
+
+        // Test data commands (/ah populate, /ah simulate)
+        AHTestCommand.register(dispatcher, serviceSupplier);
     }
 
     private static int executeSell(CommandSourceStack source, ServerPlayer player, double price,

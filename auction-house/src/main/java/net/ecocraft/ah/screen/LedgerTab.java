@@ -40,9 +40,6 @@ public class LedgerTab {
     // State
     private int activePeriod = 1; // default 7j
     private int activeTypeFilter = 0; // default all
-    private int currentPage = 0;
-    private int totalPages = 0;
-
     private List<LedgerResponsePayload.LedgerEntry> entries = List.of();
     private long netProfit = 0;
     private long totalSales = 0;
@@ -53,8 +50,6 @@ public class LedgerTab {
     private FilterTags periodTags;
     private FilterTags typeTags;
     private Table table;
-    private Button prevPageBtn;
-    private Button nextPageBtn;
     private StatCard profitCard;
     private StatCard salesCard;
     private StatCard purchasesCard;
@@ -118,32 +113,21 @@ public class LedgerTab {
         int tableY = statsY + cardH + 4;
         int tableH = h - (tableY - y) - 18;
         List<TableColumn> columns = List.of(
-                TableColumn.left(Component.literal("Objet"), 2.5f),
+                TableColumn.sortableLeft(Component.literal("Objet"), 2.5f),
                 TableColumn.center(Component.literal("Type"), 1f),
-                TableColumn.right(Component.literal("Montant"), 1.5f),
+                TableColumn.sortableRight(Component.literal("Montant"), 1.5f),
                 TableColumn.left(Component.literal("Avec"), 1.5f),
-                TableColumn.center(Component.literal("Date"), 1.5f)
+                TableColumn.sortableCenter(Component.literal("Date"), 1.5f)
         );
         table = Table.builder()
                 .columns(columns)
                 .theme(THEME)
-                .navigation(Table.Navigation.PAGINATED)
+                .navigation(Table.Navigation.SCROLL)
+                .showScrollbar(true)
+                .scrollLines(1)
                 .build(x, tableY, w, tableH);
         addWidget.accept(table);
         updateTable();
-
-        // Pagination
-        int paginationY = y + h - 16;
-        prevPageBtn = Button.builder(Component.literal("< Pr\u00e9c"), this::onPrevPage)
-                .theme(THEME).bounds(x, paginationY, 40, 14)
-                .bgColor(THEME.accentBg).borderColor(THEME.borderAccent)
-                .textColor(THEME.accent).hoverBg(THEME.accentBgDim).build();
-        nextPageBtn = Button.builder(Component.literal("Suiv >"), this::onNextPage)
-                .theme(THEME).bounds(x + w - 40, paginationY, 40, 14)
-                .bgColor(THEME.accentBg).borderColor(THEME.borderAccent)
-                .textColor(THEME.accent).hoverBg(THEME.accentBgDim).build();
-        addWidget.accept(prevPageBtn);
-        addWidget.accept(nextPageBtn);
 
         // Request data
         requestData();
@@ -152,15 +136,6 @@ public class LedgerTab {
     public void renderBackground(GuiGraphics graphics) {}
 
     public void renderForeground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        Font font = Minecraft.getInstance().font;
-
-        // Page info
-        int paginationY = y + h - 16;
-        String pageInfo = "Page " + (currentPage + 1) + "/" + Math.max(1, totalPages);
-        int pageInfoWidth = font.width(pageInfo);
-        graphics.drawString(font, pageInfo,
-                x + (w - pageInfoWidth) / 2,
-                paginationY + 3, THEME.textGrey, false);
     }
 
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {}
@@ -173,28 +148,12 @@ public class LedgerTab {
 
     private void onPeriodChanged(int idx) {
         activePeriod = idx;
-        currentPage = 0;
         requestData();
     }
 
     private void onTypeFilterChanged(int idx) {
         activeTypeFilter = idx;
-        currentPage = 0;
         requestData();
-    }
-
-    private void onPrevPage() {
-        if (currentPage > 0) {
-            currentPage--;
-            requestData();
-        }
-    }
-
-    private void onNextPage() {
-        if (currentPage < totalPages - 1) {
-            currentPage++;
-            requestData();
-        }
     }
 
     // --- Network ---
@@ -203,7 +162,7 @@ public class LedgerTab {
         PacketDistributor.sendToServer(new RequestLedgerPayload(
                 PERIODS[activePeriod],
                 TYPE_FILTERS[activeTypeFilter],
-                currentPage
+                0
         ));
     }
 
@@ -213,8 +172,6 @@ public class LedgerTab {
         this.totalSales = payload.totalSales();
         this.totalPurchases = payload.totalPurchases();
         this.taxesPaid = payload.taxesPaid();
-        this.currentPage = payload.page();
-        this.totalPages = payload.totalPages();
         updateTable();
         updateStats();
     }
@@ -232,12 +189,12 @@ public class LedgerTab {
 
             ItemStack icon = AuctionHouseScreen.itemFromId(entry.itemId());
             rows.add(TableRow.withIcon(icon, entry.rarityColor(), List.of(
-                    TableRow.Cell.of(Component.literal(entry.itemName()), entry.rarityColor()),
+                    TableRow.Cell.of(Component.literal(entry.itemName()), entry.rarityColor(), entry.itemName()),
                     TableRow.Cell.of(Component.literal(translateType(entry.type())), typeColor),
                     TableRow.Cell.of(Component.literal((isIncome ? "+" : "-") + BuyTab.formatPrice(entry.amount())),
-                            isIncome ? THEME.success : THEME.danger),
+                            isIncome ? THEME.success : THEME.danger, isIncome ? entry.amount() : -entry.amount()),
                     TableRow.Cell.of(Component.literal(entry.counterparty()), THEME.textLight),
-                    TableRow.Cell.of(Component.literal(formatDate(entry.timestamp())), THEME.textDim)
+                    TableRow.Cell.of(Component.literal(formatDate(entry.timestamp())), THEME.textDim, entry.timestamp())
             ), null));
         }
         table.setRows(rows);
