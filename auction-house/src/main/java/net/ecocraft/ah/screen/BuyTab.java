@@ -172,8 +172,8 @@ public class BuyTab {
                 .textColor(THEME.accent).hoverBg(THEME.accentBgDim).build();
         addWidget.accept(backButton);
 
-        // Dynamic filter area starts below back button + header
-        int filterY = y + 20;
+        // Dynamic filter area starts below back button + item name header
+        int filterY = y + 34;
         enchantFilterTags = null;
         durabilityFilterTags = null;
 
