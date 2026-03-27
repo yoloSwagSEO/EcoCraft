@@ -219,6 +219,8 @@ gui-lib/src/main/java/net/ecocraft/gui/
 │   ├── TableColumn.java         # Column definition
 │   ├── TableRow.java            # Row data
 │   └── PaginatedTable.java      # Paginated sortable table
+├── dialog/
+│   └── Dialog.java              # Modal dialog (alert, confirm, input)
 └── util/
     └── NumberFormatter.java     # Number formatting utility
 ```
@@ -234,6 +236,55 @@ gui-lib/src/main/java/net/ecocraft/gui/
 - Remove manual `truncateText()` calls (PaginatedTable handles it)
 - Remove manual tooltip rendering (PaginatedTable handles it)
 - `SellTab` — use `Row`/`Column` for the two-column layout, `NumberInput` for price
+
+### Disabled State
+All interactive components (Button, TextInput, NumberInput, FilterTags) support:
+- `setEnabled(boolean)` / `isEnabled()`
+- When disabled: visually greyed out, ignores all input (clicks, keys)
+- Theme provides `disabledBg`, `disabledText`, `disabledBorder` colors
+
+### Dialog
+Modal popup that renders on top of all content with a darkened overlay behind it.
+
+Base `Dialog` class with 3 factory variants:
+
+**AlertDialog** — informational message with a single OK button.
+```java
+Dialog.alert(Component.literal("Achat réussi !"),
+    Component.literal("L'item a été ajouté à vos colis."),
+    () -> { /* onClose */ });
+```
+
+**ConfirmDialog** — question with Yes/No buttons, configurable labels and callbacks.
+```java
+Dialog.confirm(Component.literal("Annuler la vente ?"),
+    Component.literal("L'item vous sera retourné par colis."),
+    Component.literal("Oui"),   // confirm label
+    Component.literal("Non"),   // cancel label
+    () -> { /* onConfirm */ },
+    () -> { /* onCancel */ });
+```
+
+**InputDialog** — prompt with a text/number input field and OK/Cancel.
+```java
+Dialog.input(Component.literal("Enchérir"),
+    Component.literal("Montant de votre enchère :"),
+    NumberFormat.FULL,           // input format (null for text)
+    Component.literal("Enchérir"),
+    Component.literal("Annuler"),
+    (value) -> { /* onSubmit with input value */ },
+    () -> { /* onCancel */ });
+```
+
+Dialog properties:
+- Centered on screen, fixed width (~60% of parent or 250px min)
+- Dark overlay (50% black) behind to dim the parent content
+- Title bar with theme accent color
+- Body text
+- Input field (InputDialog only)
+- Action buttons (themed: confirm=success, cancel=ghost)
+- Closes on button click or Escape key
+- Modal: blocks interaction with widgets behind it
 
 ## Non-Goals (for now)
 - Theming system with multiple swappable themes (future C refactor)
