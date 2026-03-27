@@ -5,6 +5,7 @@ import net.ecocraft.ah.command.AHCommand;
 import net.ecocraft.ah.data.AuctionListing;
 import net.ecocraft.ah.data.EnchantmentEntry;
 import net.ecocraft.ah.data.EnchantmentExtractor;
+import net.ecocraft.ah.data.ItemFingerprint;
 import net.ecocraft.ah.data.ItemStackSerializer;
 import net.ecocraft.ah.service.AuctionService;
 import net.ecocraft.ah.storage.AuctionStorageProvider;
@@ -57,6 +58,7 @@ public class AHServerEvents {
         );
 
         reindexEnchantments(server);
+        backfillFingerprints(server);
 
         LOGGER.info("Auction House initialized with database at {}", dbPath);
     }
@@ -137,6 +139,32 @@ public class AHServerEvents {
 
         if (count > 0) {
             System.out.println("[EcoCraft AH] Reindexed enchantments for " + count + " existing listings.");
+        }
+    }
+
+    private static void backfillFingerprints(MinecraftServer server) {
+        AuctionStorageProvider storage = getStorage();
+        if (storage == null) return;
+
+        List<AuctionListing> unfingerprinted = storage.getListingsWithoutFingerprint();
+        if (unfingerprinted.isEmpty()) return;
+
+        RegistryAccess registries = server.registryAccess();
+        int count = 0;
+
+        for (AuctionListing listing : unfingerprinted) {
+            String fingerprint;
+            if (listing.itemNbt() != null && !listing.itemNbt().isEmpty()) {
+                fingerprint = ItemFingerprint.computeFromNbt(listing.itemId(), listing.itemNbt(), registries);
+            } else {
+                fingerprint = listing.itemId();
+            }
+            storage.updateListingFingerprint(listing.id(), fingerprint);
+            count++;
+        }
+
+        if (count > 0) {
+            System.out.println("[EcoCraft AH] Backfilled fingerprints for " + count + " existing listings.");
         }
     }
 

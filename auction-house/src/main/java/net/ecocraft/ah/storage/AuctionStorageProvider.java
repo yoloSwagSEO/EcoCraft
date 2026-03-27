@@ -783,6 +783,33 @@ public class AuctionStorageProvider {
     }
 
     /**
+     * Updates the item_fingerprint for a single listing.
+     */
+    public void updateListingFingerprint(String listingId, String fingerprint) {
+        try (PreparedStatement ps = connection.prepareStatement(
+                "UPDATE ah_listings SET item_fingerprint = ? WHERE id = ?")) {
+            ps.setString(1, fingerprint);
+            ps.setString(2, listingId);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to update listing fingerprint", e);
+        }
+    }
+
+    /**
+     * Returns all ACTIVE listings that have no item_fingerprint yet.
+     * Used during server startup to backfill fingerprints for listings created before migration v3.
+     */
+    public List<AuctionListing> getListingsWithoutFingerprint() {
+        String sql = """
+                SELECT * FROM ah_listings
+                WHERE status = 'ACTIVE'
+                AND item_fingerprint IS NULL
+            """;
+        return queryListings(sql, List.of());
+    }
+
+    /**
      * Returns all ACTIVE listings that have item_nbt but no entries in ah_listing_enchantments.
      * Used during server startup to reindex enchantments for listings created before migration v2.
      */
