@@ -2,13 +2,13 @@ package net.ecocraft.ah.screen;
 
 import net.ecocraft.ah.data.ItemCategory;
 import net.ecocraft.ah.network.payload.*;
-import net.ecocraft.gui.table.EcoPaginatedTable;
+import net.ecocraft.gui.table.PaginatedTable;
 import net.ecocraft.gui.table.TableColumn;
 import net.ecocraft.gui.table.TableRow;
-import net.ecocraft.gui.theme.EcoColors;
-import net.ecocraft.gui.theme.EcoTheme;
-import net.ecocraft.gui.widget.EcoButton;
-import net.ecocraft.gui.widget.EcoSearchBar;
+import net.ecocraft.gui.theme.DrawUtils;
+import net.ecocraft.gui.theme.Theme;
+import net.ecocraft.gui.widget.Button;
+import net.ecocraft.gui.widget.TextInput;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -28,6 +28,8 @@ public class BuyTab {
 
     private enum Mode { BROWSE, DETAIL }
 
+    private static final Theme THEME = Theme.dark();
+
     private final AuctionHouseScreen parent;
     private final int x, y, w, h;
 
@@ -41,22 +43,22 @@ public class BuyTab {
     private List<ListingsResponsePayload.ListingSummary> currentItems = List.of();
 
     // Browse mode widgets
-    private EcoSearchBar searchBar;
-    private EcoPaginatedTable browseTable;
-    private EcoButton prevPageBtn;
-    private EcoButton nextPageBtn;
-    private final List<EcoButton> categoryButtons = new ArrayList<>();
+    private TextInput searchBar;
+    private PaginatedTable browseTable;
+    private Button prevPageBtn;
+    private Button nextPageBtn;
+    private final List<Button> categoryButtons = new ArrayList<>();
 
     // Detail mode state
     private String detailItemId = "";
     private String detailItemName = "";
-    private int detailRarityColor = EcoColors.RARITY_COMMON;
+    private int detailRarityColor = THEME.rarityCommon;
     private List<ListingDetailResponsePayload.ListingEntry> detailEntries = List.of();
     private ListingDetailResponsePayload.PriceInfo detailPriceInfo;
 
     // Detail mode widgets
-    private EcoButton backButton;
-    private EcoPaginatedTable detailTable;
+    private Button backButton;
+    private PaginatedTable detailTable;
 
     private static final int SIDEBAR_WIDTH = 80;
 
@@ -85,12 +87,18 @@ public class BuyTab {
         int btnY = y + 2;
         for (int i = 0; i < categories.length; i++) {
             final int catIndex = i;
-            EcoButton btn = new EcoButton(
-                    x + 2, btnY, SIDEBAR_WIDTH - 6, 14,
-                    Component.literal(categories[i]),
-                    catIndex == getCategoryIndex() ? EcoButton.Style.PRIMARY : EcoButton.Style.GHOST,
-                    () -> onCategoryClicked(catIndex)
-            );
+            Button btn;
+            if (catIndex == getCategoryIndex()) {
+                btn = Button.builder(Component.literal(categories[i]), () -> onCategoryClicked(catIndex))
+                        .theme(THEME).bounds(x + 2, btnY, SIDEBAR_WIDTH - 6, 14)
+                        .bgColor(THEME.accentBg).borderColor(THEME.borderAccent)
+                        .textColor(THEME.accent).hoverBg(THEME.accentBgDim).build();
+            } else {
+                btn = Button.builder(Component.literal(categories[i]), () -> onCategoryClicked(catIndex))
+                        .theme(THEME).bounds(x + 2, btnY, SIDEBAR_WIDTH - 6, 14)
+                        .bgColor(THEME.bgMedium).borderColor(THEME.borderLight)
+                        .textColor(THEME.textGrey).hoverBg(THEME.bgLight).build();
+            }
             categoryButtons.add(btn);
             addWidget.accept(btn);
             btnY += 16;
@@ -101,8 +109,9 @@ public class BuyTab {
         int contentW = w - SIDEBAR_WIDTH - 2;
 
         // Search bar
-        searchBar = new EcoSearchBar(font, contentX + 2, y + 2, contentW - 4, 12,
-                Component.literal("Rechercher..."), this::onSearchChanged);
+        searchBar = new TextInput(font, contentX + 2, y + 2, contentW - 4, 12,
+                Component.literal("Rechercher..."), THEME);
+        searchBar.responder(this::onSearchChanged);
         searchBar.setValue(searchText);
         addWidget.accept(searchBar);
 
@@ -115,15 +124,19 @@ public class BuyTab {
                 TableColumn.center(Component.literal("Offres"), 1f),
                 TableColumn.center(Component.literal("Dispo."), 1f)
         );
-        browseTable = new EcoPaginatedTable(contentX, tableY, contentW, tableH, columns);
+        browseTable = new PaginatedTable(contentX, tableY, contentW, tableH, columns);
         addWidget.accept(browseTable);
 
         // Pagination buttons
         int paginationY = y + h - 16;
-        prevPageBtn = EcoButton.primary(contentX, paginationY, 40, 14,
-                Component.literal("< Pr\u00e9c"), this::onPrevPage);
-        nextPageBtn = EcoButton.primary(contentX + contentW - 40, paginationY, 40, 14,
-                Component.literal("Suiv >"), this::onNextPage);
+        prevPageBtn = Button.builder(Component.literal("< Pr\u00e9c"), this::onPrevPage)
+                .theme(THEME).bounds(contentX, paginationY, 40, 14)
+                .bgColor(THEME.accentBg).borderColor(THEME.borderAccent)
+                .textColor(THEME.accent).hoverBg(THEME.accentBgDim).build();
+        nextPageBtn = Button.builder(Component.literal("Suiv >"), this::onNextPage)
+                .theme(THEME).bounds(contentX + contentW - 40, paginationY, 40, 14)
+                .bgColor(THEME.accentBg).borderColor(THEME.borderAccent)
+                .textColor(THEME.accent).hoverBg(THEME.accentBgDim).build();
         addWidget.accept(prevPageBtn);
         addWidget.accept(nextPageBtn);
 
@@ -138,7 +151,10 @@ public class BuyTab {
         Font font = Minecraft.getInstance().font;
 
         // Back button
-        backButton = EcoButton.primary(x, y, 60, 14, Component.literal("\u25C0 Retour"), this::onBackToBrowse);
+        backButton = Button.builder(Component.literal("\u25C0 Retour"), this::onBackToBrowse)
+                .theme(THEME).bounds(x, y, 60, 14)
+                .bgColor(THEME.accentBg).borderColor(THEME.borderAccent)
+                .textColor(THEME.accent).hoverBg(THEME.accentBgDim).build();
         addWidget.accept(backButton);
 
         // Detail table
@@ -153,7 +169,7 @@ public class BuyTab {
                 TableColumn.center(Component.literal("Expire"), 1.5f),
                 TableColumn.center(Component.literal("Action"), 1.5f)
         );
-        detailTable = new EcoPaginatedTable(x, tableY, tableW, tableH, columns);
+        detailTable = new PaginatedTable(x, tableY, tableW, tableH, columns);
         addWidget.accept(detailTable);
 
         updateDetailTable();
@@ -164,7 +180,7 @@ public class BuyTab {
     /** Called BEFORE widgets render — draw background panels here. */
     public void renderBackground(GuiGraphics graphics) {
         if (mode == Mode.BROWSE) {
-            EcoTheme.drawPanel(graphics, x, y, SIDEBAR_WIDTH - 4, h);
+            DrawUtils.drawPanel(graphics, x, y, SIDEBAR_WIDTH - 4, h, THEME);
         }
     }
 
@@ -179,15 +195,7 @@ public class BuyTab {
             int pageInfoWidth = font.width(pageInfo);
             graphics.drawString(font, pageInfo,
                     contentX + (contentW - pageInfoWidth) / 2,
-                    paginationY + 3, EcoColors.TEXT_GREY, false);
-
-            // Item tooltip on hover
-            if (browseTable != null) {
-                ItemStack hovered = browseTable.getHoveredIcon();
-                if (hovered != null && !hovered.isEmpty()) {
-                    graphics.renderTooltip(font, hovered, mouseX, mouseY);
-                }
-            }
+                    paginationY + 3, THEME.textGrey, false);
         } else {
             renderDetailForeground(graphics, font, mouseX, mouseY);
         }
@@ -199,10 +207,10 @@ public class BuyTab {
     }
 
     private void renderDetailForeground(GuiGraphics graphics, Font font, int mouseX, int mouseY) {
-        // Item header (truncated)
+        // Item header
         int headerY = y + 18;
         int maxNameWidth = w - 170; // leave room for price info on the right
-        String truncatedName = AuctionHouseScreen.truncateText(font, detailItemName, maxNameWidth);
+        String truncatedName = DrawUtils.truncateText(font, detailItemName, maxNameWidth);
         graphics.drawString(font, Component.literal(truncatedName), x + 64, headerY,
                 detailRarityColor, false);
 
@@ -210,11 +218,11 @@ public class BuyTab {
         if (detailPriceInfo != null) {
             int infoX = x + w - 120;
             graphics.drawString(font, "Moy: " + formatPrice(detailPriceInfo.avgPrice()),
-                    infoX, y + 2, EcoColors.TEXT_GREY, false);
+                    infoX, y + 2, THEME.textGrey, false);
             graphics.drawString(font, "Min: " + formatPrice(detailPriceInfo.minPrice()),
-                    infoX, y + 12, EcoColors.SUCCESS, false);
+                    infoX, y + 12, THEME.success, false);
             graphics.drawString(font, "Max: " + formatPrice(detailPriceInfo.maxPrice()),
-                    infoX, y + 22, EcoColors.DANGER, false);
+                    infoX, y + 22, THEME.danger, false);
         }
 
         // Price history summary below the table
@@ -225,19 +233,11 @@ public class BuyTab {
                     + " | Max: " + formatPrice(detailPriceInfo.maxPrice())
                     + " | Ventes 7j: " + detailPriceInfo.volume7d();
             int historyW = font.width(historyLine);
-            graphics.drawString(font, historyLine, x + (w - historyW) / 2, historyY, EcoColors.TEXT_GREY, false);
+            graphics.drawString(font, historyLine, x + (w - historyW) / 2, historyY, THEME.textGrey, false);
         } else {
             String noData = "Aucune donn\u00e9e de prix disponible";
             int noDataW = font.width(noData);
-            graphics.drawString(font, noData, x + (w - noDataW) / 2, historyY, EcoColors.TEXT_DIM, false);
-        }
-
-        // Item tooltip on hover in detail table
-        if (detailTable != null) {
-            ItemStack hovered = detailTable.getHoveredIcon();
-            if (hovered != null && !hovered.isEmpty()) {
-                graphics.renderTooltip(font, hovered, mouseX, mouseY);
-            }
+            graphics.drawString(font, noData, x + (w - noDataW) / 2, historyY, THEME.textDim, false);
         }
     }
 
@@ -353,20 +353,14 @@ public class BuyTab {
     private void updateBrowseTable() {
         if (browseTable == null) return;
 
-        Font font = Minecraft.getInstance().font;
-        // Estimate available width for item name column: ~42% of table width (3/7 ratio)
-        int tableContentW = w - SIDEBAR_WIDTH - 2;
-        int nameColWidth = (int) (tableContentW * 3f / 7f) - 10;
-
         List<TableRow> rows = new ArrayList<>();
         for (var item : currentItems) {
-            String truncatedName = AuctionHouseScreen.truncateText(font, item.itemName(), nameColWidth);
             ItemStack icon = AuctionHouseScreen.itemFromId(item.itemId());
             rows.add(TableRow.withIcon(icon, item.rarityColor(), List.of(
-                    TableRow.Cell.of(Component.literal(truncatedName), item.rarityColor()),
-                    TableRow.Cell.of(Component.literal(formatPrice(item.bestPrice())), EcoColors.GOLD),
-                    TableRow.Cell.of(Component.literal(String.valueOf(item.listingCount())), EcoColors.TEXT_LIGHT),
-                    TableRow.Cell.of(Component.literal(String.valueOf(item.totalAvailable())), EcoColors.TEXT_LIGHT)
+                    TableRow.Cell.of(Component.literal(item.itemName()), item.rarityColor()),
+                    TableRow.Cell.of(Component.literal(formatPrice(item.bestPrice())), THEME.accent),
+                    TableRow.Cell.of(Component.literal(String.valueOf(item.listingCount())), THEME.textLight),
+                    TableRow.Cell.of(Component.literal(String.valueOf(item.totalAvailable())), THEME.textLight)
             ), () -> onRowClicked(item.itemId())));
         }
         browseTable.setRows(rows);
@@ -375,22 +369,18 @@ public class BuyTab {
     private void updateDetailTable() {
         if (detailTable == null) return;
 
-        Font font = Minecraft.getInstance().font;
-        int sellerColWidth = (int) (w * 2f / 9f) - 10;
-
         List<TableRow> rows = new ArrayList<>();
         for (var entry : detailEntries) {
             boolean isAuction = "AUCTION".equals(entry.type());
-            String truncatedSeller = AuctionHouseScreen.truncateText(font, entry.sellerName(), sellerColWidth);
             rows.add(TableRow.of(List.of(
-                    TableRow.Cell.of(Component.literal(truncatedSeller), EcoColors.TEXT_LIGHT),
-                    TableRow.Cell.of(Component.literal(String.valueOf(entry.quantity())), EcoColors.TEXT_LIGHT),
-                    TableRow.Cell.of(Component.literal(formatPrice(entry.unitPrice())), EcoColors.GOLD),
+                    TableRow.Cell.of(Component.literal(entry.sellerName()), THEME.textLight),
+                    TableRow.Cell.of(Component.literal(String.valueOf(entry.quantity())), THEME.textLight),
+                    TableRow.Cell.of(Component.literal(formatPrice(entry.unitPrice())), THEME.accent),
                     TableRow.Cell.of(Component.literal(isAuction ? "Ench\u00e8re" : "Achat"),
-                            isAuction ? EcoColors.WARNING : EcoColors.SUCCESS),
-                    TableRow.Cell.of(Component.literal(formatTimeRemaining(entry.expiresInMs())), EcoColors.TEXT_GREY),
+                            isAuction ? THEME.warning : THEME.success),
+                    TableRow.Cell.of(Component.literal(formatTimeRemaining(entry.expiresInMs())), THEME.textGrey),
                     TableRow.Cell.of(Component.literal(isAuction ? "Ench\u00e9rir" : "Acheter"),
-                            isAuction ? EcoColors.WARNING : EcoColors.SUCCESS)
+                            isAuction ? THEME.warning : THEME.success)
             ), isAuction ? () -> onBidClicked(entry.listingId()) : () -> onBuyClicked(entry.listingId())));
         }
         detailTable.setRows(rows);

@@ -5,13 +5,14 @@ import net.ecocraft.ah.network.payload.CancelListingPayload;
 import net.ecocraft.ah.network.payload.CollectParcelsPayload;
 import net.ecocraft.ah.network.payload.MyListingsResponsePayload;
 import net.ecocraft.ah.network.payload.RequestMyListingsPayload;
-import net.ecocraft.gui.table.EcoPaginatedTable;
+import net.ecocraft.gui.dialog.Dialog;
+import net.ecocraft.gui.table.PaginatedTable;
 import net.ecocraft.gui.table.TableColumn;
 import net.ecocraft.gui.table.TableRow;
-import net.ecocraft.gui.theme.EcoColors;
-import net.ecocraft.gui.widget.EcoButton;
-import net.ecocraft.gui.widget.EcoFilterTags;
-import net.ecocraft.gui.widget.EcoStatCard;
+import net.ecocraft.gui.theme.Theme;
+import net.ecocraft.gui.widget.Button;
+import net.ecocraft.gui.widget.FilterTags;
+import net.ecocraft.gui.widget.StatCard;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -29,6 +30,7 @@ import java.util.function.Consumer;
  */
 public class MyAuctionsTab {
 
+    private static final Theme THEME = Theme.dark();
     private static final String[] SUB_TABS = {"sales", "purchases", "bids"};
 
     private final AuctionHouseScreen parent;
@@ -42,12 +44,15 @@ public class MyAuctionsTab {
     private int parcelsToCollect = 0;
 
     // Widgets
-    private EcoFilterTags subTabTags;
-    private EcoPaginatedTable table;
-    private EcoButton collectBtn;
-    private EcoStatCard revenueCard;
-    private EcoStatCard taxCard;
-    private EcoStatCard parcelsCard;
+    private FilterTags subTabTags;
+    private PaginatedTable table;
+    private Button collectBtn;
+    private StatCard revenueCard;
+    private StatCard taxCard;
+    private StatCard parcelsCard;
+
+    // Dialog overlay
+    private Consumer<AbstractWidget> widgetAdder;
 
     public MyAuctionsTab(AuctionHouseScreen parent, int x, int y, int w, int h) {
         this.parent = parent;
@@ -58,6 +63,7 @@ public class MyAuctionsTab {
     }
 
     public void init(Consumer<AbstractWidget> addWidget) {
+        this.widgetAdder = addWidget;
         Font font = Minecraft.getInstance().font;
 
         // Sub-tab selector
@@ -66,14 +72,17 @@ public class MyAuctionsTab {
                 Component.literal("Mes achats"),
                 Component.literal("Ench\u00e8res en cours")
         );
-        subTabTags = new EcoFilterTags(x, y, subTabLabels, this::onSubTabChanged);
+        subTabTags = new FilterTags(x, y, subTabLabels, this::onSubTabChanged);
         subTabTags.setActiveTag(activeSubTab);
         addWidget.accept(subTabTags);
 
         // Collect parcels button
-        collectBtn = EcoButton.success(x + w - 80, y, 78, 18,
-                Component.literal("R\u00e9cup\u00e9rer (" + parcelsToCollect + ")"),
+        collectBtn = Button.success(THEME, Component.literal("R\u00e9cup\u00e9rer (" + parcelsToCollect + ")"),
                 this::onCollectClicked);
+        collectBtn.setX(x + w - 80);
+        collectBtn.setY(y);
+        collectBtn.setWidth(78);
+        collectBtn.setHeight(18);
         addWidget.accept(collectBtn);
 
         // Footer stat cards - calculate first to know how much space table gets
@@ -81,22 +90,22 @@ public class MyAuctionsTab {
         int footerY = y + h - cardH - 4;
         int cardW = (w - 12) / 3;
 
-        revenueCard = new EcoStatCard(x, footerY, cardW, cardH,
+        revenueCard = new StatCard(x, footerY, cardW, cardH,
                 Component.literal("Revenus 7j"),
                 Component.literal(BuyTab.formatPrice(revenue7d)),
-                EcoColors.SUCCESS);
+                THEME.success, THEME);
         addWidget.accept(revenueCard);
 
-        taxCard = new EcoStatCard(x + cardW + 4, footerY, cardW, cardH,
+        taxCard = new StatCard(x + cardW + 4, footerY, cardW, cardH,
                 Component.literal("Taxes 7j"),
                 Component.literal(BuyTab.formatPrice(taxesPaid7d)),
-                EcoColors.DANGER);
+                THEME.danger, THEME);
         addWidget.accept(taxCard);
 
-        parcelsCard = new EcoStatCard(x + (cardW + 4) * 2, footerY, cardW, cardH,
+        parcelsCard = new StatCard(x + (cardW + 4) * 2, footerY, cardW, cardH,
                 Component.literal("Colis"),
                 Component.literal(String.valueOf(parcelsToCollect)),
-                EcoColors.INFO);
+                THEME.info, THEME);
         addWidget.accept(parcelsCard);
 
         // Table
@@ -110,7 +119,7 @@ public class MyAuctionsTab {
                 TableColumn.center(Component.literal("Expire"), 1f),
                 TableColumn.center(Component.literal("Action"), 1.5f)
         );
-        table = new EcoPaginatedTable(x, tableY, w, tableH, columns);
+        table = new PaginatedTable(x, tableY, w, tableH, columns);
         addWidget.accept(table);
         updateTable();
 
@@ -121,14 +130,7 @@ public class MyAuctionsTab {
     public void renderBackground(GuiGraphics graphics) {}
 
     public void renderForeground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        // Item tooltip on hover
-        if (table != null) {
-            ItemStack hovered = table.getHoveredIcon();
-            if (hovered != null && !hovered.isEmpty()) {
-                Font font = Minecraft.getInstance().font;
-                graphics.renderTooltip(font, hovered, mouseX, mouseY);
-            }
-        }
+        // PaginatedTable handles tooltips automatically
     }
 
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {}
@@ -149,7 +151,18 @@ public class MyAuctionsTab {
     }
 
     private void onCancelClicked(String listingId) {
-        PacketDistributor.sendToServer(new CancelListingPayload(listingId));
+        Dialog dialog = Dialog.confirm(
+                THEME,
+                Component.literal("Annuler l'annonce"),
+                Component.literal("\u00cates-vous s\u00fbr de vouloir annuler cette annonce ?"),
+                Component.literal("Confirmer"),
+                Component.literal("Retour"),
+                () -> PacketDistributor.sendToServer(new CancelListingPayload(listingId)),
+                () -> { /* cancelled, do nothing */ }
+        );
+        if (widgetAdder != null) {
+            widgetAdder.accept(dialog);
+        }
     }
 
     // --- Network ---
@@ -177,15 +190,11 @@ public class MyAuctionsTab {
     private void updateTable() {
         if (table == null) return;
 
-        Font font = Minecraft.getInstance().font;
-        // Estimate name column width: ~29% of table width (2.5/8.5 ratio)
-        int nameColWidth = (int) (w * 2.5f / 8.5f) - 10;
-
         List<TableRow> rows = new ArrayList<>();
         for (var entry : entries) {
             int statusColor = getStatusColor(entry.status());
             String actionLabel = getActionLabel(entry);
-            int actionColor = entry.canCollect() ? EcoColors.SUCCESS : EcoColors.DANGER;
+            int actionColor = entry.canCollect() ? THEME.success : THEME.danger;
 
             Runnable action = null;
             if (entry.canCollect()) {
@@ -195,16 +204,15 @@ public class MyAuctionsTab {
                 action = () -> onCancelClicked(lid);
             }
 
-            String truncatedName = AuctionHouseScreen.truncateText(font, entry.itemName(), nameColWidth);
             ItemStack icon = AuctionHouseScreen.itemFromId(entry.itemId());
 
             rows.add(TableRow.withIcon(icon, entry.rarityColor(), List.of(
-                    TableRow.Cell.of(Component.literal(truncatedName), entry.rarityColor()),
-                    TableRow.Cell.of(Component.literal(BuyTab.formatPrice(entry.price())), EcoColors.GOLD),
+                    TableRow.Cell.of(Component.literal(entry.itemName()), entry.rarityColor()),
+                    TableRow.Cell.of(Component.literal(BuyTab.formatPrice(entry.price())), THEME.accent),
                     TableRow.Cell.of(Component.literal("AUCTION".equals(entry.type()) ? "Ench\u00e8re" : "Achat"),
-                            "AUCTION".equals(entry.type()) ? EcoColors.WARNING : EcoColors.SUCCESS),
+                            "AUCTION".equals(entry.type()) ? THEME.warning : THEME.success),
                     TableRow.Cell.of(Component.literal(translateStatus(entry.status())), statusColor),
-                    TableRow.Cell.of(Component.literal(BuyTab.formatTimeRemaining(entry.expiresInMs())), EcoColors.TEXT_GREY),
+                    TableRow.Cell.of(Component.literal(BuyTab.formatTimeRemaining(entry.expiresInMs())), THEME.textGrey),
                     TableRow.Cell.of(Component.literal(actionLabel), actionColor)
             ), action));
         }
@@ -213,13 +221,13 @@ public class MyAuctionsTab {
 
     private void updateStats() {
         if (revenueCard != null) {
-            revenueCard.setValue(Component.literal(BuyTab.formatPrice(revenue7d)), EcoColors.SUCCESS);
+            revenueCard.setValue(Component.literal(BuyTab.formatPrice(revenue7d)), THEME.success);
         }
         if (taxCard != null) {
-            taxCard.setValue(Component.literal(BuyTab.formatPrice(taxesPaid7d)), EcoColors.DANGER);
+            taxCard.setValue(Component.literal(BuyTab.formatPrice(taxesPaid7d)), THEME.danger);
         }
         if (parcelsCard != null) {
-            parcelsCard.setValue(Component.literal(String.valueOf(parcelsToCollect)), EcoColors.INFO);
+            parcelsCard.setValue(Component.literal(String.valueOf(parcelsToCollect)), THEME.info);
         }
         if (collectBtn != null) {
             collectBtn.setMessage(Component.literal("R\u00e9cup\u00e9rer (" + parcelsToCollect + ")"));
@@ -228,13 +236,13 @@ public class MyAuctionsTab {
 
     // --- Helpers ---
 
-    private static int getStatusColor(String status) {
+    private int getStatusColor(String status) {
         return switch (status) {
-            case "ACTIVE" -> EcoColors.SUCCESS;
-            case "SOLD" -> EcoColors.GOLD;
-            case "EXPIRED" -> EcoColors.TEXT_DIM;
-            case "CANCELLED" -> EcoColors.DANGER;
-            default -> EcoColors.TEXT_GREY;
+            case "ACTIVE" -> THEME.success;
+            case "SOLD" -> THEME.accent;
+            case "EXPIRED" -> THEME.textDim;
+            case "CANCELLED" -> THEME.danger;
+            default -> THEME.textGrey;
         };
     }
 

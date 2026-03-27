@@ -2,9 +2,9 @@ package net.ecocraft.ah.screen;
 
 import com.mojang.logging.LogUtils;
 import net.ecocraft.ah.network.payload.*;
-import net.ecocraft.gui.theme.EcoColors;
-import net.ecocraft.gui.theme.EcoTheme;
-import net.ecocraft.gui.widget.EcoTabBar;
+import net.ecocraft.gui.theme.DrawUtils;
+import net.ecocraft.gui.theme.Theme;
+import net.ecocraft.gui.widget.TabBar;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -24,13 +24,14 @@ import java.util.List;
 public class AuctionHouseScreen extends Screen {
 
     private static final Logger LOGGER = LogUtils.getLogger();
+    private static final Theme THEME = Theme.dark();
 
     private int guiWidth;
     private int guiHeight;
     private int guiLeft;
     private int guiTop;
 
-    private EcoTabBar tabBar;
+    private TabBar tabBar;
     private int activeTab = 0;
 
     private BuyTab buyTab;
@@ -54,19 +55,6 @@ public class AuctionHouseScreen extends Screen {
         return ItemStack.EMPTY;
     }
 
-    /**
-     * Truncate text to fit within maxWidth pixels, appending "..." if needed.
-     */
-    public static String truncateText(Font font, String text, int maxWidth) {
-        if (font.width(text) <= maxWidth) return text;
-        String ellipsis = "...";
-        int ellipsisWidth = font.width(ellipsis);
-        while (text.length() > 1 && font.width(text) + ellipsisWidth > maxWidth) {
-            text = text.substring(0, text.length() - 1);
-        }
-        return text + ellipsis;
-    }
-
     @Override
     protected void init() {
         guiWidth = (int) (width * 0.9);
@@ -81,7 +69,7 @@ public class AuctionHouseScreen extends Screen {
                 Component.literal("\uD83D\uDCD2 Livre de compte")
         );
 
-        tabBar = new EcoTabBar(guiLeft + 4, guiTop + 4, tabLabels, this::onTabChanged);
+        tabBar = new TabBar(guiLeft + 4, guiTop + 4, tabLabels, this::onTabChanged);
         addRenderableWidget(tabBar);
 
         int contentX = guiLeft + 4;
@@ -119,7 +107,7 @@ public class AuctionHouseScreen extends Screen {
     @Override
     public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         super.renderBackground(graphics, mouseX, mouseY, partialTick);
-        EcoTheme.drawPanel(graphics, guiLeft, guiTop, guiWidth, guiHeight, EcoColors.BG_DARKEST, EcoColors.BORDER_GOLD);
+        DrawUtils.drawPanel(graphics, guiLeft, guiTop, guiWidth, guiHeight, THEME.bgDarkest, THEME.borderAccent);
     }
 
     @Override

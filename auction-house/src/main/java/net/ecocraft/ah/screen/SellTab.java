@@ -2,16 +2,16 @@ package net.ecocraft.ah.screen;
 
 import net.ecocraft.ah.network.payload.AHActionResultPayload;
 import net.ecocraft.ah.network.payload.CreateListingPayload;
-import net.ecocraft.gui.theme.EcoColors;
-import net.ecocraft.gui.theme.EcoTheme;
-import net.ecocraft.gui.widget.EcoButton;
-import net.ecocraft.gui.widget.EcoFilterTags;
-import net.ecocraft.gui.widget.EcoItemSlot;
+import net.ecocraft.gui.theme.DrawUtils;
+import net.ecocraft.gui.theme.Theme;
+import net.ecocraft.gui.widget.Button;
+import net.ecocraft.gui.widget.FilterTags;
+import net.ecocraft.gui.widget.ItemSlot;
+import net.ecocraft.gui.widget.NumberInput;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
-import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
@@ -28,6 +28,7 @@ import java.util.function.Consumer;
  */
 public class SellTab {
 
+    private static final Theme THEME = Theme.dark();
     private static final double TAX_RATE = 0.05;
     private static final double DEPOSIT_RATE = 0.02;
     private static final int[] DURATIONS = {12, 24, 48};
@@ -49,12 +50,12 @@ public class SellTab {
     private int selectedInventorySlot = -1; // -1 means nothing selected
 
     // Widgets
-    private EcoItemSlot itemSlot;
-    private EcoButton buyoutBtn;
-    private EcoButton auctionBtn;
-    private EditBox priceInput;
-    private EcoFilterTags durationTags;
-    private EcoButton sellButton;
+    private ItemSlot itemSlot;
+    private Button buyoutBtn;
+    private Button auctionBtn;
+    private NumberInput priceInput;
+    private FilterTags durationTags;
+    private Button sellButton;
     private final List<InventorySlotWidget> inventorySlots = new ArrayList<>();
 
     // Layout positions computed in init
@@ -83,7 +84,7 @@ public class SellTab {
         int currentY = y + 4;
 
         // 1. Item slot (32x32) + item name
-        itemSlot = new EcoItemSlot(leftCenterX - 16, currentY, 32);
+        itemSlot = new ItemSlot(leftCenterX - 16, currentY, 32);
         updateSelectedItem();
         addWidget.accept(itemSlot);
         currentY += 36; // 32 slot + 4 gap
@@ -94,28 +95,38 @@ public class SellTab {
         currentY += 4;
 
         // 2. Type toggle: Achat immediat / Enchere
-        buyoutBtn = new EcoButton(leftCenterX - 82, currentY, 80, 16,
-                Component.literal("Achat imm\u00e9diat"),
-                isBuyout ? EcoButton.Style.SUCCESS : EcoButton.Style.GHOST,
-                () -> { isBuyout = true; parent.rebuildCurrentTab(); });
-        auctionBtn = new EcoButton(leftCenterX + 2, currentY, 80, 16,
-                Component.literal("Ench\u00e8re"),
-                !isBuyout ? EcoButton.Style.AUCTION : EcoButton.Style.GHOST,
-                () -> { isBuyout = false; parent.rebuildCurrentTab(); });
+        if (isBuyout) {
+            buyoutBtn = Button.success(THEME, Component.literal("Achat imm\u00e9diat"), () -> { isBuyout = true; parent.rebuildCurrentTab(); });
+        } else {
+            buyoutBtn = Button.ghost(THEME, Component.literal("Achat imm\u00e9diat"), () -> { isBuyout = true; parent.rebuildCurrentTab(); });
+        }
+        buyoutBtn.setX(leftCenterX - 82);
+        buyoutBtn.setY(currentY);
+        buyoutBtn.setWidth(80);
+        buyoutBtn.setHeight(16);
+
+        if (!isBuyout) {
+            auctionBtn = Button.warning(THEME, Component.literal("Ench\u00e8re"), () -> { isBuyout = false; parent.rebuildCurrentTab(); });
+        } else {
+            auctionBtn = Button.ghost(THEME, Component.literal("Ench\u00e8re"), () -> { isBuyout = false; parent.rebuildCurrentTab(); });
+        }
+        auctionBtn.setX(leftCenterX + 2);
+        auctionBtn.setY(currentY);
+        auctionBtn.setWidth(80);
+        auctionBtn.setHeight(16);
+
         addWidget.accept(buyoutBtn);
         addWidget.accept(auctionBtn);
         currentY += 20;
 
         currentY += 4;
 
-        // 3. "Prix unitaire:" label + price input
-        priceInput = new EditBox(font, leftCenterX - 60, currentY, 120, 14, Component.literal("Prix"));
-        priceInput.setHint(Component.literal("Prix unitaire (G)"));
-        priceInput.setMaxLength(12);
-        priceInput.setFilter(SellTab::isValidPriceChar);
-        priceInput.setResponder(this::onPriceChanged);
+        // 3. "Prix unitaire:" label + price input (NumberInput replaces EditBox)
+        priceInput = new NumberInput(font, leftCenterX - 60, currentY, 120, 14, THEME);
+        priceInput.min(0).max(999_999_999_999L).step(1).showButtons(false);
+        priceInput.responder(this::onPriceChanged);
         if (priceValue > 0) {
-            priceInput.setValue(String.valueOf(priceValue));
+            priceInput.setValue(priceValue);
         }
         addWidget.accept(priceInput);
         currentY += 18;
@@ -128,7 +139,7 @@ public class SellTab {
                 Component.literal(DURATION_LABELS[1]),
                 Component.literal(DURATION_LABELS[2])
         );
-        durationTags = new EcoFilterTags(leftCenterX - 60, currentY, durationLabels, idx -> selectedDuration = idx);
+        durationTags = new FilterTags(leftCenterX - 60, currentY, durationLabels, idx -> selectedDuration = idx);
         durationTags.setActiveTag(selectedDuration);
         addWidget.accept(durationTags);
         currentY += 18;
@@ -147,8 +158,11 @@ public class SellTab {
         currentY += 4;
 
         // 7. "Mettre en vente" button
-        sellButton = EcoButton.success(leftCenterX - 60, currentY, 120, 18,
-                Component.literal("Mettre en vente"), this::onSellClicked);
+        sellButton = Button.success(THEME, Component.literal("Mettre en vente"), this::onSellClicked);
+        sellButton.setX(leftCenterX - 60);
+        sellButton.setY(currentY);
+        sellButton.setWidth(120);
+        sellButton.setHeight(18);
         addWidget.accept(sellButton);
         currentY += 22;
 
@@ -202,19 +216,19 @@ public class SellTab {
         if (selected.isEmpty()) {
             String msg = "S\u00e9lectionnez un objet";
             int msgW = font.width(msg);
-            graphics.drawString(font, msg, leftCenterX - msgW / 2, nameY, EcoColors.TEXT_GREY, false);
+            graphics.drawString(font, msg, leftCenterX - msgW / 2, nameY, THEME.textGrey, false);
         } else {
             String itemName = selected.getHoverName().getString();
             int maxNameWidth = leftColW - 20;
-            String truncatedName = AuctionHouseScreen.truncateText(font, itemName, maxNameWidth);
+            String truncatedName = DrawUtils.truncateText(font, itemName, maxNameWidth);
             int nameW = font.width(truncatedName);
-            graphics.drawString(font, truncatedName, leftCenterX - nameW / 2, nameY, EcoColors.TEXT_LIGHT, false);
+            graphics.drawString(font, truncatedName, leftCenterX - nameW / 2, nameY, THEME.textLight, false);
         }
 
         // "Prix unitaire:" label left of the price input
         if (priceInput != null) {
             int priceInputY = priceInput.getY();
-            graphics.drawString(font, "Prix unitaire:", priceInput.getX() - font.width("Prix unitaire: ") - 2, priceInputY + 3, EcoColors.TEXT_GREY, false);
+            graphics.drawString(font, "Prix unitaire:", priceInput.getX() - font.width("Prix unitaire: ") - 2, priceInputY + 3, THEME.textGrey, false);
         }
 
         // Quantity info below duration
@@ -222,7 +236,7 @@ public class SellTab {
         int quantity = selected.isEmpty() ? 0 : selected.getCount();
         String qtyText = "Quantit\u00e9: " + quantity;
         int qtyW = font.width(qtyText);
-        graphics.drawString(font, qtyText, leftCenterX - qtyW / 2, quantityY, EcoColors.TEXT_LIGHT, false);
+        graphics.drawString(font, qtyText, leftCenterX - qtyW / 2, quantityY, THEME.textLight, false);
 
         // Tax summary panel
         int panelX = leftColX + 10;
@@ -231,7 +245,7 @@ public class SellTab {
         int panelH = 68;
 
         if (priceValue > 0 && !selected.isEmpty()) {
-            EcoTheme.drawPanel(graphics, panelX, panelY, panelW, panelH);
+            DrawUtils.drawPanel(graphics, panelX, panelY, panelW, panelH, THEME);
 
             long unitPrice = priceValue;
             long totalPrice = unitPrice * quantity;
@@ -242,26 +256,26 @@ public class SellTab {
             int labelX = panelX + 8;
             int valueX = panelX + panelW - 8;
 
-            drawSummaryLine(graphics, font, "Prix unitaire:", BuyTab.formatPrice(unitPrice), labelX, valueX, panelY + 4, EcoColors.TEXT_GREY, EcoColors.TEXT_LIGHT);
-            drawSummaryLine(graphics, font, "Prix total:", BuyTab.formatPrice(totalPrice), labelX, valueX, panelY + 16, EcoColors.TEXT_LIGHT, EcoColors.GOLD);
-            drawSummaryLine(graphics, font, "Taxe (5%):", "-" + BuyTab.formatPrice(tax), labelX, valueX, panelY + 28, EcoColors.TEXT_GREY, EcoColors.DANGER);
-            drawSummaryLine(graphics, font, "D\u00e9p\u00f4t (2%):", "-" + BuyTab.formatPrice(deposit), labelX, valueX, panelY + 40, EcoColors.TEXT_GREY, EcoColors.WARNING);
-            EcoTheme.drawGoldSeparator(graphics, panelX + 4, panelY + 51, panelW - 8);
-            drawSummaryLine(graphics, font, "Net:", BuyTab.formatPrice(net), labelX, valueX, panelY + 56, EcoColors.TEXT_LIGHT, EcoColors.SUCCESS);
+            drawSummaryLine(graphics, font, "Prix unitaire:", BuyTab.formatPrice(unitPrice), labelX, valueX, panelY + 4, THEME.textGrey, THEME.textLight);
+            drawSummaryLine(graphics, font, "Prix total:", BuyTab.formatPrice(totalPrice), labelX, valueX, panelY + 16, THEME.textLight, THEME.accent);
+            drawSummaryLine(graphics, font, "Taxe (5%):", "-" + BuyTab.formatPrice(tax), labelX, valueX, panelY + 28, THEME.textGrey, THEME.danger);
+            drawSummaryLine(graphics, font, "D\u00e9p\u00f4t (2%):", "-" + BuyTab.formatPrice(deposit), labelX, valueX, panelY + 40, THEME.textGrey, THEME.warning);
+            DrawUtils.drawAccentSeparator(graphics, panelX + 4, panelY + 51, panelW - 8, THEME);
+            drawSummaryLine(graphics, font, "Net:", BuyTab.formatPrice(net), labelX, valueX, panelY + 56, THEME.textLight, THEME.success);
         } else {
             // Draw empty summary placeholder
-            EcoTheme.drawPanel(graphics, panelX, panelY, panelW, panelH);
+            DrawUtils.drawPanel(graphics, panelX, panelY, panelW, panelH, THEME);
             String placeholder = "Entrez un prix pour voir le r\u00e9sum\u00e9";
             int phW = font.width(placeholder);
-            graphics.drawString(font, placeholder, panelX + (panelW - phW) / 2, panelY + 28, EcoColors.TEXT_DIM, false);
+            graphics.drawString(font, placeholder, panelX + (panelW - phW) / 2, panelY + 28, THEME.textDim, false);
         }
 
         // Right column: Inventory title
-        graphics.drawString(font, "Inventaire", rightColX + 4, y + 6, EcoColors.TEXT_GREY, false);
+        graphics.drawString(font, "Inventaire", rightColX + 4, y + 6, THEME.textGrey, false);
 
         // Status message at bottom left
         if (!lastMessage.isEmpty()) {
-            int msgColor = lastSuccess ? EcoColors.SUCCESS : EcoColors.DANGER;
+            int msgColor = lastSuccess ? THEME.success : THEME.danger;
             int msgW = font.width(lastMessage);
             graphics.drawString(font, lastMessage, leftCenterX - msgW / 2, y + h - 10, msgColor, false);
         }
@@ -294,12 +308,8 @@ public class SellTab {
 
     // --- Event handlers ---
 
-    private void onPriceChanged(String text) {
-        try {
-            priceValue = text.isEmpty() ? 0 : Long.parseLong(text);
-        } catch (NumberFormatException e) {
-            priceValue = 0;
-        }
+    private void onPriceChanged(long value) {
+        priceValue = value;
     }
 
     private void onInventorySlotClicked(int inventoryIndex) {
@@ -391,10 +401,6 @@ public class SellTab {
         return ItemStack.EMPTY; // No default to main hand; require explicit selection
     }
 
-    private static boolean isValidPriceChar(String text) {
-        return text.isEmpty() || text.chars().allMatch(c -> c >= '0' && c <= '9');
-    }
-
     // --- Inner widget for inventory slots ---
 
     private static class InventorySlotWidget extends AbstractWidget {
@@ -411,8 +417,8 @@ public class SellTab {
 
         @Override
         public void renderWidget(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-            int borderColor = selected ? EcoColors.GOLD : (isHovered() ? EcoColors.TEXT_LIGHT : EcoColors.BG_LIGHT);
-            graphics.fill(getX(), getY(), getX() + width, getY() + height, EcoColors.BG_DARK);
+            int borderColor = selected ? THEME.accent : (isHovered() ? THEME.textLight : THEME.bgLight);
+            graphics.fill(getX(), getY(), getX() + width, getY() + height, THEME.bgDark);
             // Border
             graphics.fill(getX(), getY(), getX() + width, getY() + 1, borderColor);
             graphics.fill(getX(), getY() + height - 1, getX() + width, getY() + height, borderColor);
