@@ -309,6 +309,20 @@ public class AuctionStorageProvider {
         }
     }
 
+    public List<AuctionListing> getActiveListingsForAH(String ahId) {
+        List<AuctionListing> results = new ArrayList<>();
+        try (PreparedStatement ps = connection.prepareStatement(
+                "SELECT * FROM ah_listings WHERE ah_id = ? AND status = 'ACTIVE'")) {
+            ps.setString(1, ahId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) results.add(mapListing(rs));
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to get active listings for AH", e);
+        }
+        return results;
+    }
+
     private AHInstance mapAHInstance(ResultSet rs) throws SQLException {
         return new AHInstance(
                 rs.getString("id"), rs.getString("slug"), rs.getString("name"),

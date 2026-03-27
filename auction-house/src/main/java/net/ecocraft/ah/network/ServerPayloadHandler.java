@@ -460,6 +460,105 @@ public final class ServerPayloadHandler {
         });
     }
 
+    public static void sendAHInstances(ServerPlayer player) {
+        AuctionStorageProvider storage = AHServerEvents.getStorage();
+        if (storage == null) return;
+        List<AHInstance> instances = storage.getAllAHInstances();
+        List<AHInstancesPayload.AHInstanceData> data = new ArrayList<>();
+        for (var ah : instances) {
+            data.add(new AHInstancesPayload.AHInstanceData(
+                    ah.id(), ah.slug(), ah.name(), ah.saleRate(), ah.depositRate(), new ArrayList<>(ah.durations())));
+        }
+        PacketDistributor.sendToPlayer(player, new AHInstancesPayload(data));
+    }
+
+    public static void handleCreateAH(CreateAHPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            ServerPlayer player = (ServerPlayer) context.player();
+            if (!player.hasPermissions(2)) {
+                context.reply(new AHActionResultPayload(false, "Permission denied."));
+                return;
+            }
+            AuctionStorageProvider storage = AHServerEvents.getStorage();
+            if (storage == null) {
+                context.reply(new AHActionResultPayload(false, "Storage non disponible."));
+                return;
+            }
+            AHInstance ah = AHInstance.create(payload.name());
+            storage.createAHInstance(ah);
+            context.reply(new AHActionResultPayload(true, "AH créé: " + ah.name()));
+            sendAHInstances(player);
+        });
+    }
+
+    public static void handleDeleteAH(DeleteAHPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            ServerPlayer player = (ServerPlayer) context.player();
+            if (!player.hasPermissions(2)) {
+                context.reply(new AHActionResultPayload(false, "Permission denied."));
+                return;
+            }
+            AuctionStorageProvider storage = AHServerEvents.getStorage();
+            if (storage == null) {
+                context.reply(new AHActionResultPayload(false, "Storage non disponible."));
+                return;
+            }
+            AHInstance ah = storage.getAHInstance(payload.ahId());
+            if (ah == null) {
+                context.reply(new AHActionResultPayload(false, "AH introuvable."));
+                return;
+            }
+            if ("default".equals(ah.slug())) {
+                context.reply(new AHActionResultPayload(false, "Impossible de supprimer l'AH par défaut."));
+                return;
+            }
+
+            AHInstance defaultAh = storage.getDefaultAHInstance();
+            switch (payload.deleteMode()) {
+                case "TRANSFER_TO_DEFAULT" -> storage.transferListings(payload.ahId(), defaultAh.id());
+                case "DELETE_LISTINGS" -> storage.deleteActiveListings(payload.ahId());
+                case "RETURN_ITEMS" -> {
+                    var listings = storage.getActiveListingsForAH(payload.ahId());
+                    for (var listing : listings) {
+                        storage.createParcel(new AuctionParcel(
+                                java.util.UUID.randomUUID().toString(), listing.sellerUuid(),
+                                listing.itemId(), listing.itemName(), listing.itemNbt(), listing.quantity(),
+                                0L, null, ParcelSource.HDV_EXPIRED,
+                                System.currentTimeMillis(), false));
+                    }
+                    storage.deleteActiveListings(payload.ahId());
+                }
+            }
+            storage.deleteAHInstance(payload.ahId());
+            context.reply(new AHActionResultPayload(true, "AH supprimé: " + ah.name()));
+            sendAHInstances(player);
+        });
+    }
+
+    public static void handleUpdateAHInstance(UpdateAHInstancePayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            ServerPlayer player = (ServerPlayer) context.player();
+            if (!player.hasPermissions(2)) {
+                context.reply(new AHActionResultPayload(false, "Permission denied."));
+                return;
+            }
+            AuctionStorageProvider storage = AHServerEvents.getStorage();
+            if (storage == null) {
+                context.reply(new AHActionResultPayload(false, "Storage non disponible."));
+                return;
+            }
+            AHInstance existing = storage.getAHInstance(payload.ahId());
+            if (existing == null) {
+                context.reply(new AHActionResultPayload(false, "AH introuvable."));
+                return;
+            }
+            AHInstance updated = existing.withConfig(payload.name(), payload.saleRate(), payload.depositRate(), payload.durations());
+            storage.updateAHInstance(updated);
+            context.reply(new AHActionResultPayload(true, "AH mis à jour: " + updated.name()));
+            sendAHInstances(player);
+        });
+    }
+
     public static void sendAHContext(ServerPlayer player, String ahId) {
         AuctionStorageProvider storage = AHServerEvents.getStorage();
         if (storage == null) return;

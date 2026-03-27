@@ -30,6 +30,7 @@ public class AuctionTerminalBlock extends Block {
             ServerPayloadHandler.sendAHContext(serverPlayer, AHInstance.DEFAULT_ID);
             ServerPayloadHandler.sendBalanceUpdate(serverPlayer);
             ServerPayloadHandler.sendAHSettings(serverPlayer);
+            ServerPayloadHandler.sendAHInstances(serverPlayer);
         }
         return InteractionResult.sidedSuccess(level.isClientSide);
     }

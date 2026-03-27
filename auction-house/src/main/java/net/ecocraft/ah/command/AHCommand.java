@@ -37,6 +37,7 @@ public final class AHCommand {
                     ServerPayloadHandler.sendAHContext(player, AHInstance.DEFAULT_ID);
                     ServerPayloadHandler.sendBalanceUpdate(player);
                     ServerPayloadHandler.sendAHSettings(player);
+                    ServerPayloadHandler.sendAHInstances(player);
                     return 1;
                 })
 
@@ -61,6 +62,7 @@ public final class AHCommand {
                                     ServerPayloadHandler.sendAHContext(player, AHInstance.DEFAULT_ID);
                                     ServerPayloadHandler.sendBalanceUpdate(player);
                                     ServerPayloadHandler.sendAHSettings(player);
+                                    ServerPayloadHandler.sendAHInstances(player);
                                     return 1;
                                 })
                         )

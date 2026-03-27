@@ -55,6 +55,9 @@ public class AuctionHouseScreen extends Screen {
     private String currentAhId = AHInstance.DEFAULT_ID;
     private String currentAhName = "";
 
+    // AH instances list (received from server)
+    private java.util.List<AHInstancesPayload.AHInstanceData> ahInstances = java.util.List.of();
+
     private BuyTab buyTab;
     private SellTab sellTab;
     private MyAuctionsTab myAuctionsTab;
@@ -72,6 +75,14 @@ public class AuctionHouseScreen extends Screen {
             screen.currentAhName = payload.ahName();
         }
     }
+
+    public static void receiveAHInstances(AHInstancesPayload payload) {
+        if (Minecraft.getInstance().screen instanceof AuctionHouseScreen screen) {
+            screen.ahInstances = new java.util.ArrayList<>(payload.instances());
+        }
+    }
+
+    public java.util.List<AHInstancesPayload.AHInstanceData> getAHInstances() { return ahInstances; }
 
     /**
      * Helper to create ItemStack from registry name (e.g. "minecraft:golden_apple").

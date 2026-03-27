@@ -83,6 +83,12 @@ public final class AHNetworkHandler {
                 ClientPayloadHandler::handleAHContext
         );
 
+        registrar.playToClient(
+                AHInstancesPayload.TYPE,
+                AHInstancesPayload.STREAM_CODEC,
+                ClientPayloadHandler::handleAHInstances
+        );
+
         // Client → Server
         registrar.playToServer(
                 RequestListingsPayload.TYPE,
@@ -154,6 +160,24 @@ public final class AHNetworkHandler {
                 UpdateNPCSkinPayload.TYPE,
                 UpdateNPCSkinPayload.STREAM_CODEC,
                 ServerPayloadHandler::handleUpdateNPCSkin
+        );
+
+        registrar.playToServer(
+                CreateAHPayload.TYPE,
+                CreateAHPayload.STREAM_CODEC,
+                ServerPayloadHandler::handleCreateAH
+        );
+
+        registrar.playToServer(
+                DeleteAHPayload.TYPE,
+                DeleteAHPayload.STREAM_CODEC,
+                ServerPayloadHandler::handleDeleteAH
+        );
+
+        registrar.playToServer(
+                UpdateAHInstancePayload.TYPE,
+                UpdateAHInstancePayload.STREAM_CODEC,
+                ServerPayloadHandler::handleUpdateAHInstance
         );
     }
 }
