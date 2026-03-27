@@ -126,6 +126,7 @@ public class BuyTab {
                 TableColumn.center(Component.literal("Dispo."), 1f)
         );
         browseTable = new PaginatedTable(contentX, tableY, contentW, tableH, columns);
+        browseTable.tooltips(false); // tooltips only in detail view
         addWidget.accept(browseTable);
 
         // Pagination buttons

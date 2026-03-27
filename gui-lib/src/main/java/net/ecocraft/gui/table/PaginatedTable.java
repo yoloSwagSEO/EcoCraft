@@ -30,6 +30,7 @@ public class PaginatedTable extends AbstractWidget {
     private int page = 0;
     private int rowsPerPage;
     private int hoveredRow = -1;
+    private boolean tooltipsEnabled = true;
     // Store mouse position for tooltip rendering
     private int lastMouseX, lastMouseY;
 
@@ -48,6 +49,11 @@ public class PaginatedTable extends AbstractWidget {
         this.rows.clear();
         this.rows.addAll(rows);
         this.page = 0;
+    }
+
+    public PaginatedTable tooltips(boolean enabled) {
+        this.tooltipsEnabled = enabled;
+        return this;
     }
 
     public int getPage() { return page; }
@@ -159,8 +165,8 @@ public class PaginatedTable extends AbstractWidget {
             }
         }
 
-        // Built-in tooltip for hovered row with icon
-        if (hoveredRow >= 0 && hoveredRow < rows.size()) {
+        // Built-in tooltip for hovered row with icon (if enabled)
+        if (tooltipsEnabled && hoveredRow >= 0 && hoveredRow < rows.size()) {
             ItemStack hoveredIcon = rows.get(hoveredRow).icon();
             if (hoveredIcon != null && !hoveredIcon.isEmpty()) {
                 graphics.renderTooltip(font, hoveredIcon, mouseX, mouseY);
