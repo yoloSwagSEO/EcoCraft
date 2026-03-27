@@ -18,8 +18,15 @@ public final class ClientPayloadHandler {
 
     public static void handleOpenAH(OpenAHPayload payload, IPayloadContext context) {
         context.enqueueWork(() -> {
-            LOGGER.debug("AH: Received OpenAH");
-            AuctionHouseScreen.open();
+            LOGGER.debug("AH: Received OpenAH entityId={}", payload.entityId());
+            AuctionHouseScreen.open(payload.entityId());
+        });
+    }
+
+    public static void handleNPCSkin(NPCSkinPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            LOGGER.debug("AH: Received NPCSkin entityId={} skinName='{}'", payload.entityId(), payload.skinPlayerName());
+            AuctionHouseScreen.receiveNPCSkin(payload);
         });
     }
 

@@ -47,6 +47,9 @@ public class AuctionHouseScreen extends Screen {
     private int settingsDepositRate = 2;
     private java.util.List<Integer> settingsDurations = java.util.List.of(12, 24, 48);
 
+    private int npcEntityId = -1;
+    private String npcSkinName = "";
+
     private BuyTab buyTab;
     private SellTab sellTab;
     private MyAuctionsTab myAuctionsTab;
@@ -193,7 +196,7 @@ public class AuctionHouseScreen extends Screen {
             if (mouseX >= gearX - 2 && mouseX <= gearX + gearW + 2
                     && mouseY >= gearY - 2 && mouseY <= gearY + font.lineHeight + 2) {
                 Minecraft.getInstance().setScreen(new AHSettingsScreen(
-                        settingsSaleRate, settingsDepositRate, settingsDurations));
+                        this, settingsSaleRate, settingsDepositRate, settingsDurations));
                 return true;
             }
         }
@@ -263,8 +266,19 @@ public class AuctionHouseScreen extends Screen {
 
     // --- Static methods called by ClientPayloadHandler ---
 
-    public static void open() {
-        Minecraft.getInstance().setScreen(new AuctionHouseScreen());
+    public static void open(int entityId) {
+        AuctionHouseScreen screen = new AuctionHouseScreen();
+        screen.npcEntityId = entityId;
+        Minecraft.getInstance().setScreen(screen);
+    }
+
+    public static void open() { open(-1); }
+
+    public static void receiveNPCSkin(NPCSkinPayload payload) {
+        if (Minecraft.getInstance().screen instanceof AuctionHouseScreen screen) {
+            screen.npcEntityId = payload.entityId();
+            screen.npcSkinName = payload.skinPlayerName();
+        }
     }
 
     public static void receiveListings(ListingsResponsePayload payload) {

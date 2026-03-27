@@ -32,7 +32,7 @@ public final class AHCommand {
                 // /ah — open auction house GUI
                 .executes(ctx -> {
                     ServerPlayer player = ctx.getSource().getPlayerOrException();
-                    PacketDistributor.sendToPlayer(player, new OpenAHPayload());
+                    PacketDistributor.sendToPlayer(player, new OpenAHPayload(-1));
                     ServerPayloadHandler.sendBalanceUpdate(player);
                     ServerPayloadHandler.sendAHSettings(player);
                     return 1;
@@ -55,7 +55,7 @@ public final class AHCommand {
                                 .executes(ctx -> {
                                     ServerPlayer player = ctx.getSource().getPlayerOrException();
                                     // For now, just open the AH — search pre-fill can come later
-                                    PacketDistributor.sendToPlayer(player, new OpenAHPayload());
+                                    PacketDistributor.sendToPlayer(player, new OpenAHPayload(-1));
                                     ServerPayloadHandler.sendBalanceUpdate(player);
                                     ServerPayloadHandler.sendAHSettings(player);
                                     return 1;

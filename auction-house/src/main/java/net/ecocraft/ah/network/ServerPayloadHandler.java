@@ -482,14 +482,17 @@ public final class ServerPayloadHandler {
             }
             try {
                 var config = net.ecocraft.ah.config.AHConfig.CONFIG;
-                config.saleRate.set(Math.max(0, Math.min(50, payload.saleRate())));
-                config.depositRate.set(Math.max(0, Math.min(20, payload.depositRate())));
+                config.saleRate.set(Math.max(0, Math.min(100, payload.saleRate())));
+                config.depositRate.set(Math.max(0, Math.min(100, payload.depositRate())));
                 List<Integer> validDurations = payload.durations().stream()
                         .filter(d -> d >= 1 && d <= 168).toList();
                 if (!validDurations.isEmpty()) {
                     config.durations.set(validDurations);
                 }
+                net.ecocraft.ah.config.AHConfig.CONFIG_SPEC.save();
                 context.reply(new AHActionResultPayload(true, "Paramètres sauvegardés."));
+                // Re-send settings so client updates its cached values
+                sendAHSettings(player);
             } catch (Exception e) {
                 LOGGER.error("Error updating AH settings", e);
                 context.reply(new AHActionResultPayload(false, "Erreur lors de la sauvegarde."));
@@ -507,6 +510,10 @@ public final class ServerPayloadHandler {
         } catch (Exception e) {
             LOGGER.error("Error sending balance update", e);
         }
+    }
+
+    public static void handleUpdateNPCSkin(UpdateNPCSkinPayload payload, IPayloadContext context) {
+        // Implemented in Task 3
     }
 
     private static AuctionService requireService() {
