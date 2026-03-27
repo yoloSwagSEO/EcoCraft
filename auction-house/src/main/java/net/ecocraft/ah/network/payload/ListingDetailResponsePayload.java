@@ -16,19 +16,34 @@ public record ListingDetailResponsePayload(
         PriceInfo priceInfo
 ) implements CustomPacketPayload {
 
-    public record ListingEntry(String listingId, String sellerName, int quantity, long unitPrice, String type, long expiresInMs) {}
+    public record ListingEntry(String listingId, String sellerName, int quantity, long unitPrice, String type, long expiresInMs, String itemNbt) {}
 
     public record PriceInfo(long avgPrice, long minPrice, long maxPrice, int volume7d) {}
 
-    public static final StreamCodec<ByteBuf, ListingEntry> ENTRY_CODEC = StreamCodec.composite(
-            ByteBufCodecs.STRING_UTF8, ListingEntry::listingId,
-            ByteBufCodecs.STRING_UTF8, ListingEntry::sellerName,
-            ByteBufCodecs.VAR_INT, ListingEntry::quantity,
-            ByteBufCodecs.VAR_LONG, ListingEntry::unitPrice,
-            ByteBufCodecs.STRING_UTF8, ListingEntry::type,
-            ByteBufCodecs.VAR_LONG, ListingEntry::expiresInMs,
-            ListingEntry::new
-    );
+    public static final StreamCodec<ByteBuf, ListingEntry> ENTRY_CODEC = new StreamCodec<>() {
+        @Override
+        public ListingEntry decode(ByteBuf buf) {
+            String listingId = ByteBufCodecs.STRING_UTF8.decode(buf);
+            String sellerName = ByteBufCodecs.STRING_UTF8.decode(buf);
+            int quantity = ByteBufCodecs.VAR_INT.decode(buf);
+            long unitPrice = ByteBufCodecs.VAR_LONG.decode(buf);
+            String type = ByteBufCodecs.STRING_UTF8.decode(buf);
+            long expiresInMs = ByteBufCodecs.VAR_LONG.decode(buf);
+            String itemNbt = ByteBufCodecs.STRING_UTF8.decode(buf);
+            return new ListingEntry(listingId, sellerName, quantity, unitPrice, type, expiresInMs, itemNbt);
+        }
+
+        @Override
+        public void encode(ByteBuf buf, ListingEntry entry) {
+            ByteBufCodecs.STRING_UTF8.encode(buf, entry.listingId());
+            ByteBufCodecs.STRING_UTF8.encode(buf, entry.sellerName());
+            ByteBufCodecs.VAR_INT.encode(buf, entry.quantity());
+            ByteBufCodecs.VAR_LONG.encode(buf, entry.unitPrice());
+            ByteBufCodecs.STRING_UTF8.encode(buf, entry.type());
+            ByteBufCodecs.VAR_LONG.encode(buf, entry.expiresInMs());
+            ByteBufCodecs.STRING_UTF8.encode(buf, entry.itemNbt() != null ? entry.itemNbt() : "");
+        }
+    };
 
     public static final StreamCodec<ByteBuf, PriceInfo> PRICE_INFO_CODEC = StreamCodec.composite(
             ByteBufCodecs.VAR_LONG, PriceInfo::avgPrice,

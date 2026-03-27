@@ -1,5 +1,6 @@
 package net.ecocraft.ah.screen;
 
+import net.ecocraft.ah.data.ItemStackSerializer;
 import net.ecocraft.ah.network.payload.AHActionResultPayload;
 import net.ecocraft.ah.network.payload.CancelListingPayload;
 import net.ecocraft.ah.network.payload.CollectParcelsPayload;
@@ -204,7 +205,21 @@ public class MyAuctionsTab {
                 action = () -> onCancelClicked(lid);
             }
 
-            ItemStack icon = AuctionHouseScreen.itemFromId(entry.itemId());
+            // Resolve the ItemStack: prefer full NBT for enchantments/components
+            ItemStack icon = ItemStack.EMPTY;
+            String nbt = entry.itemNbt();
+            if (nbt != null && !nbt.isEmpty()) {
+                var level = Minecraft.getInstance().level;
+                if (level != null) {
+                    ItemStack deserialized = ItemStackSerializer.deserialize(nbt, level.registryAccess());
+                    if (!deserialized.isEmpty()) {
+                        icon = deserialized;
+                    }
+                }
+            }
+            if (icon.isEmpty()) {
+                icon = AuctionHouseScreen.itemFromId(entry.itemId());
+            }
 
             rows.add(TableRow.withIcon(icon, entry.rarityColor(), List.of(
                     TableRow.Cell.of(Component.literal(entry.itemName()), entry.rarityColor()),

@@ -98,7 +98,8 @@ public final class ServerPayloadHandler {
                             l.quantity(),
                             displayPrice,
                             l.listingType().name(),
-                            expiresInMs
+                            expiresInMs,
+                            l.itemNbt() != null ? l.itemNbt() : ""
                     ));
                 }
 
@@ -321,7 +322,8 @@ public final class ServerPayloadHandler {
                             l.status().name(),
                             expiresInMs,
                             0, // bid count — would need a query
-                            l.status() == ListingStatus.EXPIRED || l.status() == ListingStatus.SOLD
+                            l.status() == ListingStatus.EXPIRED || l.status() == ListingStatus.SOLD,
+                            l.itemNbt() != null ? l.itemNbt() : ""
                     ));
                 }
 

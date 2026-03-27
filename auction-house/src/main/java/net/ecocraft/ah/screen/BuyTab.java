@@ -1,6 +1,7 @@
 package net.ecocraft.ah.screen;
 
 import net.ecocraft.ah.data.ItemCategory;
+import net.ecocraft.ah.data.ItemStackSerializer;
 import net.ecocraft.ah.network.payload.*;
 import net.ecocraft.gui.table.PaginatedTable;
 import net.ecocraft.gui.table.TableColumn;
@@ -372,7 +373,24 @@ public class BuyTab {
         List<TableRow> rows = new ArrayList<>();
         for (var entry : detailEntries) {
             boolean isAuction = "AUCTION".equals(entry.type());
-            rows.add(TableRow.of(List.of(
+
+            // Resolve the ItemStack: prefer full NBT for enchantments/components
+            ItemStack icon = ItemStack.EMPTY;
+            String nbt = entry.itemNbt();
+            if (nbt != null && !nbt.isEmpty()) {
+                var level = Minecraft.getInstance().level;
+                if (level != null) {
+                    ItemStack deserialized = ItemStackSerializer.deserialize(nbt, level.registryAccess());
+                    if (!deserialized.isEmpty()) {
+                        icon = deserialized;
+                    }
+                }
+            }
+            if (icon.isEmpty()) {
+                icon = AuctionHouseScreen.itemFromId(detailItemId);
+            }
+
+            rows.add(TableRow.withIcon(icon, detailRarityColor, List.of(
                     TableRow.Cell.of(Component.literal(entry.sellerName()), THEME.textLight),
                     TableRow.Cell.of(Component.literal(String.valueOf(entry.quantity())), THEME.textLight),
                     TableRow.Cell.of(Component.literal(formatPrice(entry.unitPrice())), THEME.accent),
