@@ -2,7 +2,7 @@ package net.ecocraft.ah.screen;
 
 import net.ecocraft.ah.network.payload.LedgerResponsePayload;
 import net.ecocraft.ah.network.payload.RequestLedgerPayload;
-import net.ecocraft.gui.table.PaginatedTable;
+import net.ecocraft.gui.table.Table;
 import net.ecocraft.gui.table.TableColumn;
 import net.ecocraft.gui.table.TableRow;
 import net.ecocraft.gui.theme.Theme;
@@ -52,7 +52,7 @@ public class LedgerTab {
     // Widgets
     private FilterTags periodTags;
     private FilterTags typeTags;
-    private PaginatedTable table;
+    private Table table;
     private Button prevPageBtn;
     private Button nextPageBtn;
     private StatCard profitCard;
@@ -124,7 +124,11 @@ public class LedgerTab {
                 TableColumn.left(Component.literal("Avec"), 1.5f),
                 TableColumn.center(Component.literal("Date"), 1.5f)
         );
-        table = new PaginatedTable(x, tableY, w, tableH, columns);
+        table = Table.builder()
+                .columns(columns)
+                .theme(THEME)
+                .navigation(Table.Navigation.PAGINATED)
+                .build(x, tableY, w, tableH);
         addWidget.accept(table);
         updateTable();
 

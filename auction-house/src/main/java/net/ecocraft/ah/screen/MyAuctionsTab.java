@@ -7,7 +7,7 @@ import net.ecocraft.ah.network.payload.CollectParcelsPayload;
 import net.ecocraft.ah.network.payload.MyListingsResponsePayload;
 import net.ecocraft.ah.network.payload.RequestMyListingsPayload;
 import net.ecocraft.gui.dialog.Dialog;
-import net.ecocraft.gui.table.PaginatedTable;
+import net.ecocraft.gui.table.Table;
 import net.ecocraft.gui.table.TableColumn;
 import net.ecocraft.gui.table.TableRow;
 import net.ecocraft.gui.theme.Theme;
@@ -46,7 +46,7 @@ public class MyAuctionsTab {
 
     // Widgets
     private FilterTags subTabTags;
-    private PaginatedTable table;
+    private Table table;
     private Button collectBtn;
     private StatCard revenueCard;
     private StatCard taxCard;
@@ -120,7 +120,13 @@ public class MyAuctionsTab {
                 TableColumn.center(Component.literal("Expire"), 1f),
                 TableColumn.center(Component.literal("Action"), 1.5f)
         );
-        table = new PaginatedTable(x, tableY, w, tableH, columns);
+        table = Table.builder()
+                .columns(columns)
+                .theme(THEME)
+                .navigation(Table.Navigation.SCROLL)
+                .showScrollbar(true)
+                .scrollLines(1)
+                .build(x, tableY, w, tableH);
         addWidget.accept(table);
         updateTable();
 

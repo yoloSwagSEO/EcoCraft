@@ -3,7 +3,7 @@ package net.ecocraft.ah.screen;
 import net.ecocraft.ah.data.ItemCategory;
 import net.ecocraft.ah.data.ItemStackSerializer;
 import net.ecocraft.ah.network.payload.*;
-import net.ecocraft.gui.table.PaginatedTable;
+import net.ecocraft.gui.table.Table;
 import net.ecocraft.gui.table.TableColumn;
 import net.ecocraft.gui.table.TableRow;
 import net.ecocraft.gui.theme.DrawUtils;
@@ -49,7 +49,7 @@ public class BuyTab {
 
     // Browse mode widgets
     private TextInput searchBar;
-    private PaginatedTable browseTable;
+    private Table browseTable;
     private Button prevPageBtn;
     private Button nextPageBtn;
     private final List<Button> categoryButtons = new ArrayList<>();
@@ -63,7 +63,7 @@ public class BuyTab {
 
     // Detail mode widgets
     private Button backButton;
-    private PaginatedTable detailTable;
+    private Table detailTable;
 
     // Detail mode filter state
     private List<ItemStack> detailStacks = new ArrayList<>();
@@ -138,8 +138,12 @@ public class BuyTab {
                 TableColumn.center(Component.literal("Offres"), 1f),
                 TableColumn.center(Component.literal("Dispo."), 1f)
         );
-        browseTable = new PaginatedTable(contentX, tableY, contentW, tableH, columns);
-        browseTable.tooltips(false); // tooltips only in detail view
+        browseTable = Table.builder()
+                .columns(columns)
+                .theme(THEME)
+                .navigation(Table.Navigation.PAGINATED)
+                .tooltips(false) // tooltips only in detail view
+                .build(contentX, tableY, contentW, tableH);
         addWidget.accept(browseTable);
 
         // Pagination buttons
@@ -231,8 +235,13 @@ public class BuyTab {
                 TableColumn.center(Component.literal("Expire"), 1.5f),
                 TableColumn.center(Component.literal("Action"), 1.5f)
         );
-        detailTable = new PaginatedTable(x, tableY, tableW, tableH, columns);
-        detailTable.scrollMode(true); // use mouse wheel scrolling instead of pagination
+        detailTable = Table.builder()
+                .columns(columns)
+                .theme(THEME)
+                .navigation(Table.Navigation.SCROLL)
+                .showScrollbar(true)
+                .scrollLines(1)
+                .build(x, tableY, tableW, tableH);
         addWidget.accept(detailTable);
 
         updateDetailTable();
