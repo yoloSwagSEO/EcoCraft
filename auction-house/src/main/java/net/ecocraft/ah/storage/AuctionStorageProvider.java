@@ -163,6 +163,33 @@ public class AuctionStorageProvider {
                 }
             });
 
+            migrator.addMigration(4, "Multi-AH: add ah_instances table and ah_id columns", conn -> {
+                try (Statement stmt = conn.createStatement()) {
+                    stmt.execute("""
+                        CREATE TABLE IF NOT EXISTS ah_instances (
+                            id           TEXT PRIMARY KEY,
+                            slug         TEXT NOT NULL UNIQUE,
+                            name         TEXT NOT NULL,
+                            sale_rate    INTEGER NOT NULL DEFAULT 5,
+                            deposit_rate INTEGER NOT NULL DEFAULT 2,
+                            durations    TEXT NOT NULL DEFAULT '[12,24,48]'
+                        )
+                    """);
+
+                    String defaultId = "00000000-0000-0000-0000-000000000001";
+                    stmt.execute("INSERT OR IGNORE INTO ah_instances (id, slug, name, sale_rate, deposit_rate, durations) " +
+                            "VALUES ('" + defaultId + "', 'default', 'Hôtel des Ventes', 5, 2, '[12,24,48]')");
+
+                    stmt.execute("ALTER TABLE ah_listings ADD COLUMN ah_id TEXT NOT NULL DEFAULT '" + defaultId + "'");
+                    stmt.execute("ALTER TABLE ah_parcels ADD COLUMN ah_id TEXT DEFAULT '" + defaultId + "'");
+                    stmt.execute("ALTER TABLE ah_price_history ADD COLUMN ah_id TEXT NOT NULL DEFAULT '" + defaultId + "'");
+
+                    stmt.execute("CREATE INDEX IF NOT EXISTS idx_listings_ah ON ah_listings(ah_id, status)");
+                    stmt.execute("CREATE INDEX IF NOT EXISTS idx_parcels_ah ON ah_parcels(ah_id)");
+                    stmt.execute("CREATE INDEX IF NOT EXISTS idx_price_history_ah ON ah_price_history(ah_id)");
+                }
+            });
+
             migrator.migrate(connection);
         } catch (SQLException e) {
             throw new RuntimeException("Failed to initialize auction-house database", e);
@@ -177,6 +204,136 @@ public class AuctionStorageProvider {
         } catch (SQLException e) {
             throw new RuntimeException("Failed to close auction-house database", e);
         }
+    }
+
+    // -------------------------------------------------------------------------
+    // AH Instances
+    // -------------------------------------------------------------------------
+
+    public List<AHInstance> getAllAHInstances() {
+        List<AHInstance> results = new ArrayList<>();
+        try (Statement stmt = connection.createStatement();
+             ResultSet rs = stmt.executeQuery("SELECT * FROM ah_instances ORDER BY slug ASC")) {
+            while (rs.next()) results.add(mapAHInstance(rs));
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to get AH instances", e);
+        }
+        return results;
+    }
+
+    public AHInstance getAHInstance(String ahId) {
+        try (PreparedStatement ps = connection.prepareStatement("SELECT * FROM ah_instances WHERE id = ?")) {
+            ps.setString(1, ahId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return mapAHInstance(rs);
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to get AH instance", e);
+        }
+        return null;
+    }
+
+    public AHInstance getAHInstanceBySlug(String slug) {
+        try (PreparedStatement ps = connection.prepareStatement("SELECT * FROM ah_instances WHERE slug = ?")) {
+            ps.setString(1, slug);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return mapAHInstance(rs);
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to get AH instance by slug", e);
+        }
+        return null;
+    }
+
+    public AHInstance getDefaultAHInstance() {
+        return getAHInstanceBySlug("default");
+    }
+
+    public void createAHInstance(AHInstance ah) {
+        try (PreparedStatement ps = connection.prepareStatement(
+                "INSERT INTO ah_instances (id, slug, name, sale_rate, deposit_rate, durations) VALUES (?,?,?,?,?,?)")) {
+            ps.setString(1, ah.id());
+            ps.setString(2, ah.slug());
+            ps.setString(3, ah.name());
+            ps.setInt(4, ah.saleRate());
+            ps.setInt(5, ah.depositRate());
+            ps.setString(6, durationsToJson(ah.durations()));
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to create AH instance", e);
+        }
+    }
+
+    public void updateAHInstance(AHInstance ah) {
+        try (PreparedStatement ps = connection.prepareStatement(
+                "UPDATE ah_instances SET slug = ?, name = ?, sale_rate = ?, deposit_rate = ?, durations = ? WHERE id = ?")) {
+            ps.setString(1, ah.slug());
+            ps.setString(2, ah.name());
+            ps.setInt(3, ah.saleRate());
+            ps.setInt(4, ah.depositRate());
+            ps.setString(5, durationsToJson(ah.durations()));
+            ps.setString(6, ah.id());
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to update AH instance", e);
+        }
+    }
+
+    public void deleteAHInstance(String ahId) {
+        try (PreparedStatement ps = connection.prepareStatement("DELETE FROM ah_instances WHERE id = ?")) {
+            ps.setString(1, ahId);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to delete AH instance", e);
+        }
+    }
+
+    public int transferListings(String fromAhId, String toAhId) {
+        try (PreparedStatement ps = connection.prepareStatement(
+                "UPDATE ah_listings SET ah_id = ? WHERE ah_id = ? AND status = 'ACTIVE'")) {
+            ps.setString(1, toAhId);
+            ps.setString(2, fromAhId);
+            return ps.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to transfer listings", e);
+        }
+    }
+
+    public int deleteActiveListings(String ahId) {
+        try (PreparedStatement ps = connection.prepareStatement(
+                "DELETE FROM ah_listings WHERE ah_id = ? AND status = 'ACTIVE'")) {
+            ps.setString(1, ahId);
+            return ps.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to delete listings for AH", e);
+        }
+    }
+
+    private AHInstance mapAHInstance(ResultSet rs) throws SQLException {
+        return new AHInstance(
+                rs.getString("id"), rs.getString("slug"), rs.getString("name"),
+                rs.getInt("sale_rate"), rs.getInt("deposit_rate"),
+                parseDurationsJson(rs.getString("durations")));
+    }
+
+    private String durationsToJson(List<Integer> durations) {
+        StringBuilder sb = new StringBuilder("[");
+        for (int i = 0; i < durations.size(); i++) {
+            if (i > 0) sb.append(",");
+            sb.append(durations.get(i));
+        }
+        return sb.append("]").toString();
+    }
+
+    private List<Integer> parseDurationsJson(String json) {
+        List<Integer> result = new ArrayList<>();
+        if (json == null || json.isEmpty()) return AHInstance.DEFAULT_DURATIONS;
+        String inner = json.replaceAll("[\\[\\]\\s]", "");
+        if (inner.isEmpty()) return AHInstance.DEFAULT_DURATIONS;
+        for (String s : inner.split(",")) {
+            try { result.add(Integer.parseInt(s.trim())); } catch (NumberFormatException ignored) {}
+        }
+        return result.isEmpty() ? AHInstance.DEFAULT_DURATIONS : result;
     }
 
     // -------------------------------------------------------------------------
