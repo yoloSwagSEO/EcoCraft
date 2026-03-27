@@ -1,13 +1,15 @@
 package net.ecocraft.core.vault;
 
-import net.ecocraft.gui.theme.EcoColors;
-import net.ecocraft.gui.theme.EcoTheme;
+import net.ecocraft.gui.theme.DrawUtils;
+import net.ecocraft.gui.theme.Theme;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
 
 public class VaultScreen extends AbstractContainerScreen<VaultMenu> {
+
+    private static final Theme THEME = Theme.dark();
 
     public VaultScreen(VaultMenu menu, Inventory playerInventory, Component title) {
         super(menu, playerInventory, title);
@@ -17,12 +19,12 @@ public class VaultScreen extends AbstractContainerScreen<VaultMenu> {
 
     @Override
     protected void renderBg(GuiGraphics graphics, float partialTick, int mouseX, int mouseY) {
-        EcoTheme.drawPanel(graphics, leftPos, topPos, imageWidth, imageHeight,
-            EcoColors.BG_DARKEST, EcoColors.BORDER_GOLD);
+        DrawUtils.drawPanel(graphics, leftPos, topPos, imageWidth, imageHeight,
+            THEME.bgDarkest, THEME.borderAccent);
 
         // Title
-        graphics.drawString(font, title, leftPos + 8, topPos + 8, EcoColors.GOLD, false);
-        EcoTheme.drawGoldSeparator(graphics, leftPos + 4, topPos + 20, imageWidth - 8);
+        graphics.drawString(font, title, leftPos + 8, topPos + 8, THEME.accent, false);
+        DrawUtils.drawAccentSeparator(graphics, leftPos + 4, topPos + 20, imageWidth - 8, THEME);
     }
 
     @Override
