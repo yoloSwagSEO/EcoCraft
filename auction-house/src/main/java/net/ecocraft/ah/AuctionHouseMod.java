@@ -18,6 +18,8 @@ public class AuctionHouseMod {
 
     public AuctionHouseMod(IEventBus modBus, ModContainer container) {
         AHRegistries.register(modBus);
+        container.registerConfig(net.neoforged.fml.config.ModConfig.Type.SERVER,
+                net.ecocraft.ah.config.AHConfig.CONFIG_SPEC);
         modBus.register(AHNetworkHandler.class);
         modBus.addListener(this::registerRenderers);
         modBus.addListener(this::registerAttributes);
