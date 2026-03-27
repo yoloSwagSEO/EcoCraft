@@ -9,17 +9,21 @@ import net.ecocraft.gui.table.TableRow;
 import net.ecocraft.gui.theme.DrawUtils;
 import net.ecocraft.gui.theme.Theme;
 import net.ecocraft.gui.widget.Button;
+import net.ecocraft.gui.widget.FilterTags;
 import net.ecocraft.gui.widget.TextInput;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
+import net.minecraft.core.Holder;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.enchantment.Enchantment;
+import net.minecraft.world.item.enchantment.ItemEnchantments;
 import net.neoforged.neoforge.network.PacketDistributor;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.util.function.Consumer;
 
 /**
@@ -60,6 +64,15 @@ public class BuyTab {
     // Detail mode widgets
     private Button backButton;
     private PaginatedTable detailTable;
+
+    // Detail mode filter state
+    private List<ItemStack> detailStacks = new ArrayList<>();
+    private String selectedEnchantFilter = "";
+    private int selectedDurabilityFilter = 0;
+    private FilterTags enchantFilterTags;
+    private FilterTags durabilityFilterTags;
+    private List<String> availableEnchantments = new ArrayList<>();
+    private boolean showDurabilityFilter = false;
 
     private static final int SIDEBAR_WIDTH = 80;
 
@@ -159,9 +172,56 @@ public class BuyTab {
                 .textColor(THEME.accent).hoverBg(THEME.accentBgDim).build();
         addWidget.accept(backButton);
 
-        // Detail table
-        int tableY = y + 30;
-        int tableH = h - 54; // leave room for price history below
+        // Dynamic filter area starts below back button + header
+        int filterY = y + 20;
+        enchantFilterTags = null;
+        durabilityFilterTags = null;
+
+        // Enchantment filter (only if enchantments found)
+        if (!availableEnchantments.isEmpty()) {
+            List<Component> enchantLabels = new ArrayList<>();
+            enchantLabels.add(Component.literal("Tout"));
+            for (String ench : availableEnchantments) {
+                enchantLabels.add(Component.literal(ench));
+            }
+            enchantFilterTags = new FilterTags(x, filterY, enchantLabels, this::onEnchantFilterChanged, THEME);
+            // Restore selection
+            int activeIdx = 0;
+            if (!selectedEnchantFilter.isEmpty()) {
+                int idx = availableEnchantments.indexOf(selectedEnchantFilter);
+                if (idx >= 0) activeIdx = idx + 1;
+            }
+            enchantFilterTags.setActiveTag(activeIdx);
+            addWidget.accept(enchantFilterTags);
+            filterY += 22;
+        }
+
+        // Durability filter (only if items have durability variation)
+        if (showDurabilityFilter) {
+            List<Component> durLabels = List.of(
+                    Component.literal("Tout"),
+                    Component.literal("100%"),
+                    Component.literal("75%+"),
+                    Component.literal("50%+"),
+                    Component.literal("25%+")
+            );
+            durabilityFilterTags = new FilterTags(x, filterY, durLabels, this::onDurabilityFilterChanged, THEME);
+            // Restore selection
+            int activeIdx = switch (selectedDurabilityFilter) {
+                case 100 -> 1;
+                case 75 -> 2;
+                case 50 -> 3;
+                case 25 -> 4;
+                default -> 0;
+            };
+            durabilityFilterTags.setActiveTag(activeIdx);
+            addWidget.accept(durabilityFilterTags);
+            filterY += 22;
+        }
+
+        // Detail table - starts after filters
+        int tableY = filterY;
+        int tableH = y + h - 24 - tableY; // leave room for price history below
         int tableW = w - 4;
         List<TableColumn> columns = List.of(
                 TableColumn.left(Component.literal("Vendeur"), 2f),
@@ -174,6 +234,26 @@ public class BuyTab {
         detailTable = new PaginatedTable(x, tableY, tableW, tableH, columns);
         addWidget.accept(detailTable);
 
+        updateDetailTable();
+    }
+
+    private void onEnchantFilterChanged(int index) {
+        if (index == 0) {
+            selectedEnchantFilter = "";
+        } else {
+            selectedEnchantFilter = availableEnchantments.get(index - 1);
+        }
+        updateDetailTable();
+    }
+
+    private void onDurabilityFilterChanged(int index) {
+        selectedDurabilityFilter = switch (index) {
+            case 1 -> 100;
+            case 2 -> 75;
+            case 3 -> 50;
+            case 4 -> 25;
+            default -> 0;
+        };
         updateDetailTable();
     }
 
@@ -312,6 +392,11 @@ public class BuyTab {
 
     private void onBackToBrowse() {
         mode = Mode.BROWSE;
+        selectedEnchantFilter = "";
+        selectedDurabilityFilter = 0;
+        availableEnchantments = new ArrayList<>();
+        showDurabilityFilter = false;
+        detailStacks = new ArrayList<>();
         parent.rebuildCurrentTab();
     }
 
@@ -345,8 +430,78 @@ public class BuyTab {
         this.detailRarityColor = payload.rarityColor();
         this.detailEntries = payload.entries();
         this.detailPriceInfo = payload.priceInfo();
+
+        // Reset filters
+        this.selectedEnchantFilter = "";
+        this.selectedDurabilityFilter = 0;
+
+        // Parse enchantments and durability from received listings
+        parseDetailFilters();
+
         if (mode == Mode.DETAIL) {
-            updateDetailTable();
+            // Rebuild the entire detail view so filter widgets are created
+            parent.rebuildCurrentTab();
+        }
+    }
+
+    private void parseDetailFilters() {
+        detailStacks = new ArrayList<>();
+        Set<String> enchantSet = new LinkedHashSet<>();
+        boolean hasDamageable = false;
+        Set<Integer> durabilityLevels = new HashSet<>();
+
+        var level = Minecraft.getInstance().level;
+
+        for (var entry : detailEntries) {
+            ItemStack stack = ItemStack.EMPTY;
+            String nbt = entry.itemNbt();
+            if (nbt != null && !nbt.isEmpty() && level != null) {
+                stack = ItemStackSerializer.deserialize(nbt, level.registryAccess());
+            }
+            detailStacks.add(stack);
+
+            if (!stack.isEmpty()) {
+                // Extract enchantments (regular items + enchanted books)
+                ItemEnchantments enchants = getEffectiveEnchantments(stack);
+                for (var e : enchants.entrySet()) {
+                    String name = getEnchantmentName(e.getKey(), e.getIntValue());
+                    enchantSet.add(name);
+                }
+
+                // Extract durability
+                if (stack.isDamageableItem()) {
+                    hasDamageable = true;
+                    int maxDmg = stack.getMaxDamage();
+                    int currentDmg = stack.getDamageValue();
+                    int pct = (int) ((float) (maxDmg - currentDmg) / maxDmg * 100f);
+                    durabilityLevels.add(pct);
+                }
+            }
+        }
+
+        this.availableEnchantments = new ArrayList<>(enchantSet);
+        // Show durability filter only if items are damageable and there is variation
+        this.showDurabilityFilter = hasDamageable && durabilityLevels.size() > 1;
+    }
+
+    private ItemEnchantments getEffectiveEnchantments(ItemStack stack) {
+        // Enchanted books use STORED_ENCHANTMENTS, regular items use normal enchantments
+        ItemEnchantments stored = stack.get(DataComponents.STORED_ENCHANTMENTS);
+        if (stored != null && !stored.isEmpty()) {
+            return stored;
+        }
+        return stack.getEnchantments();
+    }
+
+    private String getEnchantmentName(Holder<Enchantment> holder, int level) {
+        try {
+            Component name = Enchantment.getFullname(holder, level);
+            return name.getString();
+        } catch (Exception e) {
+            // Fallback: use registry key path
+            return holder.unwrapKey()
+                    .map(key -> key.location().getPath())
+                    .orElse("unknown") + " " + level;
         }
     }
 
@@ -372,24 +527,17 @@ public class BuyTab {
         if (detailTable == null) return;
 
         List<TableRow> rows = new ArrayList<>();
-        for (var entry : detailEntries) {
+        for (int i = 0; i < detailEntries.size(); i++) {
+            var entry = detailEntries.get(i);
+            ItemStack stack = i < detailStacks.size() ? detailStacks.get(i) : ItemStack.EMPTY;
+
+            // Apply filters
+            if (!matchesFilters(stack)) continue;
+
             boolean isAuction = "AUCTION".equals(entry.type());
 
-            // Resolve the ItemStack: prefer full NBT for enchantments/components
-            ItemStack icon = ItemStack.EMPTY;
-            String nbt = entry.itemNbt();
-            if (nbt != null && !nbt.isEmpty()) {
-                var level = Minecraft.getInstance().level;
-                if (level != null) {
-                    ItemStack deserialized = ItemStackSerializer.deserialize(nbt, level.registryAccess());
-                    if (!deserialized.isEmpty()) {
-                        icon = deserialized;
-                    }
-                }
-            }
-            if (icon.isEmpty()) {
-                icon = AuctionHouseScreen.itemFromId(detailItemId);
-            }
+            // Resolve the ItemStack icon
+            ItemStack icon = stack.isEmpty() ? AuctionHouseScreen.itemFromId(detailItemId) : stack;
 
             rows.add(TableRow.withIcon(icon, detailRarityColor, List.of(
                     TableRow.Cell.of(Component.literal(entry.sellerName()), THEME.textLight),
@@ -403,6 +551,36 @@ public class BuyTab {
             ), isAuction ? () -> onBidClicked(entry.listingId()) : () -> onBuyClicked(entry.listingId())));
         }
         detailTable.setRows(rows);
+    }
+
+    private boolean matchesFilters(ItemStack stack) {
+        // Enchantment filter
+        if (!selectedEnchantFilter.isEmpty()) {
+            if (stack.isEmpty()) return false;
+            boolean hasEnchant = false;
+            ItemEnchantments enchants = getEffectiveEnchantments(stack);
+            for (var e : enchants.entrySet()) {
+                String name = getEnchantmentName(e.getKey(), e.getIntValue());
+                if (name.equals(selectedEnchantFilter)) {
+                    hasEnchant = true;
+                    break;
+                }
+            }
+            if (!hasEnchant) return false;
+        }
+
+        // Durability filter
+        if (selectedDurabilityFilter > 0) {
+            if (stack.isEmpty() || !stack.isDamageableItem()) return false;
+            float pct = (float) (stack.getMaxDamage() - stack.getDamageValue()) / stack.getMaxDamage() * 100f;
+            if (selectedDurabilityFilter == 100) {
+                if (pct < 100f) return false;
+            } else {
+                if (pct < selectedDurabilityFilter) return false;
+            }
+        }
+
+        return true;
     }
 
     // --- Formatting helpers ---
