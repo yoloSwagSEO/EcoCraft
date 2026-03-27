@@ -734,6 +734,21 @@ public class AuctionStorageProvider {
     }
 
     /**
+     * Returns all ACTIVE listings that have item_nbt but no entries in ah_listing_enchantments.
+     * Used during server startup to reindex enchantments for listings created before migration v2.
+     */
+    public List<AuctionListing> getListingsWithoutEnchantmentIndex() {
+        String sql = """
+                SELECT l.* FROM ah_listings l
+                WHERE l.status = 'ACTIVE'
+                AND l.item_nbt IS NOT NULL
+                AND l.item_nbt != ''
+                AND l.id NOT IN (SELECT DISTINCT listing_id FROM ah_listing_enchantments)
+            """;
+        return queryListings(sql, List.of());
+    }
+
+    /**
      * Returns all unique enchantment display names for ACTIVE listings of the given item type.
      */
     public List<String> getAvailableEnchantments(String itemId) {

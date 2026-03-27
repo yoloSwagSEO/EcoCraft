@@ -6,14 +6,9 @@ import net.ecocraft.ah.data.*;
 import net.ecocraft.ah.network.payload.*;
 import net.ecocraft.ah.service.AuctionService;
 import net.ecocraft.ah.storage.AuctionStorageProvider;
-import net.minecraft.core.Holder;
-import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.enchantment.Enchantment;
-import net.minecraft.world.item.enchantment.ItemEnchantments;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import org.slf4j.Logger;
 
@@ -184,7 +179,7 @@ public final class ServerPayloadHandler {
                 }
 
                 // Extract enchantments from the ItemStack before removing it
-                List<EnchantmentEntry> enchantments = extractEnchantments(itemToSell);
+                List<EnchantmentEntry> enchantments = EnchantmentExtractor.extract(itemToSell);
 
                 String itemId = BuiltInRegistries.ITEM.getKey(itemToSell.getItem()).toString();
                 String itemName = itemToSell.getHoverName().getString();
@@ -230,34 +225,6 @@ public final class ServerPayloadHandler {
                 context.reply(new AHActionResultPayload(false, "Internal error creating listing."));
             }
         });
-    }
-
-    /**
-     * Extracts enchantments from an ItemStack for indexing.
-     * Handles both regular enchantments and stored enchantments (enchanted books).
-     */
-    private static List<EnchantmentEntry> extractEnchantments(ItemStack stack) {
-        ItemEnchantments enchants = stack.getEnchantments();
-        ItemEnchantments storedEnchants = stack.getOrDefault(DataComponents.STORED_ENCHANTMENTS, ItemEnchantments.EMPTY);
-
-        // Use whichever has data (stored enchantments for enchanted books)
-        ItemEnchantments toProcess = storedEnchants.isEmpty() ? enchants : storedEnchants;
-
-        List<EnchantmentEntry> entries = new ArrayList<>();
-        toProcess.entrySet().forEach(e -> {
-            Holder<Enchantment> holder = e.getKey();
-            int level = e.getIntValue();
-            String displayName;
-            try {
-                Component name = Enchantment.getFullname(holder, level);
-                displayName = name.getString();
-            } catch (Exception ex) {
-                displayName = holder.unwrapKey().map(k -> k.location().getPath()).orElse("unknown") + " " + level;
-            }
-            String enchantName = holder.unwrapKey().map(k -> k.location().toString()).orElse("unknown");
-            entries.add(new EnchantmentEntry(enchantName, level, displayName));
-        });
-        return entries;
     }
 
     public static void handleBuyListing(BuyListingPayload payload, IPayloadContext context) {

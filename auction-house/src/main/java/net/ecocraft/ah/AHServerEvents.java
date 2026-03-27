@@ -2,11 +2,18 @@ package net.ecocraft.ah;
 
 import com.mojang.logging.LogUtils;
 import net.ecocraft.ah.command.AHCommand;
+import net.ecocraft.ah.data.AuctionListing;
+import net.ecocraft.ah.data.EnchantmentEntry;
+import net.ecocraft.ah.data.EnchantmentExtractor;
+import net.ecocraft.ah.data.ItemStackSerializer;
 import net.ecocraft.ah.service.AuctionService;
 import net.ecocraft.ah.storage.AuctionStorageProvider;
 import net.ecocraft.core.EcoServerEvents;
+import net.minecraft.core.RegistryAccess;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.storage.LevelResource;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -18,6 +25,7 @@ import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import org.slf4j.Logger;
 
 import java.nio.file.Path;
+import java.util.List;
 
 /**
  * Handles server lifecycle events for the auction house module.
@@ -47,6 +55,8 @@ public class AHServerEvents {
                 EcoServerEvents.getEconomy(),
                 EcoServerEvents.getCurrencyRegistry()
         );
+
+        reindexEnchantments(server);
 
         LOGGER.info("Auction House initialized with database at {}", dbPath);
     }
@@ -96,6 +106,37 @@ public class AHServerEvents {
             }
         } catch (Exception e) {
             LOGGER.error("Error checking uncollected parcels for player {}", player.getName().getString(), e);
+        }
+    }
+
+    private static void reindexEnchantments(MinecraftServer server) {
+        AuctionStorageProvider storage = getStorage();
+        if (storage == null) return;
+
+        List<AuctionListing> unindexed = storage.getListingsWithoutEnchantmentIndex();
+        if (unindexed.isEmpty()) return;
+
+        RegistryAccess registries = server.registryAccess();
+        int count = 0;
+
+        for (AuctionListing listing : unindexed) {
+            if (listing.itemNbt() == null || listing.itemNbt().isEmpty()) continue;
+
+            try {
+                ItemStack stack = ItemStackSerializer.deserialize(listing.itemNbt(), registries);
+                List<EnchantmentEntry> enchantments = EnchantmentExtractor.extract(stack);
+                if (!enchantments.isEmpty()) {
+                    storage.indexEnchantments(listing.id(), enchantments);
+                    count++;
+                }
+            } catch (Exception e) {
+                // Log and continue - don't fail server start for one bad listing
+                System.err.println("Failed to reindex enchantments for listing " + listing.id() + ": " + e.getMessage());
+            }
+        }
+
+        if (count > 0) {
+            System.out.println("[EcoCraft AH] Reindexed enchantments for " + count + " existing listings.");
         }
     }
 
