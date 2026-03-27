@@ -10,6 +10,8 @@ import net.ecocraft.gui.theme.DrawUtils;
 import net.ecocraft.gui.theme.Theme;
 import net.ecocraft.gui.widget.Button;
 import net.ecocraft.gui.widget.FilterTags;
+import net.ecocraft.gui.widget.ItemSlot;
+import net.ecocraft.gui.widget.NumberInput;
 import net.ecocraft.gui.widget.TextInput;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
@@ -60,6 +62,14 @@ public class BuyTab {
     // Detail mode widgets
     private Button backButton;
     private Table detailTable;
+
+    // Detail panel state
+    private int selectedEntryIndex = 0;
+    private ItemSlot panelItemSlot;
+    private NumberInput panelQuantityInput;
+    private NumberInput panelBidInput;
+    private Button panelActionButton;
+    private static final int PANEL_WIDTH_RATIO = 35;
 
     // Detail mode filter state
     private List<ItemStack> detailStacks = new ArrayList<>();
@@ -129,10 +139,10 @@ public class BuyTab {
         int tableY = y + 20;
         int tableH = h - 38;
         List<TableColumn> columns = List.of(
-                TableColumn.left(Component.literal("Objet"), 3f),
-                TableColumn.right(Component.literal("Meilleur prix"), 2f),
-                TableColumn.center(Component.literal("Offres"), 1f),
-                TableColumn.center(Component.literal("Dispo."), 1f)
+                TableColumn.sortableLeft(Component.literal("Objet"), 3f),
+                TableColumn.sortableRight(Component.literal("Meilleur prix"), 2f),
+                TableColumn.sortableCenter(Component.literal("Offres"), 1f),
+                TableColumn.sortableCenter(Component.literal("Dispo."), 1f)
         );
         browseTable = Table.builder()
                 .columns(columns)
@@ -219,17 +229,19 @@ public class BuyTab {
             filterY += 22;
         }
 
-        // Detail table - starts after filters
+        // Two-column layout
+        int panelW = (int) (w * PANEL_WIDTH_RATIO / 100.0);
+        int tableW = w - panelW - 6; // 6px gap
+
+        // Detail table (left column) — no "Action" column
         int tableY = filterY;
-        int tableH = y + h - 24 - tableY; // leave room for price history below
-        int tableW = w - 4;
+        int tableH = y + h - 24 - tableY;
         List<TableColumn> columns = List.of(
-                TableColumn.left(Component.literal("Vendeur"), 2f),
-                TableColumn.center(Component.literal("Qt\u00e9"), 1f),
-                TableColumn.right(Component.literal("Prix unit."), 2f),
+                TableColumn.sortableLeft(Component.literal("Vendeur"), 2f),
+                TableColumn.sortableCenter(Component.literal("Qté"), 1f),
+                TableColumn.sortableRight(Component.literal("Prix unit."), 2f),
                 TableColumn.center(Component.literal("Type"), 1f),
-                TableColumn.center(Component.literal("Expire"), 1.5f),
-                TableColumn.center(Component.literal("Action"), 1.5f)
+                TableColumn.sortableCenter(Component.literal("Expire"), 1.5f)
         );
         detailTable = Table.builder()
                 .columns(columns)
@@ -238,7 +250,13 @@ public class BuyTab {
                 .showScrollbar(true)
                 .scrollLines(1)
                 .build(x, tableY, tableW, tableH);
+        detailTable.setSelectionListener(this::onDetailRowSelected);
         addWidget.accept(detailTable);
+
+        // Right panel widgets
+        int panelX = x + tableW + 6;
+        int panelY = y + 16;
+        initPurchasePanel(addWidget, panelX, panelY, panelW);
 
         updateDetailTable();
     }
@@ -298,22 +316,80 @@ public class BuyTab {
     }
 
     private void renderDetailForeground(GuiGraphics graphics, Font font, int mouseX, int mouseY) {
-        // Item header
+        // Item header (left aligned)
         int headerY = y + 18;
-        int maxNameWidth = w - 170; // leave room for price info on the right
-        String truncatedName = DrawUtils.truncateText(font, detailItemName, maxNameWidth);
-        graphics.drawString(font, Component.literal(truncatedName), x + 64, headerY,
-                detailRarityColor, false);
+        int tableW = w - (int)(w * PANEL_WIDTH_RATIO / 100.0) - 6;
+        String truncatedName = DrawUtils.truncateText(font, detailItemName, tableW - 70);
+        graphics.drawString(font, Component.literal(truncatedName), x + 64, headerY, detailRarityColor, false);
 
-        // Price info panel (right side)
-        if (detailPriceInfo != null) {
-            int infoX = x + w - 120;
-            graphics.drawString(font, "Moy: " + formatPrice(detailPriceInfo.avgPrice()),
-                    infoX, y + 2, THEME.textGrey, false);
-            graphics.drawString(font, "Min: " + formatPrice(detailPriceInfo.minPrice()),
-                    infoX, y + 12, THEME.success, false);
-            graphics.drawString(font, "Max: " + formatPrice(detailPriceInfo.maxPrice()),
-                    infoX, y + 22, THEME.danger, false);
+        // Right panel background
+        int panelW = (int) (w * PANEL_WIDTH_RATIO / 100.0);
+        int panelX = x + tableW + 6;
+        int panelY = y + 16;
+        int panelH = h - 40;
+        DrawUtils.drawPanel(graphics, panelX, panelY, panelW, panelH, THEME);
+
+        // Panel title
+        String title = "Offre sélectionnée";
+        int titleW = font.width(title);
+        graphics.drawString(font, title, panelX + (panelW - titleW) / 2, panelY + 2, THEME.accent, false);
+        DrawUtils.drawAccentSeparator(graphics, panelX + 4, panelY + 12, panelW - 8, THEME);
+
+        // Panel content (based on selected entry)
+        var filtered = getFilteredEntries();
+        if (selectedEntryIndex >= 0 && selectedEntryIndex < filtered.size()) {
+            var entry = filtered.get(selectedEntryIndex);
+            boolean isAuction = "AUCTION".equals(entry.type());
+            int labelX = panelX + 8;
+            int valueX = panelX + panelW - 8;
+            int lineY = panelY + 42;
+
+            // Item name
+            String itemName = DrawUtils.truncateText(font, detailItemName, panelW - 16);
+            int nameW = font.width(itemName);
+            graphics.drawString(font, itemName, panelX + (panelW - nameW) / 2, panelY + 38, detailRarityColor, false);
+
+            // Seller
+            lineY += 14;
+            graphics.drawString(font, "Vendeur:", labelX, lineY, THEME.textGrey, false);
+            String seller = DrawUtils.truncateText(font, entry.sellerName(), panelW / 2);
+            graphics.drawString(font, seller, valueX - font.width(seller), lineY, THEME.textLight, false);
+
+            if (isAuction) {
+                lineY += 12;
+                graphics.drawString(font, "Enchère actuelle:", labelX, lineY, THEME.textGrey, false);
+                String bid = entry.unitPrice() > 0 ? formatPrice(entry.unitPrice()) : "Aucune";
+                graphics.drawString(font, bid, valueX - font.width(bid), lineY, THEME.warning, false);
+
+                lineY += 12;
+                long minBid = entry.unitPrice() > 0 ? entry.unitPrice() + 1 : 1;
+                graphics.drawString(font, "Enchère min:", labelX, lineY, THEME.textGrey, false);
+                String minStr = formatPrice(minBid);
+                graphics.drawString(font, minStr, valueX - font.width(minStr), lineY, THEME.textLight, false);
+
+                lineY += 14;
+                graphics.drawString(font, "Montant:", labelX, lineY + 4, THEME.textGrey, false);
+
+                lineY += 22;
+                graphics.drawString(font, "Expire:", labelX, lineY, THEME.textGrey, false);
+                String expire = formatTimeRemaining(entry.expiresInMs());
+                graphics.drawString(font, expire, valueX - font.width(expire), lineY, THEME.textGrey, false);
+            } else {
+                lineY += 12;
+                graphics.drawString(font, "Prix unitaire:", labelX, lineY, THEME.textGrey, false);
+                String price = formatPrice(entry.unitPrice());
+                graphics.drawString(font, price, valueX - font.width(price), lineY, THEME.accent, false);
+
+                lineY += 14;
+                graphics.drawString(font, "Quantité:", labelX, lineY + 4, THEME.textGrey, false);
+
+                lineY += 22;
+                long qty = panelQuantityInput != null ? panelQuantityInput.getValue() : entry.quantity();
+                long total = entry.unitPrice() * qty;
+                graphics.drawString(font, "Prix total:", labelX, lineY, THEME.textLight, false);
+                String totalStr = formatPrice(total);
+                graphics.drawString(font, totalStr, valueX - font.width(totalStr), lineY, THEME.accent, false);
+            }
         }
 
         // Price history summary below the table
@@ -326,9 +402,20 @@ public class BuyTab {
             int historyW = font.width(historyLine);
             graphics.drawString(font, historyLine, x + (w - historyW) / 2, historyY, THEME.textGrey, false);
         } else {
-            String noData = "Aucune donn\u00e9e de prix disponible";
+            String noData = "Aucune donnée de prix disponible";
             int noDataW = font.width(noData);
             graphics.drawString(font, noData, x + (w - noDataW) / 2, historyY, THEME.textDim, false);
+        }
+
+        // Price info top-right (on the table side)
+        if (detailPriceInfo != null) {
+            int infoX = x + tableW - 120;
+            graphics.drawString(font, "Moy: " + formatPrice(detailPriceInfo.avgPrice()),
+                    infoX, y + 2, THEME.textGrey, false);
+            graphics.drawString(font, "Min: " + formatPrice(detailPriceInfo.minPrice()),
+                    infoX, y + 12, THEME.success, false);
+            graphics.drawString(font, "Max: " + formatPrice(detailPriceInfo.maxPrice()),
+                    infoX, y + 22, THEME.danger, false);
         }
     }
 
@@ -409,13 +496,18 @@ public class BuyTab {
         parent.rebuildCurrentTab();
     }
 
-    private void onBuyClicked(String listingId) {
-        PacketDistributor.sendToServer(new BuyListingPayload(listingId));
-    }
+    private void onPanelAction() {
+        var filtered = getFilteredEntries();
+        if (selectedEntryIndex < 0 || selectedEntryIndex >= filtered.size()) return;
+        var entry = filtered.get(selectedEntryIndex);
+        boolean isAuction = "AUCTION".equals(entry.type());
 
-    private void onBidClicked(String listingId) {
-        // For now just place a bid at 0 (placeholder - real UI will have an input dialog)
-        PacketDistributor.sendToServer(new PlaceBidPayload(listingId, 0));
+        if (isAuction) {
+            long bidAmount = panelBidInput.getValue();
+            PacketDistributor.sendToServer(new PlaceBidPayload(entry.listingId(), bidAmount));
+        } else {
+            PacketDistributor.sendToServer(new BuyListingPayload(entry.listingId()));
+        }
     }
 
     // --- Network ---
@@ -500,10 +592,10 @@ public class BuyTab {
         for (var item : currentItems) {
             ItemStack icon = AuctionHouseScreen.itemFromId(item.itemId());
             rows.add(TableRow.withIcon(icon, item.rarityColor(), List.of(
-                    TableRow.Cell.of(Component.literal(item.itemName()), item.rarityColor()),
-                    TableRow.Cell.of(Component.literal(formatPrice(item.bestPrice())), THEME.accent),
-                    TableRow.Cell.of(Component.literal(String.valueOf(item.listingCount())), THEME.textLight),
-                    TableRow.Cell.of(Component.literal(String.valueOf(item.totalAvailable())), THEME.textLight)
+                    TableRow.Cell.of(Component.literal(item.itemName()), item.rarityColor(), item.itemName()),
+                    TableRow.Cell.of(Component.literal(formatPrice(item.bestPrice())), THEME.accent, item.bestPrice()),
+                    TableRow.Cell.of(Component.literal(String.valueOf(item.listingCount())), THEME.textLight, item.listingCount()),
+                    TableRow.Cell.of(Component.literal(String.valueOf(item.totalAvailable())), THEME.textLight, item.totalAvailable())
             ), () -> onRowClicked(item.itemId())));
         }
         browseTable.setRows(rows);
@@ -512,31 +604,126 @@ public class BuyTab {
     private void updateDetailTable() {
         if (detailTable == null) return;
 
+        var filtered = getFilteredEntries();
         List<TableRow> rows = new ArrayList<>();
-        for (int i = 0; i < detailEntries.size(); i++) {
-            var entry = detailEntries.get(i);
-            ItemStack stack = i < detailStacks.size() ? detailStacks.get(i) : ItemStack.EMPTY;
-
-            // Apply durability filter (client-side only)
-            if (!matchesDurabilityFilter(stack)) continue;
+        for (int i = 0; i < filtered.size(); i++) {
+            var entry = filtered.get(i);
+            int stackIdx = detailEntries.indexOf(entry);
+            ItemStack stack = stackIdx >= 0 && stackIdx < detailStacks.size() ? detailStacks.get(stackIdx) : ItemStack.EMPTY;
 
             boolean isAuction = "AUCTION".equals(entry.type());
-
-            // Resolve the ItemStack icon
             ItemStack icon = stack.isEmpty() ? AuctionHouseScreen.itemFromId(detailItemId) : stack;
 
             rows.add(TableRow.withIcon(icon, detailRarityColor, List.of(
-                    TableRow.Cell.of(Component.literal(entry.sellerName()), THEME.textLight),
-                    TableRow.Cell.of(Component.literal(String.valueOf(entry.quantity())), THEME.textLight),
-                    TableRow.Cell.of(Component.literal(formatPrice(entry.unitPrice())), THEME.accent),
-                    TableRow.Cell.of(Component.literal(isAuction ? "Ench\u00e8re" : "Achat"),
+                    TableRow.Cell.of(Component.literal(entry.sellerName()), THEME.textLight, entry.sellerName()),
+                    TableRow.Cell.of(Component.literal(String.valueOf(entry.quantity())), THEME.textLight, entry.quantity()),
+                    TableRow.Cell.of(Component.literal(formatPrice(entry.unitPrice())), THEME.accent, entry.unitPrice()),
+                    TableRow.Cell.of(Component.literal(isAuction ? "Enchère" : "Achat"),
                             isAuction ? THEME.warning : THEME.success),
-                    TableRow.Cell.of(Component.literal(formatTimeRemaining(entry.expiresInMs())), THEME.textGrey),
-                    TableRow.Cell.of(Component.literal(isAuction ? "Ench\u00e9rir" : "Acheter"),
-                            isAuction ? THEME.warning : THEME.success)
-            ), isAuction ? () -> onBidClicked(entry.listingId()) : () -> onBuyClicked(entry.listingId())));
+                    TableRow.Cell.of(Component.literal(formatTimeRemaining(entry.expiresInMs())), THEME.textGrey, entry.expiresInMs())
+            ), null));
         }
         detailTable.setRows(rows);
+
+        // Pre-select first row (best price)
+        if (!rows.isEmpty()) {
+            selectedEntryIndex = 0;
+            detailTable.setSelectedRow(0);
+            updatePurchasePanel();
+        }
+    }
+
+    private void initPurchasePanel(Consumer<AbstractWidget> addWidget, int px, int py, int pw) {
+        Font font = Minecraft.getInstance().font;
+
+        // Item slot (centered)
+        int slotSize = 32;
+        int slotX = px + (pw - slotSize) / 2;
+        panelItemSlot = new ItemSlot(slotX, py + 4, slotSize, THEME);
+        addWidget.accept(panelItemSlot);
+
+        // Quantity input (for BUYOUT)
+        int inputY = py + 100;
+        panelQuantityInput = new NumberInput(font, px + 4, inputY, pw - 8, 16, THEME);
+        panelQuantityInput.min(1).max(1).step(1);
+        panelQuantityInput.setValue(1);
+        panelQuantityInput.responder(val -> updatePanelTotal());
+        addWidget.accept(panelQuantityInput);
+
+        // Bid input (for AUCTION — overlaps quantity, only one visible at a time)
+        panelBidInput = new NumberInput(font, px + 4, inputY, pw - 8, 16, THEME);
+        panelBidInput.min(1).max(Long.MAX_VALUE).step(1);
+        panelBidInput.setValue(1);
+        panelBidInput.visible = false;
+        addWidget.accept(panelBidInput);
+
+        // Action button
+        int btnY = inputY + 40;
+        panelActionButton = Button.success(THEME, Component.literal("Acheter"), () -> onPanelAction());
+        panelActionButton.setX(px + 4);
+        panelActionButton.setY(btnY);
+        panelActionButton.setWidth(pw - 8);
+        panelActionButton.setHeight(20);
+        addWidget.accept(panelActionButton);
+
+        // Apply initial selection
+        updatePurchasePanel();
+    }
+
+    private void onDetailRowSelected(int displayIndex) {
+        this.selectedEntryIndex = displayIndex;
+        updatePurchasePanel();
+    }
+
+    private void updatePurchasePanel() {
+        var filtered = getFilteredEntries();
+        if (selectedEntryIndex < 0 || selectedEntryIndex >= filtered.size()) {
+            selectedEntryIndex = 0;
+        }
+        if (filtered.isEmpty()) return;
+
+        var entry = filtered.get(selectedEntryIndex);
+        boolean isAuction = "AUCTION".equals(entry.type());
+
+        // Update item slot
+        ItemStack icon;
+        int stackIdx = detailEntries.indexOf(entry);
+        if (stackIdx >= 0 && stackIdx < detailStacks.size() && !detailStacks.get(stackIdx).isEmpty()) {
+            icon = detailStacks.get(stackIdx);
+        } else {
+            icon = AuctionHouseScreen.itemFromId(detailItemId);
+        }
+        panelItemSlot.setItem(icon, detailRarityColor);
+
+        // Quantity vs Bid
+        if (isAuction) {
+            panelQuantityInput.visible = false;
+            panelBidInput.visible = true;
+            long minBid = entry.unitPrice() > 0 ? entry.unitPrice() + 1 : 1;
+            panelBidInput.min(minBid).setValue(minBid);
+            panelActionButton.setMessage(Component.literal("Enchérir"));
+        } else {
+            panelQuantityInput.visible = true;
+            panelBidInput.visible = false;
+            panelQuantityInput.max(entry.quantity()).setValue(entry.quantity());
+            panelQuantityInput.setEnabled(entry.quantity() > 1);
+            panelActionButton.setMessage(Component.literal("Acheter"));
+        }
+    }
+
+    private void updatePanelTotal() {
+        // Total is recalculated and drawn in renderDetailForeground
+    }
+
+    private List<ListingDetailResponsePayload.ListingEntry> getFilteredEntries() {
+        List<ListingDetailResponsePayload.ListingEntry> filtered = new ArrayList<>();
+        for (int i = 0; i < detailEntries.size(); i++) {
+            ItemStack stack = i < detailStacks.size() ? detailStacks.get(i) : ItemStack.EMPTY;
+            if (matchesDurabilityFilter(stack)) {
+                filtered.add(detailEntries.get(i));
+            }
+        }
+        return filtered;
     }
 
     private boolean matchesDurabilityFilter(ItemStack stack) {
