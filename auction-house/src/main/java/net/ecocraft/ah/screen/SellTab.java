@@ -28,11 +28,12 @@ import java.util.function.Consumer;
 public class SellTab {
 
     private static final Theme THEME = Theme.dark();
-    private static final double TAX_RATE = 0.05;
-    private static final double DEPOSIT_RATE = 0.02;
-    private static final int[] DURATIONS = {12, 24, 48};
-    private static final String[] DURATION_LABELS = {"12h", "24h", "48h"};
     private static final int INV_COLS = 9;
+
+    // Set by AuctionHouseScreen when settings are received from server
+    static int[] activeDurations = {12, 24, 48};
+    static double activeTaxRate = 0.05;
+    static double activeDepositRate = 0.02;
 
     private final AuctionHouseScreen parent;
     private final int x, y, w, h;
@@ -130,11 +131,10 @@ public class SellTab {
         currentY += 4;
 
         // 4. Duration selector
-        List<Component> durationLabels = List.of(
-                Component.literal(DURATION_LABELS[0]),
-                Component.literal(DURATION_LABELS[1]),
-                Component.literal(DURATION_LABELS[2])
-        );
+        List<Component> durationLabels = new java.util.ArrayList<>();
+        for (int d : activeDurations) {
+            durationLabels.add(Component.literal(d + "h"));
+        }
         durationTags = new FilterTags(leftCenterX - 60, currentY, durationLabels, idx -> selectedDuration = idx);
         durationTags.setActiveTag(selectedDuration);
         addWidget.accept(durationTags);
@@ -240,8 +240,8 @@ public class SellTab {
 
             long unitPrice = priceValue;
             long totalPrice = unitPrice * quantity;
-            long tax = Math.max(1, (long) (totalPrice * TAX_RATE));
-            long deposit = Math.max(1, (long) (totalPrice * DEPOSIT_RATE));
+            long tax = Math.max(1, (long) (totalPrice * activeTaxRate));
+            long deposit = Math.max(1, (long) (totalPrice * activeDepositRate));
             long net = totalPrice - tax;
 
             int labelX = panelX + 8;
@@ -249,8 +249,8 @@ public class SellTab {
 
             drawSummaryLine(graphics, font, "Prix unitaire:", BuyTab.formatPrice(unitPrice), labelX, valueX, panelY + 4, THEME.textGrey, THEME.textLight);
             drawSummaryLine(graphics, font, "Prix total:", BuyTab.formatPrice(totalPrice), labelX, valueX, panelY + 16, THEME.textLight, THEME.accent);
-            drawSummaryLine(graphics, font, "Taxe (5%):", "-" + BuyTab.formatPrice(tax), labelX, valueX, panelY + 28, THEME.textGrey, THEME.danger);
-            drawSummaryLine(graphics, font, "D\u00e9p\u00f4t (2%):", "-" + BuyTab.formatPrice(deposit), labelX, valueX, panelY + 40, THEME.textGrey, THEME.warning);
+            drawSummaryLine(graphics, font, "Taxe (" + Math.round(activeTaxRate * 100) + "%):", "-" + BuyTab.formatPrice(tax), labelX, valueX, panelY + 28, THEME.textGrey, THEME.danger);
+            drawSummaryLine(graphics, font, "D\u00e9p\u00f4t (" + Math.round(activeDepositRate * 100) + "%):", "-" + BuyTab.formatPrice(deposit), labelX, valueX, panelY + 40, THEME.textGrey, THEME.warning);
             DrawUtils.drawAccentSeparator(graphics, panelX + 4, panelY + 51, panelW - 8, THEME);
             drawSummaryLine(graphics, font, "Net:", BuyTab.formatPrice(net), labelX, valueX, panelY + 56, THEME.textLight, THEME.success);
         } else {
@@ -350,7 +350,7 @@ public class SellTab {
         }
 
         String listingType = isBuyout ? "BUYOUT" : "AUCTION";
-        int hours = DURATIONS[selectedDuration];
+        int hours = activeDurations[selectedDuration];
         int slotToSend = selectedInventorySlot >= 0 ? selectedInventorySlot : -1;
         PacketDistributor.sendToServer(new CreateListingPayload(listingType, priceValue, hours, slotToSend));
         lastMessage = "Envoi en cours...";
