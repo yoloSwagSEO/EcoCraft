@@ -487,22 +487,18 @@ public class AuctionService {
     // -------------------------------------------------------------------------
 
     /**
-     * Converts a BigDecimal amount to the smallest currency unit (long).
-     * Example: 10.50 gold with 2 decimals → 1050L
+     * Converts a BigDecimal amount to long for storage.
+     * Stores in the main currency unit (Gold), not sub-units.
      */
     public static long toSmallestUnit(BigDecimal amount, Currency currency) {
-        BigDecimal multiplier = BigDecimal.TEN.pow(currency.decimals());
-        return amount.multiply(multiplier).setScale(0, RoundingMode.DOWN).longValueExact();
+        return amount.setScale(0, RoundingMode.DOWN).longValueExact();
     }
 
     /**
-     * Converts a smallest-unit long back to a BigDecimal.
-     * Example: 1050L with 2 decimals → 10.50
+     * Converts a stored long back to a BigDecimal.
      */
     public static BigDecimal fromSmallestUnit(long amount, Currency currency) {
-        if (currency.decimals() == 0) return BigDecimal.valueOf(amount);
-        BigDecimal divisor = BigDecimal.TEN.pow(currency.decimals());
-        return BigDecimal.valueOf(amount).divide(divisor, currency.decimals(), RoundingMode.UNNECESSARY);
+        return BigDecimal.valueOf(amount);
     }
 
     // -------------------------------------------------------------------------

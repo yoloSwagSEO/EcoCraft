@@ -232,6 +232,7 @@ public class BuyTab {
                 TableColumn.center(Component.literal("Action"), 1.5f)
         );
         detailTable = new PaginatedTable(x, tableY, tableW, tableH, columns);
+        detailTable.scrollMode(true); // use mouse wheel scrolling instead of pagination
         addWidget.accept(detailTable);
 
         updateDetailTable();

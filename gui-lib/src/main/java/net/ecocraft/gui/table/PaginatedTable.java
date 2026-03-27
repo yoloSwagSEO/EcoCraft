@@ -31,6 +31,7 @@ public class PaginatedTable extends AbstractWidget {
     private int rowsPerPage;
     private int hoveredRow = -1;
     private boolean tooltipsEnabled = true;
+    private boolean scrollModeEnabled = false;
     // Store mouse position for tooltip rendering
     private int lastMouseX, lastMouseY;
 
@@ -53,6 +54,12 @@ public class PaginatedTable extends AbstractWidget {
 
     public PaginatedTable tooltips(boolean enabled) {
         this.tooltipsEnabled = enabled;
+        return this;
+    }
+
+    /** Enable scroll mode: mouse wheel scrolls through rows, no pagination buttons needed. */
+    public PaginatedTable scrollMode(boolean enabled) {
+        this.scrollModeEnabled = enabled;
         return this;
     }
 
@@ -180,6 +187,17 @@ public class PaginatedTable extends AbstractWidget {
         var row = rows.get(hoveredRow);
         if (row.onClick() != null) {
             row.onClick().run();
+            return true;
+        }
+        return false;
+    }
+
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        if (!isMouseOver(mouseX, mouseY)) return false;
+        if (scrollModeEnabled || getTotalPages() > 1) {
+            if (scrollY > 0) previousPage();
+            else if (scrollY < 0) nextPage();
             return true;
         }
         return false;

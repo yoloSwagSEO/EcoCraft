@@ -153,20 +153,21 @@ class AuctionServiceTest {
 
     @Test
     void toSmallestUnitConversion() {
-        assertEquals(1050L, AuctionService.toSmallestUnit(new BigDecimal("10.50"), GOLD));
-        assertEquals(10000L, AuctionService.toSmallestUnit(new BigDecimal("100.00"), GOLD));
-        assertEquals(1L, AuctionService.toSmallestUnit(new BigDecimal("0.01"), GOLD));
+        // Prices stored in main unit (Gold), no sub-unit multiplication
+        assertEquals(10L, AuctionService.toSmallestUnit(new BigDecimal("10.50"), GOLD));
+        assertEquals(100L, AuctionService.toSmallestUnit(new BigDecimal("100.00"), GOLD));
+        assertEquals(0L, AuctionService.toSmallestUnit(new BigDecimal("0.01"), GOLD));
     }
 
     @Test
     void fromSmallestUnitConversion() {
-        assertEquals(new BigDecimal("10.50"), AuctionService.fromSmallestUnit(1050L, GOLD));
-        assertEquals(new BigDecimal("100.00"), AuctionService.fromSmallestUnit(10000L, GOLD));
+        assertEquals(new BigDecimal("1050"), AuctionService.fromSmallestUnit(1050L, GOLD));
+        assertEquals(new BigDecimal("100"), AuctionService.fromSmallestUnit(100L, GOLD));
     }
 
     @Test
     void conversionRoundTrip() {
-        BigDecimal original = new BigDecimal("42.75");
+        BigDecimal original = new BigDecimal("42");
         long units = AuctionService.toSmallestUnit(original, GOLD);
         assertEquals(original, AuctionService.fromSmallestUnit(units, GOLD));
     }
@@ -239,7 +240,7 @@ class AuctionServiceTest {
                 1, ListingType.AUCTION, new BigDecimal("20.00"), 24, "gold", ItemCategory.WEAPONS);
 
         assertEquals(0L, listing.buyoutPrice());
-        assertEquals(2000L, listing.startingBid()); // 20.00 * 100 = 2000 units
+        assertEquals(20L, listing.startingBid()); // 20.00 stored as-is = 20 units
     }
 
     // -------------------------------------------------------------------------
@@ -328,7 +329,7 @@ class AuctionServiceTest {
         AuctionStorageProvider.PriceStats stats = storage.getPriceHistory(
                 "minecraft:diamond_sword", "gold", 86_400_000L);
         assertNotNull(stats);
-        assertEquals(10000L, stats.minPrice()); // 100.00 = 10000 units
+        assertEquals(100L, stats.minPrice()); // 100.00 stored as-is = 100 units
     }
 
     // -------------------------------------------------------------------------
@@ -355,7 +356,7 @@ class AuctionServiceTest {
         // Listing should have updated bid
         AuctionListing updated = storage.getListingById(listing.id());
         assertNotNull(updated);
-        assertEquals(6000L, updated.currentBid());
+        assertEquals(60L, updated.currentBid());
         assertEquals(bidder, updated.currentBidderUuid());
     }
 
@@ -538,13 +539,13 @@ class AuctionServiceTest {
         // Create a currency parcel
         AuctionParcel currencyParcel = new AuctionParcel(
                 UUID.randomUUID().toString(), player, null, null, null,
-                0, 5000L, "gold", ParcelSource.HDV_SALE, System.currentTimeMillis(), false);
+                0, 50L, "gold", ParcelSource.HDV_SALE, System.currentTimeMillis(), false);
         storage.createParcel(currencyParcel);
 
         service.collectParcels(player);
 
-        // Should be credited 50.00
-        assertEquals(new BigDecimal("50.00"), economy.getBalance(player, GOLD));
+        // Should be credited 50
+        assertEquals(0, new BigDecimal("50").compareTo(economy.getBalance(player, GOLD)));
         assertEquals(0, storage.countUncollectedParcels(player));
     }
 
