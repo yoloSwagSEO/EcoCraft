@@ -529,6 +529,10 @@ public class AuctionStorageProvider {
             throw new RuntimeException("Failed to get taxes paid", e);
         }
 
+        // Also include deposit fees (HDV_LISTING_FEE) in taxes total
+        long depositFees = sumParcelAmounts(playerUuid, ParcelSource.HDV_LISTING_FEE, sinceMs);
+        taxesPaid += depositFees;
+
         return new PlayerStats(totalSales, totalPurchases, taxesPaid);
     }
 

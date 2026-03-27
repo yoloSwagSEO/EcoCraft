@@ -58,7 +58,7 @@ public class BuyTab {
     private EcoButton backButton;
     private EcoPaginatedTable detailTable;
 
-    private static final int SIDEBAR_WIDTH = 90;
+    private static final int SIDEBAR_WIDTH = 80;
 
     public BuyTab(AuctionHouseScreen parent, int x, int y, int w, int h) {
         this.parent = parent;
@@ -81,7 +81,7 @@ public class BuyTab {
 
         // Category sidebar buttons
         categoryButtons.clear();
-        String[] categories = {"Tout", "Armes", "Armures", "Outils", "Potions", "Blocs", "Nourriture", "Enchant.", "Divers"};
+        String[] categories = {"Tout", "Armes", "Armures", "Outils", "Potions", "Blocs", "Nourrit.", "Enchant.", "Divers"};
         int btnY = y + 2;
         for (int i = 0; i < categories.length; i++) {
             final int catIndex = i;
@@ -96,9 +96,9 @@ public class BuyTab {
             btnY += 16;
         }
 
-        // Content area (right of sidebar)
-        int contentX = x + SIDEBAR_WIDTH;
-        int contentW = w - SIDEBAR_WIDTH;
+        // Content area (right of sidebar with 2px gap)
+        int contentX = x + SIDEBAR_WIDTH + 2;
+        int contentW = w - SIDEBAR_WIDTH - 2;
 
         // Search bar
         searchBar = new EcoSearchBar(font, contentX + 2, y + 2, contentW - 4, 12,
@@ -172,8 +172,8 @@ public class BuyTab {
     public void renderForeground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         Font font = Minecraft.getInstance().font;
         if (mode == Mode.BROWSE) {
-            int contentX = x + SIDEBAR_WIDTH;
-            int contentW = w - SIDEBAR_WIDTH;
+            int contentX = x + SIDEBAR_WIDTH + 2;
+            int contentW = w - SIDEBAR_WIDTH - 2;
             int paginationY = y + h - 16;
             String pageInfo = "Page " + (currentPage + 1) + "/" + Math.max(1, totalPages);
             int pageInfoWidth = font.width(pageInfo);
@@ -339,7 +339,7 @@ public class BuyTab {
 
         Font font = Minecraft.getInstance().font;
         // Estimate available width for item name column: ~42% of table width (3/7 ratio)
-        int tableContentW = w - SIDEBAR_WIDTH;
+        int tableContentW = w - SIDEBAR_WIDTH - 2;
         int nameColWidth = (int) (tableContentW * 3f / 7f) - 10;
 
         List<TableRow> rows = new ArrayList<>();

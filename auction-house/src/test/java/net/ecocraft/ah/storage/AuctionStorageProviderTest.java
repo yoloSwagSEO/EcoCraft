@@ -436,4 +436,29 @@ class AuctionStorageProviderTest {
         assertEquals(950L, stats.totalSalesRevenue());
         assertEquals(50L, stats.taxesPaid());
     }
+
+    @Test
+    void getPlayerStatsIncludesDepositFeesInTaxes() {
+        UUID seller = UUID.randomUUID();
+        UUID buyer = UUID.randomUUID();
+        long now = System.currentTimeMillis();
+
+        // Create a sold listing for seller with tax 50
+        AuctionListing listing = new AuctionListing(
+                UUID.randomUUID().toString(), seller, "SellerName",
+                "minecraft:diamond", "Diamond", null, 1,
+                ListingType.BUYOUT, 1000L, 0L, 1000L, buyer, "gold",
+                ItemCategory.MISC, now + 3600_000L, ListingStatus.SOLD, 50L, now - 1000L);
+        db.createListing(listing);
+        db.completeSale(listing.id());
+
+        // Create a deposit fee parcel (HDV_LISTING_FEE) for the seller
+        db.createParcel(new AuctionParcel(UUID.randomUUID().toString(), seller,
+                "minecraft:diamond", "Diamond", null, 0, 20L, "gold",
+                ParcelSource.HDV_LISTING_FEE, now, true));
+
+        AuctionStorageProvider.PlayerStats stats = db.getPlayerStats(seller, now - 10_000L);
+        // taxesPaid should include both the sale tax (50) and the deposit fee (20)
+        assertEquals(70L, stats.taxesPaid());
+    }
 }

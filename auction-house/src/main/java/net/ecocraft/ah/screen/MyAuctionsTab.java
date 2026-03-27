@@ -210,6 +210,9 @@ public class MyAuctionsTab {
         if (parcelsCard != null) {
             parcelsCard.setValue(Component.literal(String.valueOf(parcelsToCollect)), EcoColors.INFO);
         }
+        if (collectBtn != null) {
+            collectBtn.setMessage(Component.literal("R\u00e9cup\u00e9rer (" + parcelsToCollect + ")"));
+        }
     }
 
     // --- Helpers ---

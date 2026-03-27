@@ -142,6 +142,7 @@ public final class ServerPayloadHandler {
                 BigDecimal price = BigDecimal.valueOf(payload.price());
 
                 String currencyId = net.ecocraft.core.EcoServerEvents.getCurrencyRegistry().getDefault().id();
+                ItemCategory category = ItemCategoryDetector.detect(itemToSell);
                 service.createListing(
                         player.getUUID(),
                         player.getName().getString(),
@@ -153,7 +154,7 @@ public final class ServerPayloadHandler {
                         price,
                         payload.durationHours(),
                         currencyId,
-                        ItemCategory.MISC
+                        category
                 );
 
                 // Remove item from the correct slot
