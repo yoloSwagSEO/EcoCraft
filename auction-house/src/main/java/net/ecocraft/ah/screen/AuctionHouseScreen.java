@@ -41,6 +41,12 @@ public class AuctionHouseScreen extends Screen {
     private long playerBalance = -1; // -1 = not yet received
     private String currencySymbol = "";
 
+    // Settings (received from server)
+    private boolean isAdmin = false;
+    private int settingsSaleRate = 5;
+    private int settingsDepositRate = 2;
+    private java.util.List<Integer> settingsDurations = java.util.List.of(12, 24, 48);
+
     private BuyTab buyTab;
     private SellTab sellTab;
     private MyAuctionsTab myAuctionsTab;
@@ -138,9 +144,23 @@ public class AuctionHouseScreen extends Screen {
             Font font = Minecraft.getInstance().font;
             String balanceText = BuyTab.formatPrice(playerBalance);
             int textW = font.width(balanceText);
-            int bx = guiLeft + guiWidth - textW - 8;
+            int rightEdge = isAdmin ? guiLeft + guiWidth - font.width("\u2699") - 12 : guiLeft + guiWidth;
+            int bx = rightEdge - textW - 8;
             int by = guiTop + 10;
             graphics.drawString(font, balanceText, bx, by, THEME.accent, false);
+        }
+
+        // Gear icon for admin settings
+        if (isAdmin) {
+            Font font = Minecraft.getInstance().font;
+            String gear = "\u2699";
+            int gearW = font.width(gear);
+            int gearX = guiLeft + guiWidth - gearW - 4;
+            int gearY = guiTop + 8;
+            boolean gearHovered = mouseX >= gearX - 2 && mouseX <= gearX + gearW + 2
+                    && mouseY >= gearY - 2 && mouseY <= gearY + font.lineHeight + 2;
+            int gearColor = gearHovered ? THEME.textWhite : THEME.accent;
+            graphics.drawString(font, gear, gearX, gearY, gearColor, false);
         }
 
         // Render foreground text/overlays AFTER widgets
@@ -163,6 +183,21 @@ public class AuctionHouseScreen extends Screen {
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        // Gear icon click → open settings
+        if (isAdmin) {
+            Font font = Minecraft.getInstance().font;
+            String gear = "\u2699";
+            int gearW = font.width(gear);
+            int gearX = guiLeft + guiWidth - gearW - 4;
+            int gearY = guiTop + 8;
+            if (mouseX >= gearX - 2 && mouseX <= gearX + gearW + 2
+                    && mouseY >= gearY - 2 && mouseY <= gearY + font.lineHeight + 2) {
+                Minecraft.getInstance().setScreen(new AHSettingsScreen(
+                        settingsSaleRate, settingsDepositRate, settingsDurations));
+                return true;
+            }
+        }
+
         // Modal dialog captures all input
         if (activeDialog != null && !activeDialog.isClosed()) {
             return activeDialog.mouseClicked(mouseX, mouseY, button);
@@ -316,6 +351,13 @@ public class AuctionHouseScreen extends Screen {
     }
 
     protected void onReceiveSettings(AHSettingsPayload payload) {
-        // Will be implemented in Task 4
+        this.isAdmin = payload.isAdmin();
+        this.settingsSaleRate = payload.saleRate();
+        this.settingsDepositRate = payload.depositRate();
+        this.settingsDurations = new java.util.ArrayList<>(payload.durations());
+        // Update SellTab with current settings
+        SellTab.activeDurations = payload.durations().stream().mapToInt(Integer::intValue).toArray();
+        SellTab.activeTaxRate = payload.saleRate() / 100.0;
+        SellTab.activeDepositRate = payload.depositRate() / 100.0;
     }
 }
