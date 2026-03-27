@@ -118,9 +118,9 @@ public class MyAuctionsTab {
         requestData();
     }
 
-    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        // Widgets handle their own rendering
-    }
+    public void renderBackground(GuiGraphics graphics) {}
+    public void renderForeground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {}
+    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {}
 
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         return false;

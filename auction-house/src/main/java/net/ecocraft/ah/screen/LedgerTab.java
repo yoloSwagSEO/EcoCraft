@@ -140,7 +140,9 @@ public class LedgerTab {
         requestData();
     }
 
-    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+    public void renderBackground(GuiGraphics graphics) {}
+
+    public void renderForeground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         Font font = Minecraft.getInstance().font;
 
         // Page info
@@ -151,6 +153,8 @@ public class LedgerTab {
                 x + (w - pageInfoWidth) / 2,
                 paginationY + 3, EcoColors.TEXT_GREY, false);
     }
+
+    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {}
 
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         return false;

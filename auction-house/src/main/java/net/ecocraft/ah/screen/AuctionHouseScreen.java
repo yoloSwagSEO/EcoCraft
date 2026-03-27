@@ -124,13 +124,23 @@ public class AuctionHouseScreen extends Screen {
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        // Render tab backgrounds BEFORE widgets (so panels don't cover buttons)
+        switch (activeTab) {
+            case 0 -> buyTab.renderBackground(graphics);
+            case 1 -> sellTab.renderBackground(graphics);
+            case 2 -> myAuctionsTab.renderBackground(graphics);
+            case 3 -> ledgerTab.renderBackground(graphics);
+        }
+
+        // Render widgets (buttons, tables, etc.)
         super.render(graphics, mouseX, mouseY, partialTick);
 
+        // Render foreground text/overlays AFTER widgets
         switch (activeTab) {
-            case 0 -> buyTab.render(graphics, mouseX, mouseY, partialTick);
-            case 1 -> sellTab.render(graphics, mouseX, mouseY, partialTick);
-            case 2 -> myAuctionsTab.render(graphics, mouseX, mouseY, partialTick);
-            case 3 -> ledgerTab.render(graphics, mouseX, mouseY, partialTick);
+            case 0 -> buyTab.renderForeground(graphics, mouseX, mouseY, partialTick);
+            case 1 -> sellTab.renderForeground(graphics, mouseX, mouseY, partialTick);
+            case 2 -> myAuctionsTab.renderForeground(graphics, mouseX, mouseY, partialTick);
+            case 3 -> ledgerTab.renderForeground(graphics, mouseX, mouseY, partialTick);
         }
     }
 

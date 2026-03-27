@@ -188,7 +188,11 @@ public class SellTab {
         }
     }
 
-    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+    public void renderBackground(GuiGraphics graphics) {
+        // No background panels needed before widgets
+    }
+
+    public void renderForeground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         Font font = Minecraft.getInstance().font;
         int leftCenterX = leftColX + leftColW / 2;
 

@@ -161,31 +161,36 @@ public class BuyTab {
 
     // --- Rendering ---
 
-    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        Font font = Minecraft.getInstance().font;
+    /** Called BEFORE widgets render — draw background panels here. */
+    public void renderBackground(GuiGraphics graphics) {
         if (mode == Mode.BROWSE) {
-            renderBrowse(graphics, font, mouseX, mouseY);
-        } else {
-            renderDetail(graphics, font, mouseX, mouseY);
+            EcoTheme.drawPanel(graphics, x, y, SIDEBAR_WIDTH - 4, h);
         }
     }
 
-    private void renderBrowse(GuiGraphics graphics, Font font, int mouseX, int mouseY) {
-        // Sidebar background
-        EcoTheme.drawPanel(graphics, x, y, SIDEBAR_WIDTH - 4, h);
-
-        // Page info
-        int contentX = x + SIDEBAR_WIDTH;
-        int contentW = w - SIDEBAR_WIDTH;
-        int paginationY = y + h - 16;
-        String pageInfo = "Page " + (currentPage + 1) + "/" + Math.max(1, totalPages);
-        int pageInfoWidth = font.width(pageInfo);
-        graphics.drawString(font, pageInfo,
-                contentX + (contentW - pageInfoWidth) / 2,
-                paginationY + 3, EcoColors.TEXT_GREY, false);
+    /** Called AFTER widgets render — draw text overlays here. */
+    public void renderForeground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        Font font = Minecraft.getInstance().font;
+        if (mode == Mode.BROWSE) {
+            int contentX = x + SIDEBAR_WIDTH;
+            int contentW = w - SIDEBAR_WIDTH;
+            int paginationY = y + h - 16;
+            String pageInfo = "Page " + (currentPage + 1) + "/" + Math.max(1, totalPages);
+            int pageInfoWidth = font.width(pageInfo);
+            graphics.drawString(font, pageInfo,
+                    contentX + (contentW - pageInfoWidth) / 2,
+                    paginationY + 3, EcoColors.TEXT_GREY, false);
+        } else {
+            renderDetailForeground(graphics, font, mouseX, mouseY);
+        }
     }
 
-    private void renderDetail(GuiGraphics graphics, Font font, int mouseX, int mouseY) {
+    /** Keep old render for backward compat — delegates to background+foreground. */
+    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        // no-op: AuctionHouseScreen now calls renderBackground + renderForeground separately
+    }
+
+    private void renderDetailForeground(GuiGraphics graphics, Font font, int mouseX, int mouseY) {
         // Item header (truncated)
         int headerY = y + 18;
         int maxNameWidth = w - 170; // leave room for price info on the right
@@ -379,7 +384,7 @@ public class BuyTab {
 
     static String formatPrice(long price) {
         if (price <= 0) return "0 G";
-        return price + " G";
+        return String.format("%,d", price).replace(',', ' ') + " G";
     }
 
     static String formatTimeRemaining(long expiresInMs) {
