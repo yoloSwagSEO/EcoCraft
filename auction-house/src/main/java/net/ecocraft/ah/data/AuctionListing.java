@@ -47,7 +47,9 @@ public record AuctionListing(
         /** Tax charged when the listing was created, in smallest currency unit. */
         long taxAmount,
         /** Creation timestamp as epoch milliseconds. */
-        long createdAt
+        long createdAt,
+        /** Fingerprint of significant item components (enchantments, potions, custom name). */
+        @Nullable String itemFingerprint
 ) {
 
     /**
@@ -56,7 +58,7 @@ public record AuctionListing(
     public AuctionListing withStatus(ListingStatus newStatus) {
         return new AuctionListing(id, sellerUuid, sellerName, itemId, itemName, itemNbt,
                 quantity, listingType, buyoutPrice, startingBid, currentBid, currentBidderUuid,
-                currencyId, category, expiresAt, newStatus, taxAmount, createdAt);
+                currencyId, category, expiresAt, newStatus, taxAmount, createdAt, itemFingerprint);
     }
 
     /**
@@ -65,7 +67,7 @@ public record AuctionListing(
     public AuctionListing withBid(long newBid, UUID bidderUuid) {
         return new AuctionListing(id, sellerUuid, sellerName, itemId, itemName, itemNbt,
                 quantity, listingType, buyoutPrice, startingBid, newBid, bidderUuid,
-                currencyId, category, expiresAt, status, taxAmount, createdAt);
+                currencyId, category, expiresAt, status, taxAmount, createdAt, itemFingerprint);
     }
 
     /** Returns {@code true} if this listing has expired (current time past {@link #expiresAt}). */

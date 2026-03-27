@@ -24,6 +24,7 @@ import java.util.UUID;
  */
 public class AuctionService {
 
+
     /** Default tax rate applied to completed sales (5%). */
     public static final double DEFAULT_TAX_RATE = 0.05;
 
@@ -95,13 +96,18 @@ public class AuctionService {
         long depositUnits = Math.max(1, (long) (totalPrice * DEFAULT_DEPOSIT_RATE));
         long taxUnits = Math.max(1, (long) (totalPrice * DEFAULT_TAX_RATE));
 
+        System.out.println("[AH] CREATE LISTING: seller=" + sellerName + " item=" + itemName + " qty=" + quantity
+                + " unitPrice=" + priceUnits + " totalPrice=" + totalPrice + " deposit=" + depositUnits + " tax=" + taxUnits);
+
         // --- Withdraw deposit ---
         BigDecimal depositBD = fromSmallestUnit(depositUnits, currency);
         if (depositBD.compareTo(BigDecimal.ZERO) > 0) {
             var result = economy.withdraw(sellerUuid, depositBD, currency);
             if (!result.successful()) {
+                System.err.println("[AH] CREATE LISTING FAILED: insufficient funds. seller=" + sellerName + " deposit=" + depositBD);
                 throw new AuctionException("Insufficient funds for listing deposit: " + result.errorMessage());
             }
+            System.out.println("[AH] Deposit withdrawn: " + depositBD + " " + currency.symbol() + " from " + sellerName);
         }
 
         // --- Build listing ---
@@ -125,7 +131,8 @@ public class AuctionService {
                 now + (long) durationHours * 3600_000L,
                 ListingStatus.ACTIVE,
                 taxUnits,
-                now
+                now,
+                null // itemFingerprint — will be wired in Task 3
         );
 
         storage.createListing(listing);
@@ -165,49 +172,83 @@ public class AuctionService {
      * @param buyerName   Display name of the buyer
      * @param listingId   The listing to purchase
      */
-    public void buyListing(UUID buyerUuid, String buyerName, String listingId) {
+    public void buyListing(UUID buyerUuid, String buyerName, String listingId, int buyQuantity) {
         AuctionListing listing = requireActiveListingById(listingId);
         if (listing.buyoutPrice() <= 0)
             throw new AuctionException("Listing has no buyout price");
         if (listing.sellerUuid().equals(buyerUuid))
             throw new AuctionException("Cannot buy your own listing");
+        if (buyQuantity <= 0 || buyQuantity > listing.quantity())
+            throw new AuctionException("Invalid quantity (requested " + buyQuantity + ", available " + listing.quantity() + ")");
 
         Currency currency = requireCurrency(listing.currencyId());
-        BigDecimal buyoutBD = fromSmallestUnit(listing.buyoutPrice(), currency);
+        long totalPrice = listing.buyoutPrice() * buyQuantity;
+        BigDecimal buyoutBD = fromSmallestUnit(totalPrice, currency);
 
-        // Withdraw from buyer
+        System.out.println("[AH] BUY: buyer=" + buyerName + " item=" + listing.itemName() + " buyQty=" + buyQuantity
+                + "/" + listing.quantity() + " unitPrice=" + listing.buyoutPrice() + " totalPrice=" + totalPrice);
+
+        // Withdraw from buyer (unit price × buy quantity)
         var withdrawResult = economy.withdraw(buyerUuid, buyoutBD, currency);
-        if (!withdrawResult.successful())
+        if (!withdrawResult.successful()) {
+            System.err.println("[AH] BUY FAILED: insufficient funds. buyer=" + buyerName + " needed=" + buyoutBD);
             throw new AuctionException("Insufficient funds: " + withdrawResult.errorMessage());
+        }
+        System.out.println("[AH] Buyer charged: " + buyoutBD + " " + currency.symbol());
 
-        // Credit seller (price - tax). Deposit is included in the net amount (already held).
-        long sellerAmountUnits = listing.buyoutPrice() - listing.taxAmount();
+        // Credit seller (total price - proportional tax)
+        long proportionalTax = Math.max(1, (long) (totalPrice * DEFAULT_TAX_RATE));
+        long sellerAmountUnits = totalPrice - proportionalTax;
         BigDecimal sellerAmountBD = fromSmallestUnit(sellerAmountUnits, currency);
         if (sellerAmountBD.compareTo(BigDecimal.ZERO) > 0) {
             economy.deposit(listing.sellerUuid(), sellerAmountBD, currency);
         }
+        System.out.println("[AH] Seller credited: " + sellerAmountBD + " " + currency.symbol() + " (tax: " + proportionalTax + " " + currency.symbol() + ")");
 
         // Create parcels
         long now = System.currentTimeMillis();
 
-        // Item parcel for buyer
+        // Item parcel for buyer (only the purchased quantity, with price paid)
         storage.createParcel(new AuctionParcel(
                 UUID.randomUUID().toString(),
                 buyerUuid,
                 listing.itemId(),
                 listing.itemName(),
                 listing.itemNbt(),
-                listing.quantity(),
-                0L,
-                null,
+                buyQuantity,
+                totalPrice,
+                listing.currencyId(),
                 ParcelSource.HDV_PURCHASE,
                 now,
                 false
         ));
+        System.out.println("[AH] Parcel created: " + buyQuantity + "x " + listing.itemName() + " for buyer " + buyerName);
 
-        // Mark listing SOLD with buyer as current_bidder (for purchase history)
-        storage.updateListingBid(listingId, listing.buyoutPrice(), buyerUuid);
-        storage.completeSale(listingId);
+        // Sale parcel for seller (revenue entry in ledger)
+        storage.createParcel(new AuctionParcel(
+                UUID.randomUUID().toString(),
+                listing.sellerUuid(),
+                listing.itemId(),
+                listing.itemName(),
+                listing.itemNbt(),
+                buyQuantity,
+                sellerAmountUnits,
+                listing.currencyId(),
+                ParcelSource.HDV_SALE,
+                now,
+                true // auto-collected (already deposited)
+        ));
+
+        // Update listing: if all bought → SOLD, otherwise reduce quantity
+        int remaining = listing.quantity() - buyQuantity;
+        if (remaining <= 0) {
+            storage.updateListingBid(listingId, listing.buyoutPrice(), buyerUuid);
+            storage.completeSale(listingId);
+            System.out.println("[AH] Listing " + listingId.substring(0, 8) + " SOLD (fully purchased)");
+        } else {
+            storage.updateListingQuantity(listingId, remaining);
+            System.out.println("[AH] Listing " + listingId.substring(0, 8) + " qty reduced: " + listing.quantity() + " -> " + remaining);
+        }
 
         // Log price history
         storage.logPriceHistory(
@@ -215,7 +256,7 @@ public class AuctionService {
                 listing.itemId(),
                 listing.currencyId(),
                 listing.buyoutPrice(),
-                listing.quantity(),
+                buyQuantity,
                 now
         );
     }
@@ -516,6 +557,11 @@ public class AuctionService {
     /** Returns the default currency's symbol. */
     public String getDefaultCurrencySymbol() {
         return currencies.getDefault().symbol();
+    }
+
+    /** Returns the best (lowest) active buyout price for an item, or -1 if none. */
+    public long getBestPrice(String fingerprint, String itemId) {
+        return storage.getBestPrice(fingerprint, itemId);
     }
 
     /** Returns the default currency's id. */

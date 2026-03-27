@@ -37,7 +37,7 @@ class AuctionStorageProviderTest {
                 id, seller, "SellerName", itemId, "Item Name", null,
                 1, type, type == ListingType.BUYOUT ? price : 0L, type == ListingType.AUCTION ? price : 0L,
                 0L, null, "gold", ItemCategory.MISC,
-                expiresAt, ListingStatus.ACTIVE, 10L, System.currentTimeMillis()
+                expiresAt, ListingStatus.ACTIVE, 10L, System.currentTimeMillis(), null
         );
     }
 
@@ -143,14 +143,14 @@ class AuctionStorageProviderTest {
                 UUID.randomUUID().toString(), seller, "SellerName",
                 "minecraft:diamond_sword", "Diamond Sword", null,
                 1, ListingType.BUYOUT, 500L, 0L, 0L, null, "gold",
-                ItemCategory.WEAPONS, exp, ListingStatus.ACTIVE, 10L, System.currentTimeMillis());
+                ItemCategory.WEAPONS, exp, ListingStatus.ACTIVE, 10L, System.currentTimeMillis(), null);
         db.createListing(swordListing);
 
         AuctionListing breadListing = new AuctionListing(
                 UUID.randomUUID().toString(), seller, "SellerName",
                 "minecraft:bread", "Bread", null,
                 1, ListingType.BUYOUT, 5L, 0L, 0L, null, "gold",
-                ItemCategory.FOOD, exp, ListingStatus.ACTIVE, 0L, System.currentTimeMillis());
+                ItemCategory.FOOD, exp, ListingStatus.ACTIVE, 0L, System.currentTimeMillis(), null);
         db.createListing(breadListing);
 
         List<AuctionListing> weapons = db.getActiveListings(null, ItemCategory.WEAPONS, 0, 10);
@@ -167,12 +167,12 @@ class AuctionStorageProviderTest {
                 UUID.randomUUID().toString(), seller, "SellerName",
                 "minecraft:diamond_sword", "Diamond Sword", null,
                 1, ListingType.BUYOUT, 500L, 0L, 0L, null, "gold",
-                ItemCategory.WEAPONS, exp, ListingStatus.ACTIVE, 10L, System.currentTimeMillis()));
+                ItemCategory.WEAPONS, exp, ListingStatus.ACTIVE, 10L, System.currentTimeMillis(), null));
         db.createListing(new AuctionListing(
                 UUID.randomUUID().toString(), seller, "SellerName",
                 "minecraft:iron_pickaxe", "Iron Pickaxe", null,
                 1, ListingType.BUYOUT, 100L, 0L, 0L, null, "gold",
-                ItemCategory.TOOLS, exp, ListingStatus.ACTIVE, 2L, System.currentTimeMillis()));
+                ItemCategory.TOOLS, exp, ListingStatus.ACTIVE, 2L, System.currentTimeMillis(), null));
 
         List<AuctionListing> results = db.getActiveListings("diamond", null, 0, 10);
         assertEquals(1, results.size());
@@ -209,13 +209,13 @@ class AuctionStorageProviderTest {
         // Three listings for the same item at different prices
         db.createListing(new AuctionListing(UUID.randomUUID().toString(), seller, "SellerName",
                 "minecraft:diamond", "Diamond", null, 1, ListingType.BUYOUT, 300L, 0L, 0L, null,
-                "gold", ItemCategory.MISC, exp, ListingStatus.ACTIVE, 5L, System.currentTimeMillis()));
+                "gold", ItemCategory.MISC, exp, ListingStatus.ACTIVE, 5L, System.currentTimeMillis(), null));
         db.createListing(new AuctionListing(UUID.randomUUID().toString(), seller, "SellerName",
                 "minecraft:diamond", "Diamond", null, 5, ListingType.BUYOUT, 100L, 0L, 0L, null,
-                "gold", ItemCategory.MISC, exp, ListingStatus.ACTIVE, 1L, System.currentTimeMillis()));
+                "gold", ItemCategory.MISC, exp, ListingStatus.ACTIVE, 1L, System.currentTimeMillis(), null));
         db.createListing(new AuctionListing(UUID.randomUUID().toString(), seller, "SellerName",
                 "minecraft:diamond", "Diamond", null, 2, ListingType.BUYOUT, 200L, 0L, 0L, null,
-                "gold", ItemCategory.MISC, exp, ListingStatus.ACTIVE, 3L, System.currentTimeMillis()));
+                "gold", ItemCategory.MISC, exp, ListingStatus.ACTIVE, 3L, System.currentTimeMillis(), null));
 
         List<AuctionStorageProvider.ListingGroupSummary> groups = db.getListingsGroupedByItem(null, null, 0, 10);
         assertEquals(1, groups.size());
@@ -423,7 +423,7 @@ class AuctionStorageProviderTest {
                 UUID.randomUUID().toString(), seller, "SellerName",
                 "minecraft:diamond", "Diamond", null, 1,
                 ListingType.BUYOUT, 1000L, 0L, 1000L, buyer, "gold",
-                ItemCategory.MISC, now + 3600_000L, ListingStatus.SOLD, 50L, now - 1000L);
+                ItemCategory.MISC, now + 3600_000L, ListingStatus.SOLD, 50L, now - 1000L, null);
         db.createListing(listing);
         db.completeSale(listing.id());
 
@@ -448,7 +448,7 @@ class AuctionStorageProviderTest {
                 UUID.randomUUID().toString(), seller, "SellerName",
                 "minecraft:diamond", "Diamond", null, 1,
                 ListingType.BUYOUT, 1000L, 0L, 1000L, buyer, "gold",
-                ItemCategory.MISC, now + 3600_000L, ListingStatus.SOLD, 50L, now - 1000L);
+                ItemCategory.MISC, now + 3600_000L, ListingStatus.SOLD, 50L, now - 1000L, null);
         db.createListing(listing);
         db.completeSale(listing.id());
 

@@ -53,9 +53,10 @@ public final class ServerPayloadHandler {
                     filtered = allResults;
                 }
 
-                // Manual pagination
-                int start = payload.page() * PAGE_SIZE;
-                int end = Math.min(start + PAGE_SIZE, filtered.size());
+                // Server-side pagination with client-provided page size
+                int clientPageSize = Math.max(1, Math.min(payload.pageSize(), 100));
+                int start = payload.page() * clientPageSize;
+                int end = Math.min(start + clientPageSize, filtered.size());
                 List<AuctionStorageProvider.ListingGroupSummary> page =
                         start < filtered.size() ? filtered.subList(start, end) : List.of();
 
@@ -71,7 +72,7 @@ public final class ServerPayloadHandler {
                     ));
                 }
 
-                int totalPages = (int) Math.ceil((double) filtered.size() / PAGE_SIZE);
+                int totalPages = (int) Math.ceil((double) filtered.size() / clientPageSize);
                 context.reply(new ListingsResponsePayload(summaries, payload.page(), totalPages));
             } catch (Exception e) {
                 LOGGER.error("Error handling RequestListings", e);
@@ -236,7 +237,7 @@ public final class ServerPayloadHandler {
                 AuctionService service = requireService();
                 ServerPlayer player = (ServerPlayer) context.player();
 
-                service.buyListing(player.getUUID(), player.getName().getString(), payload.listingId());
+                service.buyListing(player.getUUID(), player.getName().getString(), payload.listingId(), payload.quantity());
                 context.reply(new AHActionResultPayload(true, "Purchase successful! Check parcels to collect your item."));
                 sendBalanceUpdate(player);
             } catch (AuctionService.AuctionException e) {
@@ -347,10 +348,13 @@ public final class ServerPayloadHandler {
                     default -> listings = service.getMyListings(player.getUUID(), 0, Integer.MAX_VALUE);
                 }
 
+                boolean isPurchases = "purchases".equals(payload.subTab());
                 List<MyListingsResponsePayload.MyListingEntry> entries = new ArrayList<>();
                 for (AuctionListing l : listings) {
                     long displayPrice = l.listingType() == ListingType.BUYOUT ? l.buyoutPrice() : l.currentBid();
                     long expiresInMs = Math.max(0, l.expiresAt() - System.currentTimeMillis());
+                    // canCollect: for seller's expired listings only; purchases use the global collect button
+                    boolean canCollect = !isPurchases && l.status() == ListingStatus.EXPIRED;
                     entries.add(new MyListingsResponsePayload.MyListingEntry(
                             l.id(),
                             l.itemId(),
@@ -361,7 +365,7 @@ public final class ServerPayloadHandler {
                             l.status().name(),
                             expiresInMs,
                             0, // bid count — would need a query
-                            l.status() == ListingStatus.EXPIRED || l.status() == ListingStatus.SOLD,
+                            canCollect,
                             l.itemNbt() != null ? l.itemNbt() : ""
                     ));
                 }
@@ -376,6 +380,19 @@ public final class ServerPayloadHandler {
             } catch (Exception e) {
                 LOGGER.error("Error handling RequestMyListings", e);
                 context.reply(new MyListingsResponsePayload(List.of(), 0, 0, 0));
+            }
+        });
+    }
+
+    public static void handleRequestBestPrice(RequestBestPricePayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            try {
+                AuctionService service = requireService();
+                long bestPrice = service.getBestPrice(payload.itemId(), payload.itemId());
+                context.reply(new BestPriceResponsePayload(payload.itemId(), bestPrice));
+            } catch (Exception e) {
+                LOGGER.error("Error handling RequestBestPrice", e);
+                context.reply(new BestPriceResponsePayload(payload.itemId(), -1));
             }
         });
     }

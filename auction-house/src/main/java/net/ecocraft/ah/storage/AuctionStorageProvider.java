@@ -156,6 +156,13 @@ public class AuctionStorageProvider {
                 }
             });
 
+            migrator.addMigration(3, "Add item_fingerprint column to ah_listings", conn -> {
+                try (Statement stmt = conn.createStatement()) {
+                    stmt.execute("ALTER TABLE ah_listings ADD COLUMN item_fingerprint TEXT DEFAULT NULL");
+                    stmt.execute("CREATE INDEX IF NOT EXISTS idx_listings_fingerprint ON ah_listings(item_fingerprint, status)");
+                }
+            });
+
             migrator.migrate(connection);
         } catch (SQLException e) {
             throw new RuntimeException("Failed to initialize auction-house database", e);
@@ -181,8 +188,8 @@ public class AuctionStorageProvider {
                 INSERT INTO ah_listings
                 (id, seller_uuid, seller_name, item_id, item_name, item_nbt, quantity,
                  listing_type, buyout_price, starting_bid, current_bid, current_bidder,
-                 currency_id, category, expires_at, status, tax_amount, created_at)
-                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                 currency_id, category, expires_at, status, tax_amount, created_at, item_fingerprint)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             """)) {
             int i = 1;
             ps.setString(i++, listing.id());
@@ -202,7 +209,8 @@ public class AuctionStorageProvider {
             ps.setLong(i++, listing.expiresAt());
             ps.setString(i++, listing.status().name());
             ps.setLong(i++, listing.taxAmount());
-            ps.setLong(i, listing.createdAt());
+            ps.setLong(i++, listing.createdAt());
+            ps.setString(i, listing.itemFingerprint());
             ps.executeUpdate();
         } catch (SQLException e) {
             throw new RuntimeException("Failed to create listing", e);
@@ -244,6 +252,47 @@ public class AuctionStorageProvider {
      */
     public void cancelListing(String listingId) {
         updateListingStatus(listingId, ListingStatus.CANCELLED);
+    }
+
+    /**
+     * Updates the quantity of a listing (for partial purchases).
+     */
+    public void updateListingQuantity(String listingId, int newQuantity) {
+        try (PreparedStatement ps = connection.prepareStatement(
+                "UPDATE ah_listings SET quantity = ? WHERE id = ?")) {
+            ps.setInt(1, newQuantity);
+            ps.setString(2, listingId);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to update listing quantity", e);
+        }
+    }
+
+    /**
+     * Returns the lowest buyout price for ACTIVE listings matching the fingerprint,
+     * falling back to itemId if no fingerprint match is found. Returns -1 if none found.
+     */
+    public long getBestPrice(String fingerprint, String itemId) {
+        // Try exact fingerprint match first
+        long price = queryMinPrice("SELECT MIN(buyout_price) FROM ah_listings WHERE item_fingerprint = ? AND status = 'ACTIVE' AND buyout_price > 0", fingerprint);
+        if (price > 0) return price;
+        // Fallback: match by itemId only
+        return queryMinPrice("SELECT MIN(buyout_price) FROM ah_listings WHERE item_id = ? AND status = 'ACTIVE' AND buyout_price > 0", itemId);
+    }
+
+    private long queryMinPrice(String sql, String param) {
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setString(1, param);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    long val = rs.getLong(1);
+                    return rs.wasNull() ? -1 : val;
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to query min price", e);
+        }
+        return -1;
     }
 
     /**
@@ -848,7 +897,8 @@ public class AuctionStorageProvider {
                 rs.getLong("expires_at"),
                 ListingStatus.valueOf(rs.getString("status")),
                 rs.getLong("tax_amount"),
-                rs.getLong("created_at")
+                rs.getLong("created_at"),
+                rs.getString("item_fingerprint")
         );
     }
 
