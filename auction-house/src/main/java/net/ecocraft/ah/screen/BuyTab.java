@@ -180,6 +180,14 @@ public class BuyTab {
             graphics.drawString(font, pageInfo,
                     contentX + (contentW - pageInfoWidth) / 2,
                     paginationY + 3, EcoColors.TEXT_GREY, false);
+
+            // Item tooltip on hover
+            if (browseTable != null) {
+                ItemStack hovered = browseTable.getHoveredIcon();
+                if (hovered != null && !hovered.isEmpty()) {
+                    graphics.renderTooltip(font, hovered, mouseX, mouseY);
+                }
+            }
         } else {
             renderDetailForeground(graphics, font, mouseX, mouseY);
         }
@@ -222,6 +230,14 @@ public class BuyTab {
             String noData = "Aucune donn\u00e9e de prix disponible";
             int noDataW = font.width(noData);
             graphics.drawString(font, noData, x + (w - noDataW) / 2, historyY, EcoColors.TEXT_DIM, false);
+        }
+
+        // Item tooltip on hover in detail table
+        if (detailTable != null) {
+            ItemStack hovered = detailTable.getHoveredIcon();
+            if (hovered != null && !hovered.isEmpty()) {
+                graphics.renderTooltip(font, hovered, mouseX, mouseY);
+            }
         }
     }
 

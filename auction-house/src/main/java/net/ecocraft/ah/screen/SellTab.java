@@ -357,10 +357,13 @@ public class SellTab {
         lastMessage = msg;
         lastSuccess = payload.success();
 
-        // Fix 4: Clear selection and reset after successful sale
+        // Clear selection and reset after successful sale
         if (payload.success()) {
             selectedInventorySlot = -1;
             priceValue = 0;
+            if (itemSlot != null) {
+                itemSlot.setItem(ItemStack.EMPTY);
+            }
             parent.rebuildCurrentTab();
         }
     }

@@ -87,7 +87,7 @@ public class LedgerTab {
         // Stats row
         int statsY = y + 46;
         int cardW = (w - 16) / 4;
-        int cardH = 30;
+        int cardH = 38;
 
         profitCard = new EcoStatCard(x, statsY, cardW, cardH,
                 Component.literal("Profit net"),
@@ -152,6 +152,14 @@ public class LedgerTab {
         graphics.drawString(font, pageInfo,
                 x + (w - pageInfoWidth) / 2,
                 paginationY + 3, EcoColors.TEXT_GREY, false);
+
+        // Item tooltip on hover
+        if (table != null) {
+            ItemStack hovered = table.getHoveredIcon();
+            if (hovered != null && !hovered.isEmpty()) {
+                graphics.renderTooltip(font, hovered, mouseX, mouseY);
+            }
+        }
     }
 
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {}

@@ -8,6 +8,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.item.ItemStack;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -121,6 +122,14 @@ public class EcoPaginatedTable extends AbstractWidget {
                 graphics.drawString(font, cell.text(), textX, textY, cell.color(), false);
             }
         }
+    }
+
+    public ItemStack getHoveredIcon() {
+        if (hoveredRow >= 0 && hoveredRow < rows.size()) {
+            ItemStack icon = rows.get(hoveredRow).icon();
+            return icon != null ? icon : null;
+        }
+        return null;
     }
 
     @Override

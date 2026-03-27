@@ -77,8 +77,8 @@ public class MyAuctionsTab {
         addWidget.accept(collectBtn);
 
         // Footer stat cards - calculate first to know how much space table gets
-        int cardH = 30;
-        int footerY = y + h - cardH - 2;
+        int cardH = 38;
+        int footerY = y + h - cardH - 4;
         int cardW = (w - 12) / 3;
 
         revenueCard = new EcoStatCard(x, footerY, cardW, cardH,
@@ -119,7 +119,18 @@ public class MyAuctionsTab {
     }
 
     public void renderBackground(GuiGraphics graphics) {}
-    public void renderForeground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {}
+
+    public void renderForeground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        // Item tooltip on hover
+        if (table != null) {
+            ItemStack hovered = table.getHoveredIcon();
+            if (hovered != null && !hovered.isEmpty()) {
+                Font font = Minecraft.getInstance().font;
+                graphics.renderTooltip(font, hovered, mouseX, mouseY);
+            }
+        }
+    }
+
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {}
 
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
