@@ -80,7 +80,8 @@ public class AuctionService {
             BigDecimal price,
             int durationHours,
             String currencyId,
-            ItemCategory category) {
+            ItemCategory category,
+            @Nullable String fingerprint) {
 
         // --- Validation ---
         if (quantity <= 0) throw new AuctionException("Quantity must be positive");
@@ -132,7 +133,7 @@ public class AuctionService {
                 ListingStatus.ACTIVE,
                 taxUnits,
                 now,
-                null // itemFingerprint — will be wired in Task 3
+                fingerprint
         );
 
         storage.createListing(listing);

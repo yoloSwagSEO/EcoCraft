@@ -124,6 +124,7 @@ public final class AHCommand {
             String nbt = null; // Component-based serialisation deferred to a helper
             int quantity = held.getCount();
 
+            String fingerprint = net.ecocraft.ah.data.ItemFingerprint.compute(held);
             service.createListing(
                     player.getUUID(),
                     player.getName().getString(),
@@ -135,7 +136,8 @@ public final class AHCommand {
                     BigDecimal.valueOf(price),
                     24,
                     "default",
-                    ItemCategory.MISC
+                    ItemCategory.MISC,
+                    fingerprint
             );
 
             // Remove item from hand

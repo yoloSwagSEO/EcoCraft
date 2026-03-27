@@ -187,6 +187,7 @@ public final class ServerPayloadHandler {
                 String itemId = BuiltInRegistries.ITEM.getKey(itemToSell.getItem()).toString();
                 String itemName = itemToSell.getHoverName().getString();
                 String nbt = ItemStackSerializer.serialize(itemToSell, player.registryAccess());
+                String fingerprint = ItemFingerprint.compute(itemToSell);
                 int quantity = itemToSell.getCount();
                 ListingType type = ListingType.valueOf(payload.listingType());
                 BigDecimal price = BigDecimal.valueOf(payload.price());
@@ -204,7 +205,8 @@ public final class ServerPayloadHandler {
                         price,
                         payload.durationHours(),
                         currencyId,
-                        category
+                        category,
+                        fingerprint
                 );
 
                 // Index enchantments for server-side filtering
@@ -388,7 +390,7 @@ public final class ServerPayloadHandler {
         context.enqueueWork(() -> {
             try {
                 AuctionService service = requireService();
-                long bestPrice = service.getBestPrice(payload.itemId(), payload.itemId());
+                long bestPrice = service.getBestPrice(payload.fingerprint(), payload.itemId());
                 context.reply(new BestPriceResponsePayload(payload.itemId(), bestPrice));
             } catch (Exception e) {
                 LOGGER.error("Error handling RequestBestPrice", e);

@@ -311,10 +311,29 @@ public class SellTab {
                 selectedInventorySlot = -1;
             } else {
                 selectedInventorySlot = inventoryIndex;
+                // Request best price for this item
+                String itemId = net.minecraft.core.registries.BuiltInRegistries.ITEM
+                        .getKey(stack.getItem()).toString();
+                String fingerprint = net.ecocraft.ah.data.ItemFingerprint.compute(stack);
+                PacketDistributor.sendToServer(
+                        new net.ecocraft.ah.network.payload.RequestBestPricePayload(fingerprint, itemId));
             }
         }
         updateSelectedItem();
         parent.rebuildCurrentTab();
+    }
+
+    public void onReceiveBestPrice(net.ecocraft.ah.network.payload.BestPriceResponsePayload payload) {
+        if (payload.bestPrice() > 1) {
+            priceValue = payload.bestPrice() - 1;
+        } else if (payload.bestPrice() == 1) {
+            priceValue = 1;
+        } else {
+            priceValue = 0;
+        }
+        if (priceInput != null && priceValue > 0) {
+            priceInput.setValue(priceValue);
+        }
     }
 
     private void onSellClicked() {
