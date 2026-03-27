@@ -1,6 +1,6 @@
 package net.ecocraft.gui.widget;
 
-import net.ecocraft.gui.theme.EcoColors;
+import net.ecocraft.gui.theme.Theme;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
@@ -10,14 +10,24 @@ import net.minecraft.world.item.ItemStack;
 
 import org.jetbrains.annotations.Nullable;
 
-public class EcoItemSlot extends AbstractWidget {
+/**
+ * Item display slot with rarity border and built-in tooltip on hover.
+ * Uses Theme for border and background colors.
+ */
+public class ItemSlot extends AbstractWidget {
 
+    private final Theme theme;
     private @Nullable ItemStack itemStack;
     private int rarityColor;
 
-    public EcoItemSlot(int x, int y, int size) {
+    public ItemSlot(int x, int y, int size, Theme theme) {
         super(x, y, size, size, Component.empty());
-        this.rarityColor = EcoColors.RARITY_COMMON;
+        this.theme = theme;
+        this.rarityColor = theme.rarityCommon;
+    }
+
+    public ItemSlot(int x, int y, int size) {
+        this(x, y, size, Theme.dark());
     }
 
     public void setItem(@Nullable ItemStack stack, int rarityColor) {
@@ -32,9 +42,13 @@ public class EcoItemSlot extends AbstractWidget {
         }
     }
 
+    public @Nullable ItemStack getItem() {
+        return itemStack;
+    }
+
     @Override
     public void renderWidget(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        graphics.fill(getX(), getY(), getX() + width, getY() + height, EcoColors.BG_LIGHT);
+        graphics.fill(getX(), getY(), getX() + width, getY() + height, theme.bgLight);
 
         graphics.fill(getX(), getY(), getX() + width, getY() + 2, rarityColor);
         graphics.fill(getX(), getY() + height - 2, getX() + width, getY() + height, rarityColor);
@@ -48,17 +62,18 @@ public class EcoItemSlot extends AbstractWidget {
             graphics.renderItemDecorations(Minecraft.getInstance().font, itemStack, itemX, itemY);
         }
 
+        // Built-in tooltip on hover
         if (isHovered() && itemStack != null && !itemStack.isEmpty()) {
             graphics.renderTooltip(Minecraft.getInstance().font, itemStack, mouseX, mouseY);
         }
     }
 
-    private static int getRarityColor(ItemStack stack) {
+    private int getRarityColor(ItemStack stack) {
         return switch (stack.getRarity()) {
-            case COMMON -> EcoColors.RARITY_COMMON;
-            case UNCOMMON -> EcoColors.RARITY_UNCOMMON;
-            case RARE -> EcoColors.RARITY_RARE;
-            case EPIC -> EcoColors.RARITY_EPIC;
+            case COMMON -> theme.rarityCommon;
+            case UNCOMMON -> theme.rarityUncommon;
+            case RARE -> theme.rarityRare;
+            case EPIC -> theme.rarityEpic;
         };
     }
 

@@ -1,6 +1,6 @@
 package net.ecocraft.gui.widget;
 
-import net.ecocraft.gui.theme.EcoColors;
+import net.ecocraft.gui.theme.Theme;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -11,21 +11,31 @@ import net.minecraft.network.chat.Component;
 import java.util.List;
 import java.util.function.IntConsumer;
 
-public class EcoFilterTags extends AbstractWidget {
+/**
+ * Clickable filter pill tags with Theme and disabled state support.
+ */
+public class FilterTags extends AbstractWidget {
 
     private static final int TAG_HEIGHT = 20;
     private static final int TAG_GAP = 6;
     private static final int TAG_PADDING_H = 12;
 
     private final List<Component> tags;
+    private final Theme theme;
     private int activeTag = 0;
     private final IntConsumer onTagChanged;
+    private boolean enabled = true;
 
-    public EcoFilterTags(int x, int y, List<Component> tags, IntConsumer onTagChanged) {
+    public FilterTags(int x, int y, List<Component> tags, IntConsumer onTagChanged, Theme theme) {
         super(x, y, 0, TAG_HEIGHT, Component.empty());
         this.tags = tags;
         this.onTagChanged = onTagChanged;
+        this.theme = theme;
         this.width = calculateTotalWidth();
+    }
+
+    public FilterTags(int x, int y, List<Component> tags, IntConsumer onTagChanged) {
+        this(x, y, tags, onTagChanged, Theme.dark());
     }
 
     private int calculateTotalWidth() {
@@ -47,6 +57,14 @@ public class EcoFilterTags extends AbstractWidget {
         }
     }
 
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
+
+    public boolean isEnabled() {
+        return enabled;
+    }
+
     @Override
     public void renderWidget(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         Font font = Minecraft.getInstance().font;
@@ -56,12 +74,19 @@ public class EcoFilterTags extends AbstractWidget {
             Component label = tags.get(i);
             int tagWidth = font.width(label) + TAG_PADDING_H * 2;
             boolean isActive = i == activeTag;
-            boolean isHovered = mouseX >= currentX && mouseX < currentX + tagWidth
+            boolean isHovered = enabled && mouseX >= currentX && mouseX < currentX + tagWidth
                     && mouseY >= getY() && mouseY < getY() + TAG_HEIGHT;
 
-            int bg = isActive ? EcoColors.GOLD_BG_DIM : (isHovered ? EcoColors.BG_LIGHT : EcoColors.BG_MEDIUM);
-            int border = isActive ? EcoColors.BORDER_GOLD : EcoColors.BORDER_LIGHT;
-            int textColor = isActive ? EcoColors.GOLD : EcoColors.TEXT_GREY;
+            int bg, border, textColor;
+            if (!enabled) {
+                bg = theme.disabledBg;
+                border = theme.disabledBorder;
+                textColor = theme.disabledText;
+            } else {
+                bg = isActive ? theme.accentBgDim : (isHovered ? theme.bgLight : theme.bgMedium);
+                border = isActive ? theme.borderAccent : theme.borderLight;
+                textColor = isActive ? theme.accent : theme.textGrey;
+            }
 
             graphics.fill(currentX, getY(), currentX + tagWidth, getY() + TAG_HEIGHT, bg);
             graphics.fill(currentX, getY(), currentX + tagWidth, getY() + 1, border);
@@ -79,7 +104,7 @@ public class EcoFilterTags extends AbstractWidget {
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (button != 0 || !isMouseOver(mouseX, mouseY)) return false;
+        if (!enabled || button != 0 || !isMouseOver(mouseX, mouseY)) return false;
 
         Font font = Minecraft.getInstance().font;
         int currentX = getX();

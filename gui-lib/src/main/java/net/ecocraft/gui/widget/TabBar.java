@@ -1,6 +1,6 @@
 package net.ecocraft.gui.widget;
 
-import net.ecocraft.gui.theme.EcoColors;
+import net.ecocraft.gui.theme.Theme;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -11,21 +11,30 @@ import net.minecraft.network.chat.Component;
 import java.util.List;
 import java.util.function.IntConsumer;
 
-public class EcoTabBar extends AbstractWidget {
+/**
+ * Tab navigation bar with Theme support.
+ */
+public class TabBar extends AbstractWidget {
 
     private static final int TAB_HEIGHT = 22;
     private static final int TAB_GAP = 4;
     private static final int TAB_PADDING_H = 16;
 
     private final List<Component> tabs;
+    private final Theme theme;
     private int activeTab = 0;
     private final IntConsumer onTabChanged;
 
-    public EcoTabBar(int x, int y, List<Component> tabs, IntConsumer onTabChanged) {
+    public TabBar(int x, int y, List<Component> tabs, IntConsumer onTabChanged, Theme theme) {
         super(x, y, 0, TAB_HEIGHT, Component.empty());
         this.tabs = tabs;
         this.onTabChanged = onTabChanged;
+        this.theme = theme;
         this.width = calculateTotalWidth();
+    }
+
+    public TabBar(int x, int y, List<Component> tabs, IntConsumer onTabChanged) {
+        this(x, y, tabs, onTabChanged, Theme.dark());
     }
 
     private int calculateTotalWidth() {
@@ -59,9 +68,9 @@ public class EcoTabBar extends AbstractWidget {
             boolean isHovered = mouseX >= currentX && mouseX < currentX + tabWidth
                     && mouseY >= getY() && mouseY < getY() + TAB_HEIGHT;
 
-            int bg = isActive ? EcoColors.GOLD_BG : (isHovered ? EcoColors.BG_LIGHT : EcoColors.BG_MEDIUM);
-            int border = isActive ? EcoColors.BORDER_GOLD : EcoColors.BORDER;
-            int textColor = isActive ? EcoColors.GOLD : EcoColors.TEXT_DARK;
+            int bg = isActive ? theme.accentBg : (isHovered ? theme.bgLight : theme.bgMedium);
+            int border = isActive ? theme.borderAccent : theme.border;
+            int textColor = isActive ? theme.accent : theme.textDark;
 
             graphics.fill(currentX, getY(), currentX + tabWidth, getY() + TAB_HEIGHT, bg);
             graphics.fill(currentX, getY(), currentX + tabWidth, getY() + 1, border);

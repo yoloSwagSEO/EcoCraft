@@ -1,23 +1,32 @@
 package net.ecocraft.gui.widget;
 
-import net.ecocraft.gui.theme.EcoColors;
+import net.ecocraft.gui.theme.Theme;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.network.chat.Component;
 
-public class EcoScrollbar extends AbstractWidget {
+/**
+ * Vertical scrollbar with Theme support.
+ */
+public class Scrollbar extends AbstractWidget {
 
     private static final int SCROLLBAR_WIDTH = 8;
     private static final int MIN_THUMB_HEIGHT = 16;
 
+    private final Theme theme;
     private float scrollValue = 0f;
     private float contentRatio = 1f;
     private boolean dragging = false;
     private double dragOffset = 0;
 
-    public EcoScrollbar(int x, int y, int height) {
+    public Scrollbar(int x, int y, int height, Theme theme) {
         super(x, y, SCROLLBAR_WIDTH, height, Component.empty());
+        this.theme = theme;
+    }
+
+    public Scrollbar(int x, int y, int height) {
+        this(x, y, height, Theme.dark());
     }
 
     public void setContentRatio(float ratio) {
@@ -40,17 +49,17 @@ public class EcoScrollbar extends AbstractWidget {
     public void renderWidget(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         if (!needsScrollbar()) return;
 
-        graphics.fill(getX(), getY(), getX() + width, getY() + height, EcoColors.BG_DARKEST);
-        graphics.fill(getX(), getY(), getX() + width, getY() + 1, EcoColors.BORDER);
-        graphics.fill(getX(), getY() + height - 1, getX() + width, getY() + height, EcoColors.BORDER);
+        graphics.fill(getX(), getY(), getX() + width, getY() + height, theme.bgDarkest);
+        graphics.fill(getX(), getY(), getX() + width, getY() + 1, theme.border);
+        graphics.fill(getX(), getY() + height - 1, getX() + width, getY() + height, theme.border);
 
         int thumbHeight = Math.max(MIN_THUMB_HEIGHT, (int) (height * contentRatio));
         int trackSpace = height - thumbHeight;
         int thumbY = getY() + (int) (trackSpace * scrollValue);
 
         boolean hovered = isMouseOver(mouseX, mouseY);
-        int thumbColor = (hovered || dragging) ? EcoColors.GOLD : EcoColors.GOLD_BG_DIM;
-        int thumbBorder = (hovered || dragging) ? EcoColors.BORDER_GOLD : EcoColors.BORDER_LIGHT;
+        int thumbColor = (hovered || dragging) ? theme.accent : theme.accentBgDim;
+        int thumbBorder = (hovered || dragging) ? theme.borderAccent : theme.borderLight;
 
         graphics.fill(getX() + 1, thumbY, getX() + width - 1, thumbY + thumbHeight, thumbColor);
         graphics.fill(getX() + 1, thumbY, getX() + width - 1, thumbY + 1, thumbBorder);

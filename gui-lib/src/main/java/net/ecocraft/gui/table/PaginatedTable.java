@@ -1,7 +1,7 @@
 package net.ecocraft.gui.table;
 
-import net.ecocraft.gui.theme.EcoColors;
-import net.ecocraft.gui.theme.EcoTheme;
+import net.ecocraft.gui.theme.DrawUtils;
+import net.ecocraft.gui.theme.Theme;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -13,7 +13,11 @@ import net.minecraft.world.item.ItemStack;
 import java.util.ArrayList;
 import java.util.List;
 
-public class EcoPaginatedTable extends AbstractWidget {
+/**
+ * Paginated, sortable table with auto-truncate and built-in tooltip rendering.
+ * Accepts a Theme (defaults to Theme.dark()).
+ */
+public class PaginatedTable extends AbstractWidget {
 
     private static final int HEADER_HEIGHT = 22;
     private static final int ROW_HEIGHT = 24;
@@ -22,14 +26,22 @@ public class EcoPaginatedTable extends AbstractWidget {
 
     private final List<TableColumn> columns;
     private final List<TableRow> rows = new ArrayList<>();
+    private final Theme theme;
     private int page = 0;
     private int rowsPerPage;
     private int hoveredRow = -1;
+    // Store mouse position for tooltip rendering
+    private int lastMouseX, lastMouseY;
 
-    public EcoPaginatedTable(int x, int y, int width, int height, List<TableColumn> columns) {
+    public PaginatedTable(int x, int y, int width, int height, List<TableColumn> columns, Theme theme) {
         super(x, y, width, height, Component.empty());
         this.columns = columns;
+        this.theme = theme;
         this.rowsPerPage = Math.max(1, (height - HEADER_HEIGHT) / ROW_HEIGHT);
+    }
+
+    public PaginatedTable(int x, int y, int width, int height, List<TableColumn> columns) {
+        this(x, y, width, height, columns, Theme.dark());
     }
 
     public void setRows(List<TableRow> rows) {
@@ -50,11 +62,22 @@ public class EcoPaginatedTable extends AbstractWidget {
         if (page > 0) page--;
     }
 
+    /** Returns the hovered row's icon, or null if no row is hovered or row has no icon. */
+    public ItemStack getHoveredIcon() {
+        if (hoveredRow >= 0 && hoveredRow < rows.size()) {
+            ItemStack icon = rows.get(hoveredRow).icon();
+            return icon != null ? icon : null;
+        }
+        return null;
+    }
+
     @Override
     public void renderWidget(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         Font font = Minecraft.getInstance().font;
+        lastMouseX = mouseX;
+        lastMouseY = mouseY;
 
-        EcoTheme.drawPanel(graphics, getX(), getY(), width, height);
+        DrawUtils.drawPanel(graphics, getX(), getY(), width, height, theme);
 
         float totalWeight = 0;
         boolean hasIcon = rows.stream().anyMatch(r -> r.icon() != null);
@@ -71,17 +94,19 @@ public class EcoPaginatedTable extends AbstractWidget {
             cx += colW[i];
         }
 
+        // Header
         int headerY = getY() + 1;
-        graphics.fill(getX() + 1, headerY, getX() + width - 1, headerY + HEADER_HEIGHT, EcoColors.BG_MEDIUM);
-        EcoTheme.drawGoldSeparator(graphics, getX() + 1, headerY + HEADER_HEIGHT - 2, width - 2);
+        graphics.fill(getX() + 1, headerY, getX() + width - 1, headerY + HEADER_HEIGHT, theme.bgMedium);
+        DrawUtils.drawAccentSeparator(graphics, getX() + 1, headerY + HEADER_HEIGHT - 2, width - 2, theme);
 
         for (int i = 0; i < columns.size(); i++) {
             var col = columns.get(i);
             int textX = getAlignedX(font, col.header(), colX[i], colW[i], col.align());
             int textY = headerY + (HEADER_HEIGHT - 8) / 2;
-            graphics.drawString(font, col.header(), textX, textY, EcoColors.GOLD, false);
+            graphics.drawString(font, col.header(), textX, textY, theme.accent, false);
         }
 
+        // Rows
         int startIdx = page * rowsPerPage;
         int endIdx = Math.min(startIdx + rowsPerPage, rows.size());
         hoveredRow = -1;
@@ -97,39 +122,50 @@ public class EcoPaginatedTable extends AbstractWidget {
 
             if (isHovered) {
                 hoveredRow = i;
-                graphics.fill(getX() + 1, rowY, getX() + width - 1, rowY + ROW_HEIGHT, EcoColors.BG_MEDIUM);
+                graphics.fill(getX() + 1, rowY, getX() + width - 1, rowY + ROW_HEIGHT, theme.bgMedium);
             } else if (alt) {
-                graphics.fill(getX() + 1, rowY, getX() + width - 1, rowY + ROW_HEIGHT, EcoColors.BG_ROW_ALT);
+                graphics.fill(getX() + 1, rowY, getX() + width - 1, rowY + ROW_HEIGHT, theme.bgRowAlt);
             }
 
             graphics.fill(getX() + 1, rowY + ROW_HEIGHT - 1, getX() + width - 1,
-                    rowY + ROW_HEIGHT, EcoColors.BG_MEDIUM);
+                    rowY + ROW_HEIGHT, theme.bgMedium);
 
+            // Icon
             if (row.icon() != null) {
                 int iconX = getX() + 4;
                 int iconY = rowY + (ROW_HEIGHT - 16) / 2;
                 graphics.fill(iconX - 1, iconY - 1, iconX + 17, iconY + 17, row.iconRarityColor());
-                graphics.fill(iconX, iconY, iconX + 16, iconY + 16, EcoColors.BG_LIGHT);
+                graphics.fill(iconX, iconY, iconX + 16, iconY + 16, theme.bgLight);
                 graphics.renderItem(row.icon(), iconX, iconY);
             }
 
+            // Cells with auto-truncate
             int cellCount = Math.min(row.cells().size(), columns.size());
             for (int c = 0; c < cellCount; c++) {
                 var cell = row.cells().get(c);
                 var col = columns.get(c);
-                int textX = getAlignedX(font, cell.text(), colX[c], colW[c], col.align());
+
+                // Auto-truncate text to fit column width
+                String rawText = cell.text().getString();
+                int maxTextWidth = colW[c] - 8; // 4px padding on each side
+                String truncated = DrawUtils.truncateText(font, rawText, maxTextWidth);
+                Component displayText = truncated.equals(rawText)
+                        ? cell.text()
+                        : Component.literal(truncated);
+
+                int textX = getAlignedX(font, displayText, colX[c], colW[c], col.align());
                 int textY = rowY + (ROW_HEIGHT - 8) / 2;
-                graphics.drawString(font, cell.text(), textX, textY, cell.color(), false);
+                graphics.drawString(font, displayText, textX, textY, cell.color(), false);
             }
         }
-    }
 
-    public ItemStack getHoveredIcon() {
+        // Built-in tooltip for hovered row with icon
         if (hoveredRow >= 0 && hoveredRow < rows.size()) {
-            ItemStack icon = rows.get(hoveredRow).icon();
-            return icon != null ? icon : null;
+            ItemStack hoveredIcon = rows.get(hoveredRow).icon();
+            if (hoveredIcon != null && !hoveredIcon.isEmpty()) {
+                graphics.renderTooltip(font, hoveredIcon, mouseX, mouseY);
+            }
         }
-        return null;
     }
 
     @Override
