@@ -177,12 +177,17 @@ public class SellTab {
                 .columns(INV_COLS)
                 .slotSize(InventoryGrid.SlotSize.MEDIUM)
                 .scrollable(true)
+                .showMain(true)
+                .showHotbar(true)
+                .showArmor(false)
+                .showOffhand(false)
+                .showOther(false)
                 .onSlotClicked(this::onInventorySlotClicked)
                 .theme(THEME)
                 .build();
 
-        int gridY = y + 18; // leave room for "Inventaire" title
-        int gridH = h - 22; // remaining height
+        int gridY = y + 4; // sections have their own labels now
+        int gridH = h - 8;
         inventoryGrid.setBounds(rightColX, gridY, rightColW, gridH);
         inventoryGrid.setSelectedSlot(selectedInventorySlot);
         addWidget.accept(inventoryGrid);
@@ -256,8 +261,7 @@ public class SellTab {
             graphics.drawString(font, placeholder, panelX + (panelW - phW) / 2, panelY + 28, THEME.textDim, false);
         }
 
-        // Right column: Inventory title
-        graphics.drawString(font, "Inventaire", rightColX + 4, y + 6, THEME.textGrey, false);
+        // InventoryGrid renders its own section labels
 
         // Status message at bottom left
         if (!lastMessage.isEmpty()) {
