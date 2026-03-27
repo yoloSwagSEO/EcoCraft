@@ -512,8 +512,76 @@ public final class ServerPayloadHandler {
         }
     }
 
+    public static void sendNPCSkin(ServerPlayer player, int entityId) {
+        if (entityId < 0) return;
+        var entity = player.level().getEntity(entityId);
+        if (entity instanceof net.ecocraft.ah.entity.AuctioneerEntity npc) {
+            PacketDistributor.sendToPlayer(player, new NPCSkinPayload(entityId, npc.getSkinPlayerName()));
+        }
+    }
+
     public static void handleUpdateNPCSkin(UpdateNPCSkinPayload payload, IPayloadContext context) {
-        // Implemented in Task 3
+        context.enqueueWork(() -> {
+            ServerPlayer player = (ServerPlayer) context.player();
+            if (!player.hasPermissions(2)) {
+                context.reply(new AHActionResultPayload(false, "Permission denied."));
+                return;
+            }
+
+            var entity = player.level().getEntity(payload.entityId());
+            if (!(entity instanceof net.ecocraft.ah.entity.AuctioneerEntity npc)) {
+                context.reply(new AHActionResultPayload(false, "PNJ introuvable."));
+                return;
+            }
+
+            String skinName = payload.skinPlayerName().trim();
+            npc.setSkinPlayerName(skinName);
+
+            if (skinName.isEmpty()) {
+                npc.setSkinProfile(null);
+                context.reply(new AHActionResultPayload(true, "Skin réinitialisé."));
+                return;
+            }
+
+            // Resolve GameProfile asynchronously
+            var server = player.getServer();
+            if (server == null) {
+                context.reply(new AHActionResultPayload(false, "Serveur non disponible."));
+                return;
+            }
+
+            net.minecraft.Util.backgroundExecutor().execute(() -> {
+                try {
+                    var profileCache = server.getProfileCache();
+                    if (profileCache == null) {
+                        server.execute(() -> context.reply(new AHActionResultPayload(false, "Cache de profils non disponible.")));
+                        return;
+                    }
+                    var optProfile = profileCache.get(skinName);
+                    if (optProfile.isEmpty()) {
+                        server.execute(() -> context.reply(new AHActionResultPayload(false, "Joueur introuvable: " + skinName)));
+                        return;
+                    }
+
+                    var profile = optProfile.get();
+                    // Fetch full profile with skin textures from Mojang API
+                    var profileResult = server.getSessionService().fetchProfile(profile.getId(), true);
+                    if (profileResult == null) {
+                        server.execute(() -> context.reply(new AHActionResultPayload(false, "Impossible de résoudre le profil: " + skinName)));
+                        return;
+                    }
+                    var filledProfile = profileResult.profile();
+
+                    server.execute(() -> {
+                        npc.setSkinProfile(filledProfile);
+                        context.reply(new AHActionResultPayload(true, "Skin mis à jour: " + skinName));
+                    });
+                } catch (Exception e) {
+                    LOGGER.error("Error resolving skin for " + skinName, e);
+                    server.execute(() -> context.reply(new AHActionResultPayload(false, "Erreur lors de la résolution du skin.")));
+                }
+            });
+        });
     }
 
     private static AuctionService requireService() {

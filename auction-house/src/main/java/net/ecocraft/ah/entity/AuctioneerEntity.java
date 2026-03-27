@@ -56,6 +56,7 @@ public class AuctioneerEntity extends Mob {
             PacketDistributor.sendToPlayer(serverPlayer, new OpenAHPayload(this.getId()));
             ServerPayloadHandler.sendBalanceUpdate(serverPlayer);
             ServerPayloadHandler.sendAHSettings(serverPlayer);
+            ServerPayloadHandler.sendNPCSkin(serverPlayer, this.getId());
         }
         return InteractionResult.SUCCESS;
     }
