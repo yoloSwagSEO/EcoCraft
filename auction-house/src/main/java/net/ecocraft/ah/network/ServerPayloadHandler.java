@@ -36,11 +36,31 @@ public final class ServerPayloadHandler {
                 String search = payload.search().isEmpty() ? null : payload.search();
                 ItemCategory category = payload.category().isEmpty() ? null : ItemCategory.valueOf(payload.category());
 
-                List<AuctionStorageProvider.ListingGroupSummary> results =
-                        service.searchListings(search, category, payload.page(), PAGE_SIZE);
+                // Fetch all results (no category filter in SQL) and filter dynamically
+                List<AuctionStorageProvider.ListingGroupSummary> allResults =
+                        service.searchListings(search, null, 0, Integer.MAX_VALUE);
+
+                // Filter by dynamically detected category if requested
+                List<AuctionStorageProvider.ListingGroupSummary> filtered;
+                if (category != null) {
+                    filtered = new ArrayList<>();
+                    for (var r : allResults) {
+                        if (ItemCategoryDetector.detectFromId(r.itemId()) == category) {
+                            filtered.add(r);
+                        }
+                    }
+                } else {
+                    filtered = allResults;
+                }
+
+                // Manual pagination
+                int start = payload.page() * PAGE_SIZE;
+                int end = Math.min(start + PAGE_SIZE, filtered.size());
+                List<AuctionStorageProvider.ListingGroupSummary> page =
+                        start < filtered.size() ? filtered.subList(start, end) : List.of();
 
                 List<ListingsResponsePayload.ListingSummary> summaries = new ArrayList<>();
-                for (var r : results) {
+                for (var r : page) {
                     summaries.add(new ListingsResponsePayload.ListingSummary(
                             r.itemId(),
                             r.itemName(),
@@ -51,8 +71,7 @@ public final class ServerPayloadHandler {
                     ));
                 }
 
-                // Approximate total pages
-                int totalPages = results.size() < PAGE_SIZE ? payload.page() + 1 : payload.page() + 2;
+                int totalPages = (int) Math.ceil((double) filtered.size() / PAGE_SIZE);
                 context.reply(new ListingsResponsePayload(summaries, payload.page(), totalPages));
             } catch (Exception e) {
                 LOGGER.error("Error handling RequestListings", e);
@@ -136,7 +155,7 @@ public final class ServerPayloadHandler {
 
                 String itemId = BuiltInRegistries.ITEM.getKey(itemToSell.getItem()).toString();
                 String itemName = itemToSell.getHoverName().getString();
-                String nbt = null;
+                String nbt = ItemStackSerializer.serialize(itemToSell, player.registryAccess());
                 int quantity = itemToSell.getCount();
                 ListingType type = ListingType.valueOf(payload.listingType());
                 BigDecimal price = BigDecimal.valueOf(payload.price());
@@ -238,9 +257,22 @@ public final class ServerPayloadHandler {
                 for (var parcel : parcels) {
                     if (parcel.hasItem() && parcel.itemId() != null) {
                         try {
-                            var itemRL = net.minecraft.resources.ResourceLocation.parse(parcel.itemId());
-                            var item = BuiltInRegistries.ITEM.get(itemRL);
-                            ItemStack stack = new ItemStack(item, parcel.quantity());
+                            ItemStack stack;
+                            if (parcel.itemNbt() != null && !parcel.itemNbt().isEmpty()) {
+                                // Deserialize the full ItemStack (preserves enchantments, components, etc.)
+                                stack = ItemStackSerializer.deserialize(parcel.itemNbt(), player.registryAccess());
+                                if (stack.isEmpty()) {
+                                    // Fallback to basic item if deserialization fails
+                                    var itemRL = net.minecraft.resources.ResourceLocation.parse(parcel.itemId());
+                                    var item = BuiltInRegistries.ITEM.get(itemRL);
+                                    stack = new ItemStack(item, parcel.quantity());
+                                }
+                            } else {
+                                // Legacy parcel without serialized data — create plain item
+                                var itemRL = net.minecraft.resources.ResourceLocation.parse(parcel.itemId());
+                                var item = BuiltInRegistries.ITEM.get(itemRL);
+                                stack = new ItemStack(item, parcel.quantity());
+                            }
                             if (!player.getInventory().add(stack)) {
                                 // Drop on ground if inventory full
                                 player.drop(stack, false);
