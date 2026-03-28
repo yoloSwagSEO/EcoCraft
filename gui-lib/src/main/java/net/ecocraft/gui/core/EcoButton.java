@@ -1,19 +1,23 @@
-package net.ecocraft.gui.widget;
+package net.ecocraft.gui.core;
 
 import net.ecocraft.gui.theme.DrawUtils;
 import net.ecocraft.gui.theme.Theme;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.AbstractWidget;
-import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.network.chat.Component;
 
 /**
- * Styled button with builder pattern and theme presets.
- * Supports disabled state — when disabled, uses theme disabled colors and ignores clicks.
+ * V2 styled button extending {@link BaseWidget}.
+ * <p>
+ * Supports a builder pattern and theme-based factory methods
+ * ({@link #primary}, {@link #success}, {@link #danger}, {@link #warning}, {@link #ghost}).
+ * <p>
+ * Disabled state renders with theme disabled colors and ignores clicks.
  */
-public class Button extends AbstractWidget {
+public class EcoButton extends BaseWidget {
 
+    private final Component label;
     private final int bgColor;
     private final int borderColor;
     private final int textColor;
@@ -22,8 +26,13 @@ public class Button extends AbstractWidget {
     private final Runnable onPress;
     private boolean enabled = true;
 
-    private Button(Builder builder) {
-        super(builder.x, builder.y, builder.width, builder.height, builder.label);
+    // Mouse position cached from last render for hover detection
+    private double lastMouseX;
+    private double lastMouseY;
+
+    private EcoButton(Builder builder) {
+        super(builder.x, builder.y, builder.width, builder.height);
+        this.label = builder.label;
         this.bgColor = builder.bgColor;
         this.borderColor = builder.borderColor;
         this.textColor = builder.textColor;
@@ -32,39 +41,39 @@ public class Button extends AbstractWidget {
         this.onPress = builder.onPress;
     }
 
-    // --- Builder ---
+    // --- Builder entry point ---
 
     public static Builder builder(Component label, Runnable onPress) {
         return new Builder(label, onPress);
     }
 
-    // --- Theme presets ---
+    // --- Theme preset factory methods ---
 
-    public static Button primary(Theme theme, Component label, Runnable onPress) {
+    public static EcoButton primary(Theme theme, Component label, Runnable onPress) {
         return new Builder(label, onPress).theme(theme)
                 .bgColor(theme.accentBg).borderColor(theme.borderAccent)
                 .textColor(theme.accent).hoverBg(theme.accentBgDim).build();
     }
 
-    public static Button success(Theme theme, Component label, Runnable onPress) {
+    public static EcoButton success(Theme theme, Component label, Runnable onPress) {
         return new Builder(label, onPress).theme(theme)
                 .bgColor(theme.successBg).borderColor(theme.success)
                 .textColor(theme.textWhite).hoverBg(theme.successBgDim).build();
     }
 
-    public static Button danger(Theme theme, Component label, Runnable onPress) {
+    public static EcoButton danger(Theme theme, Component label, Runnable onPress) {
         return new Builder(label, onPress).theme(theme)
                 .bgColor(theme.dangerBg).borderColor(theme.danger)
                 .textColor(theme.danger).hoverBg(theme.dangerBgDim).build();
     }
 
-    public static Button warning(Theme theme, Component label, Runnable onPress) {
+    public static EcoButton warning(Theme theme, Component label, Runnable onPress) {
         return new Builder(label, onPress).theme(theme)
                 .bgColor(theme.warningBg).borderColor(theme.warning)
                 .textColor(theme.textWhite).hoverBg(theme.warningBgDim).build();
     }
 
-    public static Button ghost(Theme theme, Component label, Runnable onPress) {
+    public static EcoButton ghost(Theme theme, Component label, Runnable onPress) {
         return new Builder(label, onPress).theme(theme)
                 .bgColor(theme.bgMedium).borderColor(theme.borderLight)
                 .textColor(theme.textGrey).hoverBg(theme.bgLight).build();
@@ -83,7 +92,10 @@ public class Button extends AbstractWidget {
     // --- Rendering ---
 
     @Override
-    public void renderWidget(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        this.lastMouseX = mouseX;
+        this.lastMouseY = mouseY;
+
         int bg, border, text;
 
         if (!enabled && theme != null) {
@@ -91,30 +103,30 @@ public class Button extends AbstractWidget {
             border = theme.disabledBorder;
             text = theme.disabledText;
         } else {
-            boolean hovered = isHovered();
+            boolean hovered = containsPoint(lastMouseX, lastMouseY);
             bg = hovered ? hoverBg : bgColor;
             border = borderColor;
             text = textColor;
         }
 
-        DrawUtils.drawPanel(graphics, getX(), getY(), width, height, bg, border);
+        DrawUtils.drawPanel(graphics, getX(), getY(), getWidth(), getHeight(), bg, border);
 
-        Font font = net.minecraft.client.Minecraft.getInstance().font;
-        int textWidth = font.width(getMessage());
-        int textX = getX() + (width - textWidth) / 2;
-        int textY = getY() + (height - 8) / 2;
-        graphics.drawString(font, getMessage(), textX, textY, text, false);
+        Font font = Minecraft.getInstance().font;
+        int textWidth = font.width(label);
+        int textX = getX() + (getWidth() - textWidth) / 2;
+        int textY = getY() + (getHeight() - 8) / 2;
+        graphics.drawString(font, label, textX, textY, text, false);
     }
 
+    // --- Events ---
+
     @Override
-    public void onClick(double mouseX, double mouseY) {
-        if (enabled) {
+    public boolean onMouseClicked(double mouseX, double mouseY, int button) {
+        if (enabled && containsPoint(mouseX, mouseY)) {
             onPress.run();
+            return true;
         }
-    }
-
-    @Override
-    protected void updateWidgetNarration(NarrationElementOutput output) {
+        return false;
     }
 
     // --- Builder class ---
@@ -143,8 +155,8 @@ public class Button extends AbstractWidget {
         public Builder hoverBg(int c) { this.hoverBg = c; return this; }
         public Builder theme(Theme t) { this.theme = t; return this; }
 
-        public Button build() {
-            return new Button(this);
+        public EcoButton build() {
+            return new EcoButton(this);
         }
     }
 }

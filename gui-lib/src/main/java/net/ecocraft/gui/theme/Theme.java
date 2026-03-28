@@ -14,7 +14,7 @@ public class Theme {
     // Text
     public final int textWhite, textLight, textGrey, textDim, textDark;
     // Functional
-    public final int success, successBg, warning, warningBg, danger, dangerBg, info, infoBg;
+    public final int success, successBg, successBgDim, warning, warningBg, warningBgDim, danger, dangerBg, dangerBgDim, info, infoBg;
     // Rarity
     public final int rarityCommon, rarityUncommon, rarityRare, rarityEpic, rarityLegendary;
     // Disabled state
@@ -39,10 +39,13 @@ public class Theme {
         this.textDark = builder.textDark;
         this.success = builder.success;
         this.successBg = builder.successBg;
+        this.successBgDim = builder.successBgDim;
         this.warning = builder.warning;
         this.warningBg = builder.warningBg;
+        this.warningBgDim = builder.warningBgDim;
         this.danger = builder.danger;
         this.dangerBg = builder.dangerBg;
+        this.dangerBgDim = builder.dangerBgDim;
         this.info = builder.info;
         this.infoBg = builder.infoBg;
         this.rarityCommon = builder.rarityCommon;
@@ -64,9 +67,9 @@ public class Theme {
             .accent(0xFFFFD700).accentBg(0xFF4A3A1A).accentBgDim(0xFF3A2A1A)
             .textWhite(0xFFFFFFFF).textLight(0xFFCCCCCC).textGrey(0xFFAAAAAA)
             .textDim(0xFF888888).textDark(0xFF666666)
-            .success(0xFF4CAF50).successBg(0xFF1A3A1A)
-            .warning(0xFFFF9800).warningBg(0xFF2A1A0A)
-            .danger(0xFFFF6B6B).dangerBg(0xFF2A0A0A)
+            .success(0xFF4CAF50).successBg(0xFF1A3A1A).successBgDim(0xFF2A4A2A)
+            .warning(0xFFFF9800).warningBg(0xFF2A1A0A).warningBgDim(0xFF3A2A1A)
+            .danger(0xFFFF6B6B).dangerBg(0xFF2A0A0A).dangerBgDim(0xFF3A1A1A)
             .info(0xFF64B5F6).infoBg(0xFF0A1A2A)
             .rarityCommon(0xFFFFFFFF).rarityUncommon(0xFF1EFF00)
             .rarityRare(0xFF0070DD).rarityEpic(0xFFA335EE).rarityLegendary(0xFFFF8000)
@@ -79,7 +82,7 @@ public class Theme {
         int border, borderLight, borderAccent;
         int accent, accentBg, accentBgDim;
         int textWhite, textLight, textGrey, textDim, textDark;
-        int success, successBg, warning, warningBg, danger, dangerBg, info, infoBg;
+        int success, successBg, successBgDim, warning, warningBg, warningBgDim, danger, dangerBg, dangerBgDim, info, infoBg;
         int rarityCommon, rarityUncommon, rarityRare, rarityEpic, rarityLegendary;
         int disabledBg, disabledText, disabledBorder;
 
@@ -101,10 +104,13 @@ public class Theme {
         public Builder textDark(int c) { textDark = c; return this; }
         public Builder success(int c) { success = c; return this; }
         public Builder successBg(int c) { successBg = c; return this; }
+        public Builder successBgDim(int c) { successBgDim = c; return this; }
         public Builder warning(int c) { warning = c; return this; }
         public Builder warningBg(int c) { warningBg = c; return this; }
+        public Builder warningBgDim(int c) { warningBgDim = c; return this; }
         public Builder danger(int c) { danger = c; return this; }
         public Builder dangerBg(int c) { dangerBg = c; return this; }
+        public Builder dangerBgDim(int c) { dangerBgDim = c; return this; }
         public Builder info(int c) { info = c; return this; }
         public Builder infoBg(int c) { infoBg = c; return this; }
         public Builder rarityCommon(int c) { rarityCommon = c; return this; }
