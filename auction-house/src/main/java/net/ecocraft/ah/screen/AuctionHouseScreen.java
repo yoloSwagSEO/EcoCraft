@@ -101,9 +101,13 @@ public class AuctionHouseScreen extends EcoScreen {
                 SellTab.activeDurations = inst.durations().stream().mapToInt(Integer::intValue).toArray();
                 SellTab.activeAllowBuyout = inst.allowBuyout();
                 SellTab.activeAllowAuction = inst.allowAuction();
-                // Hide sell tab if neither buyout nor auction is allowed
-                if (sellTab != null) {
-                    sellTab.setVisible(sellTab.isVisible() && (inst.allowBuyout() || inst.allowAuction()));
+                // Disable sell tab if neither buyout nor auction is allowed
+                boolean sellEnabled = inst.allowBuyout() || inst.allowAuction();
+                if (tabBar != null) {
+                    tabBar.setTabEnabled(1, sellEnabled);
+                }
+                if (sellTab != null && !sellEnabled && activeTab == 1) {
+                    activateTab(0); // switch away from disabled sell tab
                 }
                 return;
             }

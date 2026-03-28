@@ -25,6 +25,7 @@ public class EcoTabBar extends BaseWidget {
     private final Consumer<Integer> onTabChanged;
     private final Theme theme;
     private int activeTab = 0;
+    private boolean[] tabEnabled;
 
     /** Cached tab widths (computed once). */
     private int[] tabWidths;
@@ -50,6 +51,8 @@ public class EcoTabBar extends BaseWidget {
     private void computeTabWidths() {
         Font font = Minecraft.getInstance().font;
         tabWidths = new int[labels.size()];
+        tabEnabled = new boolean[labels.size()];
+        java.util.Arrays.fill(tabEnabled, true);
         totalWidth = 0;
         for (int i = 0; i < labels.size(); i++) {
             tabWidths[i] = font.width(labels.get(i)) + TAB_PADDING_H * 2;
@@ -71,6 +74,17 @@ public class EcoTabBar extends BaseWidget {
         }
     }
 
+    /** Enable or disable a tab. Disabled tabs are greyed out and not clickable. */
+    public void setTabEnabled(int index, boolean enabled) {
+        if (index >= 0 && index < tabEnabled.length) {
+            tabEnabled[index] = enabled;
+        }
+    }
+
+    public boolean isTabEnabled(int index) {
+        return index >= 0 && index < tabEnabled.length && tabEnabled[index];
+    }
+
     @Override
     public boolean isFocusable() {
         return false;
@@ -88,13 +102,25 @@ public class EcoTabBar extends BaseWidget {
 
         for (int i = 0; i < labels.size(); i++) {
             int tabW = tabWidths[i];
-            boolean isActive = i == activeTab;
-            boolean isHovered = mouseX >= currentX && mouseX < currentX + tabW
+            boolean enabled = tabEnabled[i];
+            boolean isActive = i == activeTab && enabled;
+            boolean isHovered = enabled && mouseX >= currentX && mouseX < currentX + tabW
                     && mouseY >= getY() && mouseY < getY() + TAB_HEIGHT;
 
-            int bg = isActive ? theme.accentBg : (isHovered ? theme.bgLight : theme.bgMedium);
-            int border = isActive ? theme.borderAccent : theme.border;
-            int textColor = isActive ? theme.accent : theme.textDark;
+            int bg, border, textColor;
+            if (!enabled) {
+                bg = theme.disabledBg;
+                border = theme.disabledBorder;
+                textColor = theme.disabledText;
+            } else if (isActive) {
+                bg = theme.accentBg;
+                border = theme.borderAccent;
+                textColor = theme.accent;
+            } else {
+                bg = isHovered ? theme.bgLight : theme.bgMedium;
+                border = theme.border;
+                textColor = theme.textDark;
+            }
 
             DrawUtils.drawPanel(graphics, currentX, getY(), tabW, TAB_HEIGHT, bg, border);
 
@@ -116,7 +142,7 @@ public class EcoTabBar extends BaseWidget {
         for (int i = 0; i < labels.size(); i++) {
             int tabW = tabWidths[i];
             if (mouseX >= currentX && mouseX < currentX + tabW) {
-                if (i != activeTab) {
+                if (tabEnabled[i] && i != activeTab) {
                     activeTab = i;
                     onTabChanged.accept(i);
                 }
