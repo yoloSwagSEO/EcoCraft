@@ -29,6 +29,8 @@ public class SellTab extends BaseWidget {
     static int[] activeDurations = {12, 24, 48};
     static double activeTaxRate = 0.05;
     static double activeDepositRate = 0.02;
+    static boolean activeAllowBuyout = true;
+    static boolean activeAllowAuction = true;
 
     private final AuctionHouseScreen parent;
     private final int tabX, tabY, tabW, tabH;
@@ -96,26 +98,33 @@ public class SellTab extends BaseWidget {
         currentY += 12;
         currentY += 4;
 
-        // 2. Type toggle: Achat immediat / Enchere
-        if (isBuyout) {
-            buyoutBtn = EcoButton.success(THEME, Component.translatable("ecocraft_ah.type.buyout"), () -> { isBuyout = true; buildWidgets(); });
-        } else {
-            buyoutBtn = EcoButton.ghost(THEME, Component.translatable("ecocraft_ah.type.buyout"), () -> { isBuyout = true; buildWidgets(); });
-        }
-        buyoutBtn.setPosition(leftCenterX - 82, currentY);
-        buyoutBtn.setSize(80, 16);
+        // 2. Type toggle: depends on AH config
+        // Force type if only one mode is allowed
+        if (activeAllowBuyout && !activeAllowAuction) isBuyout = true;
+        if (!activeAllowBuyout && activeAllowAuction) isBuyout = false;
 
-        if (!isBuyout) {
-            auctionBtn = EcoButton.warning(THEME, Component.translatable("ecocraft_ah.type.auction"), () -> { isBuyout = false; buildWidgets(); });
-        } else {
-            auctionBtn = EcoButton.ghost(THEME, Component.translatable("ecocraft_ah.type.auction"), () -> { isBuyout = false; buildWidgets(); });
-        }
-        auctionBtn.setPosition(leftCenterX + 2, currentY);
-        auctionBtn.setSize(80, 16);
+        // Only show toggle if both modes are allowed
+        if (activeAllowBuyout && activeAllowAuction) {
+            if (isBuyout) {
+                buyoutBtn = EcoButton.success(THEME, Component.translatable("ecocraft_ah.type.buyout"), () -> { isBuyout = true; buildWidgets(); });
+            } else {
+                buyoutBtn = EcoButton.ghost(THEME, Component.translatable("ecocraft_ah.type.buyout"), () -> { isBuyout = true; buildWidgets(); });
+            }
+            buyoutBtn.setPosition(leftCenterX - 82, currentY);
+            buyoutBtn.setSize(80, 16);
 
-        addChild(buyoutBtn);
-        addChild(auctionBtn);
-        currentY += 20;
+            if (!isBuyout) {
+                auctionBtn = EcoButton.warning(THEME, Component.translatable("ecocraft_ah.type.auction"), () -> { isBuyout = false; buildWidgets(); });
+            } else {
+                auctionBtn = EcoButton.ghost(THEME, Component.translatable("ecocraft_ah.type.auction"), () -> { isBuyout = false; buildWidgets(); });
+            }
+            auctionBtn.setPosition(leftCenterX + 2, currentY);
+            auctionBtn.setSize(80, 16);
+
+            addChild(buyoutBtn);
+            addChild(auctionBtn);
+            currentY += 20;
+        }
         currentY += 4;
 
         // 3. "Prix unitaire:" label + price input

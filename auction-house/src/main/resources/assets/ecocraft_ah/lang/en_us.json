@@ -9,14 +9,11 @@
   "commands.ecocraft_ah.ah.collect.usage": "Collect pending parcels",
   "commands.ecocraft_ah.ah.admin.reload": "Reload auction house configuration",
   "commands.ecocraft_ah.ah.admin.expire": "Force expire old listings",
-
   "ecocraft_ah.screen.title": "Auction House",
-
-  "ecocraft_ah.tab.buy": "\uD83D\uDED2 Buy",
-  "ecocraft_ah.tab.sell": "\uD83D\uDCB0 Sell",
-  "ecocraft_ah.tab.my_auctions": "\uD83D\uDCCB My Auctions",
-  "ecocraft_ah.tab.ledger": "\uD83D\uDCD2 Ledger",
-
+  "ecocraft_ah.tab.buy": "🛒 Buy",
+  "ecocraft_ah.tab.sell": "💰 Sell",
+  "ecocraft_ah.tab.my_auctions": "📋 My Auctions",
+  "ecocraft_ah.tab.ledger": "📒 Ledger",
   "ecocraft_ah.filter.all": "All",
   "ecocraft_ah.filter.weapons": "Weapons",
   "ecocraft_ah.filter.armor": "Armor",
@@ -26,7 +23,6 @@
   "ecocraft_ah.filter.food": "Food",
   "ecocraft_ah.filter.enchantments": "Enchant.",
   "ecocraft_ah.filter.misc": "Misc",
-
   "ecocraft_ah.column.item": "Item",
   "ecocraft_ah.column.best_price": "Best Price",
   "ecocraft_ah.column.offers": "Offers",
@@ -43,12 +39,10 @@
   "ecocraft_ah.column.amount": "Amount",
   "ecocraft_ah.column.with": "With",
   "ecocraft_ah.column.date": "Date",
-
   "ecocraft_ah.search.placeholder": "Search...",
-
   "ecocraft_ah.button.prev_page": "< Prev",
   "ecocraft_ah.button.next_page": "Next >",
-  "ecocraft_ah.button.back": "\u25C0 Back",
+  "ecocraft_ah.button.back": "◀ Back",
   "ecocraft_ah.button.buy": "Buy",
   "ecocraft_ah.button.bid": "Bid",
   "ecocraft_ah.button.sell": "List for Sale",
@@ -56,7 +50,6 @@
   "ecocraft_ah.button.cancel": "Cancel",
   "ecocraft_ah.button.save": "Save",
   "ecocraft_ah.button.confirm": "Confirm",
-
   "ecocraft_ah.label.selected_offer": "Selected Offer",
   "ecocraft_ah.label.seller": "Seller:",
   "ecocraft_ah.label.current_bid": "Current bid:",
@@ -68,26 +61,21 @@
   "ecocraft_ah.label.total_price": "Total price:",
   "ecocraft_ah.label.no_bid": "None",
   "ecocraft_ah.label.page": "Page %d/%d",
-
   "ecocraft_ah.price_info.avg": "Avg: %s",
   "ecocraft_ah.price_info.min": "Min: %s",
   "ecocraft_ah.price_info.max": "Max: %s",
   "ecocraft_ah.price_info.sales_7d": "Sales 7d: %d",
   "ecocraft_ah.price_info.history_line": "Avg: %s | Min: %s | Max: %s | Sales 7d: %d",
   "ecocraft_ah.price_info.no_data": "No price data available",
-
   "ecocraft_ah.type.buyout": "Buyout",
   "ecocraft_ah.type.auction": "Auction",
   "ecocraft_ah.type.buyout_short": "Buyout",
   "ecocraft_ah.type.auction_short": "Auction",
-
   "ecocraft_ah.status.active": "Active",
   "ecocraft_ah.status.sold": "Sold",
   "ecocraft_ah.status.expired": "Expired",
   "ecocraft_ah.status.cancelled": "Cancelled",
-
   "ecocraft_ah.time.expired": "Expired",
-
   "ecocraft_ah.sell.select_item": "Select an item",
   "ecocraft_ah.sell.enter_price_summary": "Enter a price to see the summary",
   "ecocraft_ah.sell.unit_price_label": "Unit price:",
@@ -99,16 +87,12 @@
   "ecocraft_ah.sell.no_item_selected": "No item selected!",
   "ecocraft_ah.sell.enter_valid_price": "Enter a valid price!",
   "ecocraft_ah.sell.sending": "Sending...",
-
   "ecocraft_ah.subtab.my_sales": "My Sales",
   "ecocraft_ah.subtab.my_purchases": "My Purchases",
   "ecocraft_ah.subtab.active_bids": "Active Bids",
-
   "ecocraft_ah.action.collect": "Collect",
   "ecocraft_ah.action.cancel": "Cancel",
-
   "ecocraft_ah.collect_button": "Collect (%d)",
-
   "ecocraft_ah.stat.revenue_7d": "Revenue 7d",
   "ecocraft_ah.stat.taxes_7d": "Taxes 7d",
   "ecocraft_ah.stat.parcels": "Parcels",
@@ -116,30 +100,25 @@
   "ecocraft_ah.stat.sales": "Sales",
   "ecocraft_ah.stat.purchases": "Purchases",
   "ecocraft_ah.stat.taxes": "Taxes",
-
   "ecocraft_ah.period.24h": "24h",
   "ecocraft_ah.period.7d": "7d",
   "ecocraft_ah.period.30d": "30d",
   "ecocraft_ah.period.all": "All",
-
   "ecocraft_ah.ledger_type.all": "All",
   "ecocraft_ah.ledger_type.purchases": "Purchases",
   "ecocraft_ah.ledger_type.sales": "Sales",
   "ecocraft_ah.ledger_type.auctions": "Auctions",
   "ecocraft_ah.ledger_type.expirations": "Expirations",
-
   "ecocraft_ah.transaction_type.purchase": "Purchase",
   "ecocraft_ah.transaction_type.sale": "Sale",
   "ecocraft_ah.transaction_type.expired": "Expired",
   "ecocraft_ah.transaction_type.outbid": "Outbid",
   "ecocraft_ah.transaction_type.tax": "Tax",
   "ecocraft_ah.transaction_type.deposit": "Deposit",
-
   "ecocraft_ah.dialog.cancel_title": "Cancel Listing",
   "ecocraft_ah.dialog.cancel_message": "Are you sure you want to cancel this listing?",
   "ecocraft_ah.dialog.confirm": "Confirm",
   "ecocraft_ah.dialog.back": "Back",
-
   "ecocraft_ah.settings.title": "AH Settings",
   "ecocraft_ah.settings.general": "General",
   "ecocraft_ah.settings.skin_label": "Skin username:",
@@ -154,22 +133,18 @@
   "ecocraft_ah.settings.delete_ah": "Delete this AH",
   "ecocraft_ah.settings.new_ah_name": "New AH",
   "ecocraft_ah.settings.npc_hint": "Open settings from an NPC to configure its options.",
-
   "ecocraft_ah.settings.delete_title": "Delete: %s",
   "ecocraft_ah.settings.delete_question": "What to do with active listings?",
   "ecocraft_ah.settings.delete_transfer": "Transfer listings to the default AH",
   "ecocraft_ah.settings.delete_all": "Delete all listings",
   "ecocraft_ah.settings.delete_return": "Return items to players (parcels)",
-
   "ecocraft_ah.durability.all": "All",
-
   "ecocraft_ah.sell.result.item_listed": "Item listed for sale!",
   "ecocraft_ah.sell.result.no_item": "No item selected!",
   "ecocraft_ah.sell.result.price_positive": "Price must be positive!",
   "ecocraft_ah.sell.result.invalid_item": "Invalid item!",
   "ecocraft_ah.sell.result.insufficient_funds": "Insufficient funds!",
   "ecocraft_ah.sell.result.listing_not_found": "Listing not found!",
-
   "ecocraft_ah.message.listing_created": "Listing created successfully.",
   "ecocraft_ah.message.purchase_success": "Purchase successful! Collect your item in parcels.",
   "ecocraft_ah.message.bid_success": "Bid placed successfully.",
@@ -199,7 +174,6 @@
   "ecocraft_ah.message.player_not_found": "Player not found: %s",
   "ecocraft_ah.message.profile_resolve_error": "Cannot resolve profile: %s",
   "ecocraft_ah.message.skin_resolve_error": "Error resolving skin.",
-
   "ecocraft_ah.command.sell.success": "%dx %s listed for %s",
   "ecocraft_ah.command.sell.fail": "Listing failed: %s",
   "ecocraft_ah.command.sell.must_hold": "You must hold an item to sell.",
@@ -218,6 +192,7 @@
   "ecocraft_ah.command.no_parcels": "No parcels to collect.",
   "ecocraft_ah.command.parcels_collected": "%d parcel(s) collected. Items sent to inventory.",
   "ecocraft_ah.command.collect_fail": "Collection failed: %s",
-
-  "ecocraft_ah.login.parcels_pending": "[AH] You have %d pending parcel(s). Use /ah collect or visit the auction house."
+  "ecocraft_ah.login.parcels_pending": "[AH] You have %d pending parcel(s). Use /ah collect or visit the auction house.",
+  "ecocraft_ah.settings.allow_buyout": "Instant buy",
+  "ecocraft_ah.settings.allow_auction": "Auctions"
 }

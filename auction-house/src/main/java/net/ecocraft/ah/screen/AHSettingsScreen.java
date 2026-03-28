@@ -288,6 +288,22 @@ public class AHSettingsScreen extends EcoScreen {
         getTree().addChild(nameInput);
         y += 30;
 
+        // Listing type toggles
+        y += 14;
+        // "Achat immédiat" toggle
+        EcoToggle buyoutToggle = new EcoToggle(panelX + panelW - 44, y, 40, 14, THEME);
+        buyoutToggle.value(edited.allowBuyout);
+        buyoutToggle.responder(val -> edited.allowBuyout = val);
+        getTree().addChild(buyoutToggle);
+        y += 20;
+
+        // "Enchères" toggle
+        EcoToggle auctionToggle = new EcoToggle(panelX + panelW - 44, y, 40, 14, THEME);
+        auctionToggle.value(edited.allowAuction);
+        auctionToggle.responder(val -> edited.allowAuction = val);
+        getTree().addChild(auctionToggle);
+        y += 24;
+
         // Sale rate slider
         y += 14;
         EcoSlider saleSlider = new EcoSlider(font, panelX, y, panelW, 16, THEME);
@@ -441,6 +457,12 @@ public class AHSettingsScreen extends EcoScreen {
         graphics.drawString(font, Component.translatable("ecocraft_ah.settings.ah_name_label"), panelX, y, THEME.textGrey, false);
 
         y += 44;
+        graphics.drawString(font, Component.translatable("ecocraft_ah.settings.allow_buyout"), panelX, y + 3, THEME.textGrey, false);
+
+        y += 20;
+        graphics.drawString(font, Component.translatable("ecocraft_ah.settings.allow_auction"), panelX, y + 3, THEME.textGrey, false);
+
+        y += 38;
         graphics.drawString(font, Component.translatable("ecocraft_ah.settings.sale_tax_label"), panelX, y, THEME.textGrey, false);
 
         y += 44;

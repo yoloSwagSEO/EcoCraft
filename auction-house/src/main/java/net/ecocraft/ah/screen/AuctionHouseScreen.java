@@ -99,6 +99,12 @@ public class AuctionHouseScreen extends EcoScreen {
                 SellTab.activeTaxRate = inst.saleRate() / 100.0;
                 SellTab.activeDepositRate = inst.depositRate() / 100.0;
                 SellTab.activeDurations = inst.durations().stream().mapToInt(Integer::intValue).toArray();
+                SellTab.activeAllowBuyout = inst.allowBuyout();
+                SellTab.activeAllowAuction = inst.allowAuction();
+                // Hide sell tab if neither buyout nor auction is allowed
+                if (sellTab != null) {
+                    sellTab.setVisible(sellTab.isVisible() && (inst.allowBuyout() || inst.allowAuction()));
+                }
                 return;
             }
         }
@@ -177,7 +183,7 @@ public class AuctionHouseScreen extends EcoScreen {
     private void activateTab(int tab) {
         tabBar.setActiveTab(tab);
         buyTab.setVisible(tab == 0);
-        sellTab.setVisible(tab == 1);
+        sellTab.setVisible(tab == 1 && (SellTab.activeAllowBuyout || SellTab.activeAllowAuction));
         myAuctionsTab.setVisible(tab == 2);
         ledgerTab.setVisible(tab == 3);
 
