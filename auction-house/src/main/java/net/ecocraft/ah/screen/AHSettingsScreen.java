@@ -476,7 +476,7 @@ public class AHSettingsScreen extends EcoScreen {
         y += 24;
         graphics.drawString(font, Component.translatable("ecocraft_ah.settings.tax_recipient_label"), panelX, y + 3, THEME.textGrey, false);
 
-        y += 38;
+        y += 52;
         graphics.drawString(font, Component.translatable("ecocraft_ah.settings.sale_tax_label"), panelX, y, THEME.textGrey, false);
 
         y += 44;
