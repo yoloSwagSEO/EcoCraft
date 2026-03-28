@@ -97,7 +97,7 @@ public final class AHCommand {
                         .then(Commands.literal("reload")
                                 .executes(ctx -> {
                                     ctx.getSource().sendSuccess(
-                                            () -> Component.literal("Auction house config reloaded."), true);
+                                            () -> Component.literal("Configuration de l'hôtel des ventes rechargée."), true);
                                     return 1;
                                 })
                         )
@@ -107,12 +107,12 @@ public final class AHCommand {
                                 .executes(ctx -> {
                                     AuctionService service = serviceSupplier.get();
                                     if (service == null) {
-                                        ctx.getSource().sendFailure(Component.literal("Auction service not available."));
+                                        ctx.getSource().sendFailure(Component.literal("Service HDV non disponible."));
                                         return 0;
                                     }
                                     service.expireListings();
                                     ctx.getSource().sendSuccess(
-                                            () -> Component.literal("Forced expiration of old listings."), true);
+                                            () -> Component.literal("Expiration forcée des anciennes annonces."), true);
                                     return 1;
                                 })
                         )
@@ -165,13 +165,13 @@ public final class AHCommand {
                                    Supplier<AuctionService> serviceSupplier) {
         AuctionService service = serviceSupplier.get();
         if (service == null) {
-            source.sendFailure(Component.literal("Auction service not available."));
+            source.sendFailure(Component.literal("Service HDV non disponible."));
             return 0;
         }
 
         ItemStack held = player.getMainHandItem();
         if (held.isEmpty()) {
-            source.sendFailure(Component.literal("You must hold an item to sell."));
+            source.sendFailure(Component.literal("Vous devez tenir un objet pour vendre."));
             return 0;
         }
 
@@ -204,10 +204,10 @@ public final class AHCommand {
             player.getMainHandItem().setCount(0);
 
             source.sendSuccess(() -> Component.literal(
-                    "Listed " + quantity + "x " + itemName + " for " + price), false);
+                    quantity + "x " + itemName + " mis en vente pour " + price), false);
             return 1;
         } catch (AuctionService.AuctionException e) {
-            source.sendFailure(Component.literal("Failed to sell: " + e.getMessage()));
+            source.sendFailure(Component.literal("Échec de la mise en vente : " + e.getMessage()));
             return 0;
         }
     }
@@ -308,23 +308,23 @@ public final class AHCommand {
                                       Supplier<AuctionService> serviceSupplier) {
         AuctionService service = serviceSupplier.get();
         if (service == null) {
-            source.sendFailure(Component.literal("Auction service not available."));
+            source.sendFailure(Component.literal("Service HDV non disponible."));
             return 0;
         }
 
         try {
             var parcels = service.collectParcels(player.getUUID());
             if (parcels.isEmpty()) {
-                source.sendSuccess(() -> Component.literal("No parcels to collect."), false);
+                source.sendSuccess(() -> Component.literal("Aucun colis à récupérer."), false);
             } else {
                 // Item parcels would need to be given to player inventory — handled in the handler
                 int count = parcels.size();
                 source.sendSuccess(() -> Component.literal(
-                        "Collected " + count + " parcel(s). Items sent to inventory."), false);
+                        count + " colis récupéré(s). Objets envoyés dans l'inventaire."), false);
             }
             return 1;
         } catch (Exception e) {
-            source.sendFailure(Component.literal("Failed to collect: " + e.getMessage()));
+            source.sendFailure(Component.literal("Échec de la récupération : " + e.getMessage()));
             return 0;
         }
     }

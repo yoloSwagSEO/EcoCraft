@@ -103,7 +103,7 @@ public class AHServerEvents {
             int uncollected = auctionService.countUncollectedParcels(player.getUUID());
             if (uncollected > 0) {
                 player.sendSystemMessage(Component.literal(
-                        "[Auction House] You have " + uncollected + " uncollected parcel(s). Use /ah collect or visit the auction house."
+                        "[HDV] Vous avez " + uncollected + " colis en attente. Utilisez /ah collect ou visitez l'hôtel des ventes."
                 ));
             }
         } catch (Exception e) {

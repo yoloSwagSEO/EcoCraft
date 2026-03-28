@@ -101,13 +101,13 @@ public class AuctionService {
             @Nullable String ahId) {
 
         // --- Validation ---
-        if (quantity <= 0) throw new AuctionException("Quantity must be positive");
+        if (quantity <= 0) throw new AuctionException("La quantité doit être positive");
         if (price == null || price.compareTo(BigDecimal.ZERO) <= 0)
-            throw new AuctionException("Price must be positive");
-        if (durationHours <= 0) throw new AuctionException("Duration must be positive");
+            throw new AuctionException("Le prix doit être positif");
+        if (durationHours <= 0) throw new AuctionException("La durée doit être positive");
 
         Currency currency = currencies.getById(currencyId);
-        if (currency == null) throw new AuctionException("Unknown currency: " + currencyId);
+        if (currency == null) throw new AuctionException("Devise inconnue : " + currencyId);
 
         long priceUnits = toSmallestUnit(price, currency);
         long totalPrice = priceUnits * quantity;
@@ -124,7 +124,7 @@ public class AuctionService {
             var result = economy.withdraw(sellerUuid, depositBD, currency);
             if (!result.successful()) {
                 System.err.println("[AH] CREATE LISTING FAILED: insufficient funds. seller=" + sellerName + " deposit=" + depositBD);
-                throw new AuctionException("Insufficient funds for listing deposit: " + result.errorMessage());
+                throw new AuctionException("Fonds insuffisants pour le dépôt de l'annonce : " + result.errorMessage());
             }
             System.out.println("[AH] Deposit withdrawn: " + depositBD + " " + currency.symbol() + " from " + sellerName);
         }
@@ -196,11 +196,11 @@ public class AuctionService {
     public void buyListing(UUID buyerUuid, String buyerName, String listingId, int buyQuantity) {
         AuctionListing listing = requireActiveListingById(listingId);
         if (listing.buyoutPrice() <= 0)
-            throw new AuctionException("Listing has no buyout price");
+            throw new AuctionException("L'annonce n'a pas de prix d'achat immédiat");
         if (listing.sellerUuid().equals(buyerUuid))
-            throw new AuctionException("Cannot buy your own listing");
+            throw new AuctionException("Vous ne pouvez pas acheter votre propre annonce");
         if (buyQuantity <= 0 || buyQuantity > listing.quantity())
-            throw new AuctionException("Invalid quantity (requested " + buyQuantity + ", available " + listing.quantity() + ")");
+            throw new AuctionException("Quantité invalide (demandé " + buyQuantity + ", disponible " + listing.quantity() + ")");
 
         Currency currency = requireCurrency(listing.currencyId());
         long totalPrice = listing.buyoutPrice() * buyQuantity;
@@ -213,7 +213,7 @@ public class AuctionService {
         var withdrawResult = economy.withdraw(buyerUuid, buyoutBD, currency);
         if (!withdrawResult.successful()) {
             System.err.println("[AH] BUY FAILED: insufficient funds. buyer=" + buyerName + " needed=" + buyoutBD);
-            throw new AuctionException("Insufficient funds: " + withdrawResult.errorMessage());
+            throw new AuctionException("Fonds insuffisants : " + withdrawResult.errorMessage());
         }
         System.out.println("[AH] Buyer charged: " + buyoutBD + " " + currency.symbol());
 
@@ -304,21 +304,21 @@ public class AuctionService {
     public void placeBid(UUID bidderUuid, String bidderName, String listingId, BigDecimal amount) {
         AuctionListing listing = requireActiveListingById(listingId);
         if (listing.listingType() != ListingType.AUCTION)
-            throw new AuctionException("Listing is not an auction");
+            throw new AuctionException("L'annonce n'est pas une enchère");
         if (listing.sellerUuid().equals(bidderUuid))
-            throw new AuctionException("Cannot bid on your own listing");
+            throw new AuctionException("Vous ne pouvez pas enchérir sur votre propre annonce");
 
         Currency currency = requireCurrency(listing.currencyId());
         long amountUnits = toSmallestUnit(amount, currency);
 
         long minimumBid = listing.currentBid() > 0 ? listing.currentBid() + 1 : listing.startingBid();
         if (amountUnits < minimumBid)
-            throw new AuctionException("Bid must be at least " + fromSmallestUnit(minimumBid, currency).toPlainString());
+            throw new AuctionException("L'enchère doit être d'au moins " + fromSmallestUnit(minimumBid, currency).toPlainString());
 
         // Withdraw new bid from bidder
         var withdrawResult = economy.withdraw(bidderUuid, amount, currency);
         if (!withdrawResult.successful())
-            throw new AuctionException("Insufficient funds: " + withdrawResult.errorMessage());
+            throw new AuctionException("Fonds insuffisants : " + withdrawResult.errorMessage());
 
         // Refund previous bidder
         if (listing.currentBidderUuid() != null && listing.currentBid() > 0) {
@@ -368,9 +368,9 @@ public class AuctionService {
     public void cancelListing(UUID playerUuid, String listingId) {
         AuctionListing listing = requireActiveListingById(listingId);
         if (!listing.sellerUuid().equals(playerUuid))
-            throw new AuctionException("You do not own this listing");
+            throw new AuctionException("Vous n'êtes pas le propriétaire de cette annonce");
         if (listing.listingType() == ListingType.AUCTION && listing.currentBid() > 0)
-            throw new AuctionException("Cannot cancel an auction that already has bids");
+            throw new AuctionException("Impossible d'annuler une enchère ayant déjà des offres");
 
         // Return item to seller via parcel
         long now = System.currentTimeMillis();
@@ -606,17 +606,17 @@ public class AuctionService {
 
     private AuctionListing requireActiveListingById(String listingId) {
         AuctionListing listing = storage.getListingById(listingId);
-        if (listing == null) throw new AuctionException("Listing not found: " + listingId);
+        if (listing == null) throw new AuctionException("Annonce introuvable : " + listingId);
         if (listing.status() != ListingStatus.ACTIVE)
-            throw new AuctionException("Listing is not active (status=" + listing.status() + ")");
+            throw new AuctionException("L'annonce n'est pas active (statut=" + listing.status() + ")");
         if (listing.isExpired())
-            throw new AuctionException("Listing has expired");
+            throw new AuctionException("L'annonce a expiré");
         return listing;
     }
 
     private Currency requireCurrency(String currencyId) {
         Currency c = currencies.getById(currencyId);
-        if (c == null) throw new AuctionException("Unknown currency: " + currencyId);
+        if (c == null) throw new AuctionException("Devise inconnue : " + currencyId);
         return c;
     }
 

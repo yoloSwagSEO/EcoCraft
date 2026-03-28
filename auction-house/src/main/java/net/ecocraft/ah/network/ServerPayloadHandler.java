@@ -225,13 +225,13 @@ public final class ServerPayloadHandler {
                     player.getMainHandItem().setCount(0);
                 }
 
-                context.reply(new AHActionResultPayload(true, "Listing created successfully."));
+                context.reply(new AHActionResultPayload(true, "Annonce créée avec succès."));
                 sendBalanceUpdate(player);
             } catch (AuctionService.AuctionException e) {
                 context.reply(new AHActionResultPayload(false, e.getMessage()));
             } catch (Exception e) {
                 LOGGER.error("Error handling CreateListing", e);
-                context.reply(new AHActionResultPayload(false, "Internal error creating listing."));
+                context.reply(new AHActionResultPayload(false, "Erreur interne lors de la création de l'annonce."));
             }
         });
     }
@@ -243,13 +243,13 @@ public final class ServerPayloadHandler {
                 ServerPlayer player = (ServerPlayer) context.player();
 
                 service.buyListing(player.getUUID(), player.getName().getString(), payload.listingId(), payload.quantity());
-                context.reply(new AHActionResultPayload(true, "Purchase successful! Check parcels to collect your item."));
+                context.reply(new AHActionResultPayload(true, "Achat réussi ! Récupérez votre objet dans les colis."));
                 sendBalanceUpdate(player);
             } catch (AuctionService.AuctionException e) {
                 context.reply(new AHActionResultPayload(false, e.getMessage()));
             } catch (Exception e) {
                 LOGGER.error("Error handling BuyListing", e);
-                context.reply(new AHActionResultPayload(false, "Internal error processing purchase."));
+                context.reply(new AHActionResultPayload(false, "Erreur interne lors de l'achat."));
             }
         });
     }
@@ -262,13 +262,13 @@ public final class ServerPayloadHandler {
 
                 BigDecimal amount = BigDecimal.valueOf(payload.amount());
                 service.placeBid(player.getUUID(), player.getName().getString(), payload.listingId(), amount);
-                context.reply(new AHActionResultPayload(true, "Bid placed successfully."));
+                context.reply(new AHActionResultPayload(true, "Enchère placée avec succès."));
                 sendBalanceUpdate(player);
             } catch (AuctionService.AuctionException e) {
                 context.reply(new AHActionResultPayload(false, e.getMessage()));
             } catch (Exception e) {
                 LOGGER.error("Error handling PlaceBid", e);
-                context.reply(new AHActionResultPayload(false, "Internal error placing bid."));
+                context.reply(new AHActionResultPayload(false, "Erreur interne lors de l'enchère."));
             }
         });
     }
@@ -280,12 +280,12 @@ public final class ServerPayloadHandler {
                 ServerPlayer player = (ServerPlayer) context.player();
 
                 service.cancelListing(player.getUUID(), payload.listingId());
-                context.reply(new AHActionResultPayload(true, "Listing cancelled."));
+                context.reply(new AHActionResultPayload(true, "Annonce annulée."));
             } catch (AuctionService.AuctionException e) {
                 context.reply(new AHActionResultPayload(false, e.getMessage()));
             } catch (Exception e) {
                 LOGGER.error("Error handling CancelListing", e);
-                context.reply(new AHActionResultPayload(false, "Internal error cancelling listing."));
+                context.reply(new AHActionResultPayload(false, "Erreur interne lors de l'annulation."));
             }
         });
     }
@@ -329,13 +329,13 @@ public final class ServerPayloadHandler {
                 }
 
                 String msg = parcels.isEmpty()
-                        ? "No parcels to collect."
-                        : "Collected " + parcels.size() + " parcel(s).";
+                        ? "Aucun colis à récupérer."
+                        : parcels.size() + " colis récupéré(s).";
                 context.reply(new AHActionResultPayload(true, msg));
                 sendBalanceUpdate(player);
             } catch (Exception e) {
                 LOGGER.error("Error handling CollectParcels", e);
-                context.reply(new AHActionResultPayload(false, "Internal error collecting parcels."));
+                context.reply(new AHActionResultPayload(false, "Erreur interne lors de la récupération des colis."));
             }
         });
     }
@@ -505,7 +505,7 @@ public final class ServerPayloadHandler {
         context.enqueueWork(() -> {
             ServerPlayer player = (ServerPlayer) context.player();
             if (!player.hasPermissions(2)) {
-                context.reply(new AHActionResultPayload(false, "Permission denied."));
+                context.reply(new AHActionResultPayload(false, "Permission refusée."));
                 return;
             }
             AuctionStorageProvider storage = AHServerEvents.getStorage();
@@ -515,7 +515,7 @@ public final class ServerPayloadHandler {
             }
             AHInstance ah = AHInstance.create(payload.name());
             storage.createAHInstance(ah);
-            context.reply(new AHActionResultPayload(true, "AH créé: " + ah.name()));
+            context.reply(new AHActionResultPayload(true, "HDV créé : " + ah.name()));
             sendAHInstances(player);
         });
     }
@@ -524,7 +524,7 @@ public final class ServerPayloadHandler {
         context.enqueueWork(() -> {
             ServerPlayer player = (ServerPlayer) context.player();
             if (!player.hasPermissions(2)) {
-                context.reply(new AHActionResultPayload(false, "Permission denied."));
+                context.reply(new AHActionResultPayload(false, "Permission refusée."));
                 return;
             }
             AuctionStorageProvider storage = AHServerEvents.getStorage();
@@ -534,11 +534,11 @@ public final class ServerPayloadHandler {
             }
             AHInstance ah = storage.getAHInstance(payload.ahId());
             if (ah == null) {
-                context.reply(new AHActionResultPayload(false, "AH introuvable."));
+                context.reply(new AHActionResultPayload(false, "HDV introuvable."));
                 return;
             }
             if (AHInstance.DEFAULT_ID.equals(ah.id())) {
-                context.reply(new AHActionResultPayload(false, "Impossible de supprimer l'AH par défaut."));
+                context.reply(new AHActionResultPayload(false, "Impossible de supprimer l'HDV par défaut."));
                 return;
             }
 
@@ -559,7 +559,7 @@ public final class ServerPayloadHandler {
                 }
             }
             storage.deleteAHInstance(payload.ahId());
-            context.reply(new AHActionResultPayload(true, "AH supprimé: " + ah.name()));
+            context.reply(new AHActionResultPayload(true, "HDV supprimé : " + ah.name()));
             sendAHInstances(player);
         });
     }
@@ -568,7 +568,7 @@ public final class ServerPayloadHandler {
         context.enqueueWork(() -> {
             ServerPlayer player = (ServerPlayer) context.player();
             if (!player.hasPermissions(2)) {
-                context.reply(new AHActionResultPayload(false, "Permission denied."));
+                context.reply(new AHActionResultPayload(false, "Permission refusée."));
                 return;
             }
             AuctionStorageProvider storage = AHServerEvents.getStorage();
@@ -578,12 +578,12 @@ public final class ServerPayloadHandler {
             }
             AHInstance existing = storage.getAHInstance(payload.ahId());
             if (existing == null) {
-                context.reply(new AHActionResultPayload(false, "AH introuvable."));
+                context.reply(new AHActionResultPayload(false, "HDV introuvable."));
                 return;
             }
             AHInstance updated = existing.withConfig(payload.name(), payload.saleRate(), payload.depositRate(), payload.durations());
             storage.updateAHInstance(updated);
-            context.reply(new AHActionResultPayload(true, "AH mis à jour: " + updated.name()));
+            context.reply(new AHActionResultPayload(true, "HDV mis à jour : " + updated.name()));
             sendAHInstances(player);
         });
     }
@@ -623,7 +623,7 @@ public final class ServerPayloadHandler {
         context.enqueueWork(() -> {
             ServerPlayer player = (ServerPlayer) context.player();
             if (!player.hasPermissions(2)) {
-                context.reply(new AHActionResultPayload(false, "Permission denied."));
+                context.reply(new AHActionResultPayload(false, "Permission refusée."));
                 return;
             }
             try {
@@ -670,7 +670,7 @@ public final class ServerPayloadHandler {
         context.enqueueWork(() -> {
             ServerPlayer player = (ServerPlayer) context.player();
             if (!player.hasPermissions(2)) {
-                context.reply(new AHActionResultPayload(false, "Permission denied."));
+                context.reply(new AHActionResultPayload(false, "Permission refusée."));
                 return;
             }
 
