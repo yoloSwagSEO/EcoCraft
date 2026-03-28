@@ -25,6 +25,11 @@ neoForge {
             sourceSet(sourceSets.main)
         }
     }
+
+    unitTest {
+        enable()
+        testedMod = mods."${project.gui_lib_mod_id}"
+    }
 }
 
 dependencies {

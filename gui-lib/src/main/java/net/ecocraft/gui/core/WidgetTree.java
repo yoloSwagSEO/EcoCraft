@@ -50,7 +50,7 @@ public class WidgetTree {
 
     public void removePortal(WidgetNode portal) {
         portals.remove(portal);
-        if (focusedNode != null && isDescendantOf(focusedNode, portal)) {
+        if (focusedNode != null && (focusedNode == portal || isDescendantOf(focusedNode, portal))) {
             setFocused(null);
         }
     }
