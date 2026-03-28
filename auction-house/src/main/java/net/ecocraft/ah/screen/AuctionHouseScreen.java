@@ -69,7 +69,10 @@ public class AuctionHouseScreen extends Screen {
     }
 
     public String getCurrentAhId() { return currentAhId; }
-    public void setCurrentAhId(String ahId) { this.currentAhId = ahId; }
+    public void setCurrentAhId(String ahId) {
+        this.currentAhId = ahId;
+        updateSellTabFromCurrentAH();
+    }
     public void setCurrentAhName(String name) { this.currentAhName = name; }
 
     public static void receiveAHContext(AHContextPayload payload) {
@@ -82,6 +85,19 @@ public class AuctionHouseScreen extends Screen {
     public static void receiveAHInstances(AHInstancesPayload payload) {
         if (Minecraft.getInstance().screen instanceof AuctionHouseScreen screen) {
             screen.ahInstances = new java.util.ArrayList<>(payload.instances());
+            // Update SellTab with the current AH's rates and durations
+            screen.updateSellTabFromCurrentAH();
+        }
+    }
+
+    private void updateSellTabFromCurrentAH() {
+        for (var inst : ahInstances) {
+            if (inst.id().equals(currentAhId)) {
+                SellTab.activeTaxRate = inst.saleRate() / 100.0;
+                SellTab.activeDepositRate = inst.depositRate() / 100.0;
+                SellTab.activeDurations = inst.durations().stream().mapToInt(Integer::intValue).toArray();
+                return;
+            }
         }
     }
 
