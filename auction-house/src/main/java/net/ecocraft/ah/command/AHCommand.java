@@ -3,12 +3,14 @@ package net.ecocraft.ah.command;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.DoubleArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
+import net.ecocraft.ah.AHServerEvents;
 import net.ecocraft.ah.data.AHInstance;
 import net.ecocraft.ah.data.ItemCategory;
 import net.ecocraft.ah.data.ListingType;
 import net.ecocraft.ah.network.ServerPayloadHandler;
 import net.ecocraft.ah.network.payload.OpenAHPayload;
 import net.ecocraft.ah.service.AuctionService;
+import net.ecocraft.ah.storage.AuctionStorageProvider;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -68,6 +70,17 @@ public final class AHCommand {
                         )
                 )
 
+                // /ah browse <slug>
+                .then(Commands.literal("browse")
+                        .then(Commands.argument("slug", StringArgumentType.word())
+                                .executes(ctx -> {
+                                    ServerPlayer player = ctx.getSource().getPlayerOrException();
+                                    String slug = StringArgumentType.getString(ctx, "slug");
+                                    return executeBrowse(ctx.getSource(), player, slug);
+                                })
+                        )
+                )
+
                 // /ah collect
                 .then(Commands.literal("collect")
                         .executes(ctx -> {
@@ -102,6 +115,44 @@ public final class AHCommand {
                                             () -> Component.literal("Forced expiration of old listings."), true);
                                     return 1;
                                 })
+                        )
+
+                        // /ah admin create <name>
+                        .then(Commands.literal("create")
+                                .then(Commands.argument("name", StringArgumentType.greedyString())
+                                        .executes(ctx -> {
+                                            String name = StringArgumentType.getString(ctx, "name");
+                                            return executeAdminCreate(ctx.getSource(), name);
+                                        })
+                                )
+                        )
+
+                        // /ah admin delete <slug>
+                        .then(Commands.literal("delete")
+                                .then(Commands.argument("slug", StringArgumentType.word())
+                                        .executes(ctx -> {
+                                            String slug = StringArgumentType.getString(ctx, "slug");
+                                            return executeAdminDelete(ctx.getSource(), slug);
+                                        })
+                                )
+                        )
+
+                        // /ah admin list
+                        .then(Commands.literal("list")
+                                .executes(ctx -> executeAdminList(ctx.getSource()))
+                        )
+
+                        // /ah admin rename <slug> <new_name>
+                        .then(Commands.literal("rename")
+                                .then(Commands.argument("slug", StringArgumentType.word())
+                                        .then(Commands.argument("new_name", StringArgumentType.greedyString())
+                                                .executes(ctx -> {
+                                                    String slug = StringArgumentType.getString(ctx, "slug");
+                                                    String newName = StringArgumentType.getString(ctx, "new_name");
+                                                    return executeAdminRename(ctx.getSource(), slug, newName);
+                                                })
+                                        )
+                                )
                         )
                 )
         );
@@ -157,6 +208,99 @@ public final class AHCommand {
             source.sendFailure(Component.literal("Failed to sell: " + e.getMessage()));
             return 0;
         }
+    }
+
+    private static int executeBrowse(CommandSourceStack source, ServerPlayer player, String slug) {
+        AuctionStorageProvider storage = AHServerEvents.getStorage();
+        if (storage == null) {
+            source.sendFailure(Component.literal("Service de stockage non disponible."));
+            return 0;
+        }
+        AHInstance ah = storage.getAHInstanceBySlug(slug);
+        if (ah == null) {
+            source.sendFailure(Component.literal("Hôtel des Ventes introuvable : " + slug));
+            return 0;
+        }
+        PacketDistributor.sendToPlayer(player, new OpenAHPayload(-1));
+        ServerPayloadHandler.sendAHContext(player, ah.id());
+        ServerPayloadHandler.sendBalanceUpdate(player);
+        ServerPayloadHandler.sendAHSettings(player);
+        ServerPayloadHandler.sendAHInstances(player);
+        return 1;
+    }
+
+    private static int executeAdminCreate(CommandSourceStack source, String name) {
+        AuctionStorageProvider storage = AHServerEvents.getStorage();
+        if (storage == null) {
+            source.sendFailure(Component.literal("Service de stockage non disponible."));
+            return 0;
+        }
+        AHInstance ah = AHInstance.create(name);
+        storage.createAHInstance(ah);
+        source.sendSuccess(() -> Component.literal(
+                "Hôtel des Ventes créé : " + ah.name() + " (slug: " + ah.slug() + ")"), true);
+        return 1;
+    }
+
+    private static int executeAdminDelete(CommandSourceStack source, String slug) {
+        AuctionStorageProvider storage = AHServerEvents.getStorage();
+        if (storage == null) {
+            source.sendFailure(Component.literal("Service de stockage non disponible."));
+            return 0;
+        }
+        if ("default".equals(slug)) {
+            source.sendFailure(Component.literal("Impossible de supprimer l'Hôtel des Ventes par défaut."));
+            return 0;
+        }
+        AHInstance ah = storage.getAHInstanceBySlug(slug);
+        if (ah == null) {
+            source.sendFailure(Component.literal("Hôtel des Ventes introuvable : " + slug));
+            return 0;
+        }
+        AHInstance defaultAh = storage.getDefaultAHInstance();
+        int transferred = storage.transferListings(ah.id(), defaultAh.id());
+        storage.deleteAHInstance(ah.id());
+        source.sendSuccess(() -> Component.literal(
+                "Hôtel des Ventes supprimé : " + ah.name() + " (" + transferred + " annonce(s) transférée(s) vers " + defaultAh.name() + ")"), true);
+        return 1;
+    }
+
+    private static int executeAdminList(CommandSourceStack source) {
+        AuctionStorageProvider storage = AHServerEvents.getStorage();
+        if (storage == null) {
+            source.sendFailure(Component.literal("Service de stockage non disponible."));
+            return 0;
+        }
+        var instances = storage.getAllAHInstances();
+        if (instances.isEmpty()) {
+            source.sendSuccess(() -> Component.literal("Aucun Hôtel des Ventes configuré."), false);
+            return 1;
+        }
+        source.sendSuccess(() -> Component.literal("=== Hôtels des Ventes ==="), false);
+        for (AHInstance ah : instances) {
+            int count = storage.countActiveListings(ah.id());
+            source.sendSuccess(() -> Component.literal(
+                    " - " + ah.slug() + " | " + ah.name() + " | " + count + " annonce(s) active(s)"), false);
+        }
+        return 1;
+    }
+
+    private static int executeAdminRename(CommandSourceStack source, String slug, String newName) {
+        AuctionStorageProvider storage = AHServerEvents.getStorage();
+        if (storage == null) {
+            source.sendFailure(Component.literal("Service de stockage non disponible."));
+            return 0;
+        }
+        AHInstance ah = storage.getAHInstanceBySlug(slug);
+        if (ah == null) {
+            source.sendFailure(Component.literal("Hôtel des Ventes introuvable : " + slug));
+            return 0;
+        }
+        AHInstance updated = ah.withConfig(newName, ah.saleRate(), ah.depositRate(), ah.durations());
+        storage.updateAHInstance(updated);
+        source.sendSuccess(() -> Component.literal(
+                "Hôtel des Ventes renommé : " + updated.name() + " (slug: " + updated.slug() + ")"), true);
+        return 1;
     }
 
     private static int executeCollect(CommandSourceStack source, ServerPlayer player,

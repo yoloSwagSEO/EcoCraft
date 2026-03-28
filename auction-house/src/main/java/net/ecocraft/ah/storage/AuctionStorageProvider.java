@@ -309,6 +309,18 @@ public class AuctionStorageProvider {
         }
     }
 
+    public int countActiveListings(String ahId) {
+        try (PreparedStatement ps = connection.prepareStatement(
+                "SELECT COUNT(*) FROM ah_listings WHERE ah_id = ? AND status = 'ACTIVE'")) {
+            ps.setString(1, ahId);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getInt(1) : 0;
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to count listings", e);
+        }
+    }
+
     public List<AuctionListing> getActiveListingsForAH(String ahId) {
         List<AuctionListing> results = new ArrayList<>();
         try (PreparedStatement ps = connection.prepareStatement(
