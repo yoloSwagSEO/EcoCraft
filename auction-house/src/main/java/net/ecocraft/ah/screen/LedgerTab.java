@@ -18,13 +18,12 @@ import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.network.PacketDistributor;
 
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
+import java.util.*;
 import java.util.function.Consumer;
 
 /**
  * Ledger tab: transaction history with filters and stats.
+ * When entries span multiple AH instances, an extra "AH" column and filter appear.
  */
 public class LedgerTab {
 
@@ -46,9 +45,16 @@ public class LedgerTab {
     private long totalPurchases = 0;
     private long taxesPaid = 0;
 
+    // Multi-AH state
+    private boolean multiAH = false;
+    private List<String> ahIds = List.of();
+    private List<String> ahNamesList = List.of();
+    private int activeAHFilter = 0; // 0=Tout, 1..N = specific AH
+
     // Widgets
     private FilterTags periodTags;
     private FilterTags typeTags;
+    private FilterTags ahFilterTags;
     private Table table;
     private StatCard profitCard;
     private StatCard salesCard;
@@ -80,8 +86,24 @@ public class LedgerTab {
         typeTags.setActiveTag(activeTypeFilter);
         addWidget.accept(typeTags);
 
+        int filterY = y + 44;
+
+        // AH filter (only when multiAH)
+        ahFilterTags = null;
+        if (multiAH && !ahNamesList.isEmpty()) {
+            List<Component> ahLabels = new ArrayList<>();
+            ahLabels.add(Component.literal("Tout"));
+            for (String name : ahNamesList) {
+                ahLabels.add(Component.literal(name));
+            }
+            ahFilterTags = new FilterTags(x, filterY, ahLabels, this::onAHFilterChanged);
+            ahFilterTags.setActiveTag(activeAHFilter);
+            addWidget.accept(ahFilterTags);
+            filterY += 22;
+        }
+
         // Stats row
-        int statsY = y + 46;
+        int statsY = filterY + 2;
         int cardW = (w - 16) / 4;
         int cardH = 38;
 
@@ -112,13 +134,16 @@ public class LedgerTab {
         // Table
         int tableY = statsY + cardH + 4;
         int tableH = h - (tableY - y) - 18;
-        List<TableColumn> columns = List.of(
-                TableColumn.sortableLeft(Component.literal("Objet"), 2.5f),
-                TableColumn.center(Component.literal("Type"), 1f),
-                TableColumn.sortableRight(Component.literal("Montant"), 1.5f),
-                TableColumn.left(Component.literal("Avec"), 1.5f),
-                TableColumn.sortableCenter(Component.literal("Date"), 1.5f)
-        );
+        List<TableColumn> columns = new ArrayList<>();
+        columns.add(TableColumn.sortableLeft(Component.literal("Objet"), 2.5f));
+        columns.add(TableColumn.center(Component.literal("Type"), 1f));
+        columns.add(TableColumn.sortableRight(Component.literal("Montant"), 1.5f));
+        columns.add(TableColumn.left(Component.literal("Avec"), 1.5f));
+        if (multiAH) {
+            columns.add(TableColumn.center(Component.literal("AH"), 1f));
+        }
+        columns.add(TableColumn.sortableCenter(Component.literal("Date"), 1.5f));
+
         table = Table.builder()
                 .columns(columns)
                 .theme(THEME)
@@ -148,12 +173,18 @@ public class LedgerTab {
 
     private void onPeriodChanged(int idx) {
         activePeriod = idx;
+        activeAHFilter = 0;
         requestData();
     }
 
     private void onTypeFilterChanged(int idx) {
         activeTypeFilter = idx;
         requestData();
+    }
+
+    private void onAHFilterChanged(int idx) {
+        activeAHFilter = idx;
+        updateTable();
     }
 
     // --- Network ---
@@ -172,8 +203,33 @@ public class LedgerTab {
         this.totalSales = payload.totalSales();
         this.totalPurchases = payload.totalPurchases();
         this.taxesPaid = payload.taxesPaid();
-        updateTable();
-        updateStats();
+
+        // Detect multi-AH
+        boolean wasMultiAH = this.multiAH;
+        Set<String> seenAhIds = new LinkedHashSet<>();
+        Map<String, String> ahIdToName = new LinkedHashMap<>();
+        for (var entry : entries) {
+            String ahId = entry.ahId() != null && !entry.ahId().isEmpty() ? entry.ahId() : "";
+            if (!ahId.isEmpty()) {
+                seenAhIds.add(ahId);
+                String name = entry.ahName() != null && !entry.ahName().isEmpty() ? entry.ahName() : ahId.substring(0, Math.min(8, ahId.length()));
+                ahIdToName.put(ahId, name);
+            }
+        }
+        this.multiAH = seenAhIds.size() > 1;
+        this.ahIds = new ArrayList<>(seenAhIds);
+        this.ahNamesList = new ArrayList<>();
+        for (String id : ahIds) {
+            ahNamesList.add(ahIdToName.getOrDefault(id, id));
+        }
+
+        if (this.multiAH != wasMultiAH) {
+            activeAHFilter = 0;
+            parent.rebuildCurrentTab();
+        } else {
+            updateTable();
+            updateStats();
+        }
     }
 
     // --- Table population ---
@@ -181,21 +237,40 @@ public class LedgerTab {
     private void updateTable() {
         if (table == null) return;
 
+        // Determine AH filter
+        String ahIdFilter = null;
+        if (multiAH && activeAHFilter > 0 && activeAHFilter <= ahIds.size()) {
+            ahIdFilter = ahIds.get(activeAHFilter - 1);
+        }
+
         List<TableRow> rows = new ArrayList<>();
         for (var entry : entries) {
+            // Apply AH filter
+            if (ahIdFilter != null) {
+                String entryAhId = entry.ahId() != null ? entry.ahId() : "";
+                if (!ahIdFilter.equals(entryAhId)) continue;
+            }
+
             int typeColor = getTypeColor(entry.type());
             boolean isIncome = (entry.type().contains("SALE") || entry.type().contains("OUTBID"))
                     && !entry.type().contains("LISTING_FEE");
 
             ItemStack icon = AuctionHouseScreen.itemFromId(entry.itemId());
-            rows.add(TableRow.withIcon(icon, entry.rarityColor(), List.of(
-                    TableRow.Cell.of(Component.literal(entry.itemName()), entry.rarityColor(), entry.itemName()),
-                    TableRow.Cell.of(Component.literal(translateType(entry.type())), typeColor),
-                    TableRow.Cell.of(Component.literal((isIncome ? "+" : "-") + BuyTab.formatPrice(entry.amount())),
-                            isIncome ? THEME.success : THEME.danger, isIncome ? entry.amount() : -entry.amount()),
-                    TableRow.Cell.of(Component.literal(entry.counterparty()), THEME.textLight),
-                    TableRow.Cell.of(Component.literal(formatDate(entry.timestamp())), THEME.textDim, entry.timestamp())
-            ), null));
+
+            List<TableRow.Cell> cells = new ArrayList<>();
+            cells.add(TableRow.Cell.of(Component.literal(entry.itemName()), entry.rarityColor(), entry.itemName()));
+            cells.add(TableRow.Cell.of(Component.literal(translateType(entry.type())), typeColor));
+            cells.add(TableRow.Cell.of(Component.literal((isIncome ? "+" : "-") + BuyTab.formatPrice(entry.amount())),
+                    isIncome ? THEME.success : THEME.danger, isIncome ? entry.amount() : -entry.amount()));
+            cells.add(TableRow.Cell.of(Component.literal(entry.counterparty()), THEME.textLight));
+            if (multiAH) {
+                String ahDisplay = entry.ahName() != null && !entry.ahName().isEmpty()
+                        ? entry.ahName() : "\u2014";
+                cells.add(TableRow.Cell.of(Component.literal(ahDisplay), THEME.textLight));
+            }
+            cells.add(TableRow.Cell.of(Component.literal(formatDate(entry.timestamp())), THEME.textDim, entry.timestamp()));
+
+            rows.add(TableRow.withIcon(icon, entry.rarityColor(), cells, null));
         }
         table.setRows(rows);
     }

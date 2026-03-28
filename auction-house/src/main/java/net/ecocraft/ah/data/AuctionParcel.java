@@ -40,7 +40,9 @@ public record AuctionParcel(
         /** Creation timestamp as epoch milliseconds. */
         long createdAt,
         /** Whether the player has already collected this parcel. */
-        boolean collected
+        boolean collected,
+        /** Auction House instance this parcel belongs to. Null means default AH. */
+        @Nullable String ahId
 ) {
 
     /** Returns {@code true} if this parcel contains an item to deliver. */
@@ -56,6 +58,6 @@ public record AuctionParcel(
     /** Returns a copy of this parcel marked as collected. */
     public AuctionParcel asCollected() {
         return new AuctionParcel(id, recipientUuid, itemId, itemName, itemNbt,
-                quantity, amount, currencyId, source, createdAt, true);
+                quantity, amount, currencyId, source, createdAt, true, ahId);
     }
 }

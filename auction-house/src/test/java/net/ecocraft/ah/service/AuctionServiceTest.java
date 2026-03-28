@@ -539,7 +539,7 @@ class AuctionServiceTest {
         // Create a currency parcel
         AuctionParcel currencyParcel = new AuctionParcel(
                 UUID.randomUUID().toString(), player, null, null, null,
-                0, 50L, "gold", ParcelSource.HDV_SALE, System.currentTimeMillis(), false);
+                0, 50L, "gold", ParcelSource.HDV_SALE, System.currentTimeMillis(), false, null);
         storage.createParcel(currencyParcel);
 
         service.collectParcels(player);
@@ -555,10 +555,10 @@ class AuctionServiceTest {
 
         AuctionParcel itemParcel = new AuctionParcel(
                 UUID.randomUUID().toString(), player, "minecraft:apple", "Apple", null,
-                3, 0L, null, ParcelSource.HDV_PURCHASE, System.currentTimeMillis(), false);
+                3, 0L, null, ParcelSource.HDV_PURCHASE, System.currentTimeMillis(), false, null);
         AuctionParcel currParcel = new AuctionParcel(
                 UUID.randomUUID().toString(), player, null, null, null,
-                0, 200L, "gold", ParcelSource.HDV_OUTBID, System.currentTimeMillis(), false);
+                0, 200L, "gold", ParcelSource.HDV_OUTBID, System.currentTimeMillis(), false, null);
         storage.createParcel(itemParcel);
         storage.createParcel(currParcel);
 

@@ -162,7 +162,8 @@ public class AuctionService {
                     currencyId,
                     ParcelSource.HDV_LISTING_FEE,
                     now,
-                    true // auto-collected (already withdrawn)
+                    true, // auto-collected (already withdrawn)
+                    null
             ));
         }
 
@@ -232,7 +233,8 @@ public class AuctionService {
                 listing.currencyId(),
                 ParcelSource.HDV_PURCHASE,
                 now,
-                false
+                false,
+                listing.ahId()
         ));
         System.out.println("[AH] Parcel created: " + buyQuantity + "x " + listing.itemName() + " for buyer " + buyerName);
 
@@ -248,7 +250,8 @@ public class AuctionService {
                 listing.currencyId(),
                 ParcelSource.HDV_SALE,
                 now,
-                true // auto-collected (already deposited)
+                true, // auto-collected (already deposited)
+                listing.ahId()
         ));
 
         // Update listing: if all bought → SOLD, otherwise reduce quantity
@@ -322,7 +325,8 @@ public class AuctionService {
                     listing.currencyId(),
                     ParcelSource.HDV_OUTBID,
                     System.currentTimeMillis(),
-                    true // auto-collected since we credited directly
+                    true, // auto-collected since we credited directly
+                    listing.ahId()
             ));
         }
 
@@ -372,7 +376,8 @@ public class AuctionService {
                 null,
                 ParcelSource.HDV_EXPIRED,
                 now,
-                false
+                false,
+                listing.ahId()
         ));
 
         storage.cancelListing(listingId);
@@ -414,7 +419,8 @@ public class AuctionService {
                         null,
                         ParcelSource.HDV_EXPIRED,
                         now,
-                        false
+                        false,
+                        listing.ahId()
                 ));
             }
         }
@@ -442,7 +448,8 @@ public class AuctionService {
                 null,
                 ParcelSource.HDV_PURCHASE,
                 now,
-                false
+                false,
+                listing.ahId()
         ));
 
         // Log price history

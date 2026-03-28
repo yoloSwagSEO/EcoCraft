@@ -26,7 +26,9 @@ public record MyListingsResponsePayload(
             long expiresInMs,
             int bidCount,
             boolean canCollect,
-            String itemNbt
+            String itemNbt,
+            String ahId,
+            String ahName
     ) {}
 
     public static final StreamCodec<ByteBuf, MyListingEntry> ENTRY_CODEC = new StreamCodec<>() {
@@ -43,7 +45,9 @@ public record MyListingsResponsePayload(
             int bidCount = ByteBufCodecs.VAR_INT.decode(buf);
             boolean canCollect = ByteBufCodecs.BOOL.decode(buf);
             String itemNbt = ByteBufCodecs.STRING_UTF8.decode(buf);
-            return new MyListingEntry(listingId, itemId, itemName, rarityColor, price, type, status, expiresInMs, bidCount, canCollect, itemNbt);
+            String ahId = ByteBufCodecs.STRING_UTF8.decode(buf);
+            String ahName = ByteBufCodecs.STRING_UTF8.decode(buf);
+            return new MyListingEntry(listingId, itemId, itemName, rarityColor, price, type, status, expiresInMs, bidCount, canCollect, itemNbt, ahId, ahName);
         }
 
         @Override
@@ -59,6 +63,8 @@ public record MyListingsResponsePayload(
             ByteBufCodecs.VAR_INT.encode(buf, entry.bidCount());
             ByteBufCodecs.BOOL.encode(buf, entry.canCollect());
             ByteBufCodecs.STRING_UTF8.encode(buf, entry.itemNbt() != null ? entry.itemNbt() : "");
+            ByteBufCodecs.STRING_UTF8.encode(buf, entry.ahId() != null ? entry.ahId() : "");
+            ByteBufCodecs.STRING_UTF8.encode(buf, entry.ahName() != null ? entry.ahName() : "");
         }
     };
 

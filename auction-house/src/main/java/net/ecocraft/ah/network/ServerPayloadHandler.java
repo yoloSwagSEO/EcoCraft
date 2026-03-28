@@ -350,6 +350,15 @@ public final class ServerPayloadHandler {
                     default -> listings = service.getMyListings(player.getUUID(), 0, Integer.MAX_VALUE);
                 }
 
+                // Build ahId -> ahName cache
+                AuctionStorageProvider storage = AHServerEvents.getStorage();
+                Map<String, String> ahNames = new HashMap<>();
+                if (storage != null) {
+                    for (var ah : storage.getAllAHInstances()) {
+                        ahNames.put(ah.id(), ah.name());
+                    }
+                }
+
                 boolean isPurchases = "purchases".equals(payload.subTab());
                 List<MyListingsResponsePayload.MyListingEntry> entries = new ArrayList<>();
                 for (AuctionListing l : listings) {
@@ -357,6 +366,8 @@ public final class ServerPayloadHandler {
                     long expiresInMs = Math.max(0, l.expiresAt() - System.currentTimeMillis());
                     // canCollect: for seller's expired listings only; purchases use the global collect button
                     boolean canCollect = !isPurchases && l.status() == ListingStatus.EXPIRED;
+                    String listingAhId = l.ahId() != null ? l.ahId() : "";
+                    String listingAhName = ahNames.getOrDefault(listingAhId, "");
                     entries.add(new MyListingsResponsePayload.MyListingEntry(
                             l.id(),
                             l.itemId(),
@@ -368,7 +379,9 @@ public final class ServerPayloadHandler {
                             expiresInMs,
                             0, // bid count — would need a query
                             canCollect,
-                            l.itemNbt() != null ? l.itemNbt() : ""
+                            l.itemNbt() != null ? l.itemNbt() : "",
+                            listingAhId,
+                            listingAhName
                     ));
                 }
 
@@ -432,8 +445,19 @@ public final class ServerPayloadHandler {
 
                 var parcels = service.getLedger(player.getUUID(), sourceFilter, sinceMs, 0, Integer.MAX_VALUE);
 
+                // Build ahId -> ahName cache
+                AuctionStorageProvider storage = AHServerEvents.getStorage();
+                Map<String, String> ahNames = new HashMap<>();
+                if (storage != null) {
+                    for (var ah : storage.getAllAHInstances()) {
+                        ahNames.put(ah.id(), ah.name());
+                    }
+                }
+
                 List<LedgerResponsePayload.LedgerEntry> entries = new ArrayList<>();
                 for (var p : parcels) {
+                    String parcelAhId = p.ahId() != null ? p.ahId() : "";
+                    String parcelAhName = ahNames.getOrDefault(parcelAhId, "");
                     entries.add(new LedgerResponsePayload.LedgerEntry(
                             p.itemId() != null ? p.itemId() : "",
                             p.itemName() != null ? p.itemName() : "",
@@ -441,7 +465,9 @@ public final class ServerPayloadHandler {
                             p.source().name(),
                             p.amount(),
                             "", // counterparty — not tracked at parcel level
-                            p.createdAt()
+                            p.createdAt(),
+                            parcelAhId,
+                            parcelAhName
                     ));
                 }
 
@@ -524,7 +550,7 @@ public final class ServerPayloadHandler {
                                 java.util.UUID.randomUUID().toString(), listing.sellerUuid(),
                                 listing.itemId(), listing.itemName(), listing.itemNbt(), listing.quantity(),
                                 0L, null, ParcelSource.HDV_EXPIRED,
-                                System.currentTimeMillis(), false));
+                                System.currentTimeMillis(), false, listing.ahId()));
                     }
                     storage.deleteActiveListings(payload.ahId());
                 }

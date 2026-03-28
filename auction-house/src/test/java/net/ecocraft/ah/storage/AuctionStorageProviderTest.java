@@ -47,12 +47,12 @@ class AuctionStorageProviderTest {
 
     private AuctionParcel makeItemParcel(String id, UUID recipient, String itemId) {
         return new AuctionParcel(id, recipient, itemId, "Item Name", null,
-                1, 0L, null, ParcelSource.HDV_PURCHASE, System.currentTimeMillis(), false);
+                1, 0L, null, ParcelSource.HDV_PURCHASE, System.currentTimeMillis(), false, null);
     }
 
     private AuctionParcel makeCurrencyParcel(String id, UUID recipient, long amount) {
         return new AuctionParcel(id, recipient, null, null, null,
-                0, amount, "gold", ParcelSource.HDV_SALE, System.currentTimeMillis(), false);
+                0, amount, "gold", ParcelSource.HDV_SALE, System.currentTimeMillis(), false, null);
     }
 
     // -------------------------------------------------------------------------
@@ -430,7 +430,7 @@ class AuctionStorageProviderTest {
         // Create a sale parcel for the seller
         db.createParcel(new AuctionParcel(UUID.randomUUID().toString(), seller,
                 null, null, null, 0, 950L, "gold",
-                ParcelSource.HDV_SALE, now, false));
+                ParcelSource.HDV_SALE, now, false, null));
 
         AuctionStorageProvider.PlayerStats stats = db.getPlayerStats(seller, now - 10_000L);
         assertEquals(950L, stats.totalSalesRevenue());
@@ -455,7 +455,7 @@ class AuctionStorageProviderTest {
         // Create a deposit fee parcel (HDV_LISTING_FEE) for the seller
         db.createParcel(new AuctionParcel(UUID.randomUUID().toString(), seller,
                 "minecraft:diamond", "Diamond", null, 0, 20L, "gold",
-                ParcelSource.HDV_LISTING_FEE, now, true));
+                ParcelSource.HDV_LISTING_FEE, now, true, null));
 
         AuctionStorageProvider.PlayerStats stats = db.getPlayerStats(seller, now - 10_000L);
         // taxesPaid should include both the sale tax (50) and the deposit fee (20)

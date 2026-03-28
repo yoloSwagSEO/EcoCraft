@@ -735,8 +735,8 @@ public class AuctionStorageProvider {
         try (PreparedStatement ps = connection.prepareStatement("""
                 INSERT INTO ah_parcels
                 (id, recipient_uuid, item_id, item_name, item_nbt, quantity, amount,
-                 currency_id, source, created_at, collected)
-                VALUES (?,?,?,?,?,?,?,?,?,?,?)
+                 currency_id, source, created_at, collected, ah_id)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
             """)) {
             int i = 1;
             ps.setString(i++, parcel.id());
@@ -749,7 +749,8 @@ public class AuctionStorageProvider {
             ps.setString(i++, parcel.currencyId());
             ps.setString(i++, parcel.source().name());
             ps.setLong(i++, parcel.createdAt());
-            ps.setInt(i, parcel.collected() ? 1 : 0);
+            ps.setInt(i++, parcel.collected() ? 1 : 0);
+            ps.setString(i, parcel.ahId());
             ps.executeUpdate();
         } catch (SQLException e) {
             throw new RuntimeException("Failed to create parcel", e);
@@ -1122,6 +1123,8 @@ public class AuctionStorageProvider {
 
     private AuctionParcel mapParcel(ResultSet rs) throws SQLException {
         String sourceStr = rs.getString("source");
+        String ahId = null;
+        try { ahId = rs.getString("ah_id"); } catch (SQLException ignored) {}
         return new AuctionParcel(
                 rs.getString("id"),
                 UUID.fromString(rs.getString("recipient_uuid")),
@@ -1133,7 +1136,8 @@ public class AuctionStorageProvider {
                 rs.getString("currency_id"),
                 ParcelSource.valueOf(sourceStr),
                 rs.getLong("created_at"),
-                rs.getInt("collected") == 1
+                rs.getInt("collected") == 1,
+                ahId
         );
     }
 

@@ -22,12 +22,12 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.network.PacketDistributor;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.util.function.Consumer;
 
 /**
  * My Auctions tab with sub-tabs for sales, purchases, and bids.
+ * When entries span multiple AH instances, an extra "AH" column and filter appear.
  */
 public class MyAuctionsTab {
 
@@ -46,9 +46,16 @@ public class MyAuctionsTab {
     private long taxesPaid7d = 0;
     private int parcelsToCollect = 0;
 
+    // Multi-AH state
+    private boolean multiAH = false;
+    private List<String> ahIds = List.of();
+    private List<String> ahNamesList = List.of();
+    private int activeAHFilter = 0; // 0=Tout, 1..N = specific AH
+
     // Widgets
     private FilterTags subTabTags;
     private FilterTags statusFilterTags;
+    private FilterTags ahFilterTags;
     private Table table;
     private Button collectBtn;
     private StatCard revenueCard;
@@ -120,8 +127,8 @@ public class MyAuctionsTab {
                     Component.literal("Tout"),
                     Component.literal("Actif"),
                     Component.literal("Vendu"),
-                    Component.literal("Expiré"),
-                    Component.literal("Annulé")
+                    Component.literal("Expir\u00e9"),
+                    Component.literal("Annul\u00e9")
             );
             statusFilterTags = new FilterTags(x, filterY, statusLabels, this::onStatusFilterChanged);
             statusFilterTags.setActiveTag(activeStatusFilter);
@@ -129,17 +136,34 @@ public class MyAuctionsTab {
             filterY += 22;
         }
 
+        // AH filter (only when multiAH)
+        ahFilterTags = null;
+        if (multiAH && !ahNamesList.isEmpty()) {
+            List<Component> ahLabels = new ArrayList<>();
+            ahLabels.add(Component.literal("Tout"));
+            for (String name : ahNamesList) {
+                ahLabels.add(Component.literal(name));
+            }
+            ahFilterTags = new FilterTags(x, filterY, ahLabels, this::onAHFilterChanged);
+            ahFilterTags.setActiveTag(activeAHFilter);
+            addWidget.accept(ahFilterTags);
+            filterY += 22;
+        }
+
         // Table
         int tableY = filterY;
         int tableH = footerY - tableY - 4;
-        List<TableColumn> columns = List.of(
-                TableColumn.sortableLeft(Component.literal("Objet"), 2.5f),
-                TableColumn.sortableRight(Component.literal("Prix"), 1.5f),
-                TableColumn.center(Component.literal("Type"), 1f),
-                TableColumn.center(Component.literal("Statut"), 1f),
-                TableColumn.sortableCenter(Component.literal("Expire"), 1f),
-                TableColumn.center(Component.literal("Action"), 1.5f)
-        );
+        List<TableColumn> columns = new ArrayList<>();
+        columns.add(TableColumn.sortableLeft(Component.literal("Objet"), 2.5f));
+        columns.add(TableColumn.sortableRight(Component.literal("Prix"), 1.5f));
+        columns.add(TableColumn.center(Component.literal("Type"), 1f));
+        columns.add(TableColumn.center(Component.literal("Statut"), 1f));
+        if (multiAH) {
+            columns.add(TableColumn.center(Component.literal("AH"), 1f));
+        }
+        columns.add(TableColumn.sortableCenter(Component.literal("Expire"), 1f));
+        columns.add(TableColumn.center(Component.literal("Action"), 1.5f));
+
         table = Table.builder()
                 .columns(columns)
                 .theme(THEME)
@@ -171,12 +195,18 @@ public class MyAuctionsTab {
     private void onSubTabChanged(int idx) {
         activeSubTab = idx;
         activeStatusFilter = 0;
+        activeAHFilter = 0;
         requestData();
         parent.rebuildCurrentTab();
     }
 
     private void onStatusFilterChanged(int idx) {
         activeStatusFilter = idx;
+        updateTable();
+    }
+
+    private void onAHFilterChanged(int idx) {
+        activeAHFilter = idx;
         updateTable();
     }
 
@@ -208,8 +238,33 @@ public class MyAuctionsTab {
         this.revenue7d = payload.revenue7d();
         this.taxesPaid7d = payload.taxesPaid7d();
         this.parcelsToCollect = payload.parcelsToCollect();
-        updateTable();
-        updateStats();
+
+        // Detect multi-AH
+        boolean wasMultiAH = this.multiAH;
+        Set<String> seenAhIds = new LinkedHashSet<>();
+        Map<String, String> ahIdToName = new LinkedHashMap<>();
+        for (var entry : entries) {
+            String ahId = entry.ahId() != null && !entry.ahId().isEmpty() ? entry.ahId() : "";
+            if (!ahId.isEmpty()) {
+                seenAhIds.add(ahId);
+                String name = entry.ahName() != null && !entry.ahName().isEmpty() ? entry.ahName() : ahId.substring(0, Math.min(8, ahId.length()));
+                ahIdToName.put(ahId, name);
+            }
+        }
+        this.multiAH = seenAhIds.size() > 1;
+        this.ahIds = new ArrayList<>(seenAhIds);
+        this.ahNamesList = new ArrayList<>();
+        for (String id : ahIds) {
+            ahNamesList.add(ahIdToName.getOrDefault(id, id));
+        }
+
+        if (this.multiAH != wasMultiAH) {
+            activeAHFilter = 0;
+            parent.rebuildCurrentTab();
+        } else {
+            updateTable();
+            updateStats();
+        }
     }
 
     public void onActionResult(AHActionResultPayload payload) {
@@ -223,10 +278,22 @@ public class MyAuctionsTab {
         if (table == null) return;
 
         String statusFilter = STATUS_FILTERS[activeStatusFilter];
+        // Determine AH filter
+        String ahIdFilter = null;
+        if (multiAH && activeAHFilter > 0 && activeAHFilter <= ahIds.size()) {
+            ahIdFilter = ahIds.get(activeAHFilter - 1);
+        }
+
         List<TableRow> rows = new ArrayList<>();
         for (var entry : entries) {
             // Apply status filter
             if (!statusFilter.isEmpty() && !statusFilter.equals(entry.status())) continue;
+            // Apply AH filter
+            if (ahIdFilter != null) {
+                String entryAhId = entry.ahId() != null ? entry.ahId() : "";
+                if (!ahIdFilter.equals(entryAhId)) continue;
+            }
+
             int statusColor = getStatusColor(entry.status());
             String actionLabel = getActionLabel(entry);
             int actionColor = entry.canCollect() ? THEME.success : THEME.danger;
@@ -255,15 +322,21 @@ public class MyAuctionsTab {
                 icon = AuctionHouseScreen.itemFromId(entry.itemId());
             }
 
-            rows.add(TableRow.withIcon(icon, entry.rarityColor(), List.of(
-                    TableRow.Cell.of(Component.literal(entry.itemName()), entry.rarityColor(), entry.itemName()),
-                    TableRow.Cell.of(Component.literal(BuyTab.formatPrice(entry.price())), THEME.accent, entry.price()),
-                    TableRow.Cell.of(Component.literal("AUCTION".equals(entry.type()) ? "Ench\u00e8re" : "Achat"),
-                            "AUCTION".equals(entry.type()) ? THEME.warning : THEME.success),
-                    TableRow.Cell.of(Component.literal(translateStatus(entry.status())), statusColor),
-                    TableRow.Cell.of(Component.literal(BuyTab.formatTimeRemaining(entry.expiresInMs())), THEME.textGrey, entry.expiresInMs()),
-                    TableRow.Cell.of(Component.literal(actionLabel), actionColor)
-            ), action));
+            List<TableRow.Cell> cells = new ArrayList<>();
+            cells.add(TableRow.Cell.of(Component.literal(entry.itemName()), entry.rarityColor(), entry.itemName()));
+            cells.add(TableRow.Cell.of(Component.literal(BuyTab.formatPrice(entry.price())), THEME.accent, entry.price()));
+            cells.add(TableRow.Cell.of(Component.literal("AUCTION".equals(entry.type()) ? "Ench\u00e8re" : "Achat"),
+                    "AUCTION".equals(entry.type()) ? THEME.warning : THEME.success));
+            cells.add(TableRow.Cell.of(Component.literal(translateStatus(entry.status())), statusColor));
+            if (multiAH) {
+                String ahDisplay = entry.ahName() != null && !entry.ahName().isEmpty()
+                        ? entry.ahName() : "\u2014";
+                cells.add(TableRow.Cell.of(Component.literal(ahDisplay), THEME.textLight));
+            }
+            cells.add(TableRow.Cell.of(Component.literal(BuyTab.formatTimeRemaining(entry.expiresInMs())), THEME.textGrey, entry.expiresInMs()));
+            cells.add(TableRow.Cell.of(Component.literal(actionLabel), actionColor));
+
+            rows.add(TableRow.withIcon(icon, entry.rarityColor(), cells, action));
         }
         table.setRows(rows);
     }
