@@ -251,7 +251,17 @@ public class LedgerTab extends BaseWidget {
             boolean isIncome = (entry.type().contains("SALE") || entry.type().contains("OUTBID"))
                     && !entry.type().contains("LISTING_FEE");
 
-            ItemStack icon = AuctionHouseScreen.itemFromId(entry.itemId());
+            ItemStack icon = ItemStack.EMPTY;
+            String nbt = entry.itemNbt();
+            if (nbt != null && !nbt.isEmpty()) {
+                var level = net.minecraft.client.Minecraft.getInstance().level;
+                if (level != null) {
+                    icon = net.ecocraft.ah.data.ItemStackSerializer.deserialize(nbt, level.registryAccess());
+                }
+            }
+            if (icon.isEmpty()) {
+                icon = AuctionHouseScreen.itemFromId(entry.itemId());
+            }
 
             List<TableRow.Cell> cells = new ArrayList<>();
             cells.add(TableRow.Cell.of(Component.literal(entry.itemName()), entry.rarityColor(), entry.itemName()));

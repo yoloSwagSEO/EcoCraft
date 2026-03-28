@@ -613,8 +613,11 @@ public class BuyTab extends BaseWidget {
         detailTable.setRows(rows);
 
         if (!rows.isEmpty()) {
-            selectedEntryIndex = 0;
-            detailTable.setSelectedRow(0);
+            // Keep current selection if still valid, otherwise reset to 0
+            if (selectedEntryIndex >= rows.size()) {
+                selectedEntryIndex = 0;
+            }
+            detailTable.setSelectedRow(selectedEntryIndex);
             updatePurchasePanel();
         }
     }

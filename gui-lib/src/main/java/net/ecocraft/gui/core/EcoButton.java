@@ -17,7 +17,7 @@ import net.minecraft.network.chat.Component;
  */
 public class EcoButton extends BaseWidget {
 
-    private final Component label;
+    private Component label;
     private final int bgColor;
     private final int borderColor;
     private final int textColor;
@@ -25,6 +25,9 @@ public class EcoButton extends BaseWidget {
     private final Theme theme;
     private final Runnable onPress;
     private boolean enabled = true;
+
+    /** Update the button label text. */
+    public void setLabel(Component label) { this.label = label; }
 
     // Mouse position cached from last render for hover detection
     private double lastMouseX;

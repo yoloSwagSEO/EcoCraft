@@ -18,7 +18,7 @@ public record LedgerResponsePayload(
         int totalPages
 ) implements CustomPacketPayload {
 
-    public record LedgerEntry(String itemId, String itemName, int rarityColor, String type, long amount, String counterparty, long timestamp, String ahId, String ahName) {}
+    public record LedgerEntry(String itemId, String itemName, int rarityColor, String type, long amount, String counterparty, long timestamp, String ahId, String ahName, String itemNbt) {}
 
     public static final StreamCodec<ByteBuf, LedgerEntry> ENTRY_CODEC = new StreamCodec<>() {
         @Override
@@ -32,7 +32,8 @@ public record LedgerResponsePayload(
             long timestamp = ByteBufCodecs.VAR_LONG.decode(buf);
             String ahId = ByteBufCodecs.STRING_UTF8.decode(buf);
             String ahName = ByteBufCodecs.STRING_UTF8.decode(buf);
-            return new LedgerEntry(itemId, itemName, rarityColor, type, amount, counterparty, timestamp, ahId, ahName);
+            String itemNbt = ByteBufCodecs.STRING_UTF8.decode(buf);
+            return new LedgerEntry(itemId, itemName, rarityColor, type, amount, counterparty, timestamp, ahId, ahName, itemNbt);
         }
 
         @Override
@@ -46,6 +47,7 @@ public record LedgerResponsePayload(
             ByteBufCodecs.VAR_LONG.encode(buf, entry.timestamp());
             ByteBufCodecs.STRING_UTF8.encode(buf, entry.ahId() != null ? entry.ahId() : "");
             ByteBufCodecs.STRING_UTF8.encode(buf, entry.ahName() != null ? entry.ahName() : "");
+            ByteBufCodecs.STRING_UTF8.encode(buf, entry.itemNbt() != null ? entry.itemNbt() : "");
         }
     };
 

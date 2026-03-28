@@ -338,8 +338,7 @@ public class MyAuctionsTab extends BaseWidget {
             parcelsCard.setValue(Component.literal(String.valueOf(parcelsToCollect)), THEME.info);
         }
         if (collectBtn != null) {
-            // Cannot update EcoButton label directly; the button was built with a fixed label.
-            // The label updates on rebuild.
+            collectBtn.setLabel(Component.literal("R\u00e9cup\u00e9rer (" + parcelsToCollect + ")"));
         }
     }
 

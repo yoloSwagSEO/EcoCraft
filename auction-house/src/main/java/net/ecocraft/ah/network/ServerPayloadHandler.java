@@ -470,7 +470,8 @@ public final class ServerPayloadHandler {
                             "", // counterparty — not tracked at parcel level
                             p.createdAt(),
                             parcelAhId,
-                            parcelAhName
+                            parcelAhName,
+                            p.itemNbt() != null ? p.itemNbt() : ""
                     ));
                 }
 
