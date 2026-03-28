@@ -9,7 +9,6 @@ import net.ecocraft.api.currency.CurrencyRegistry;
 import net.ecocraft.core.permission.PermissionChecker;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
-import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -44,14 +43,6 @@ public class BalanceCommand {
                     })
                 )
             )
-
-            // /balance <player> — online player (kept for tab-completion convenience)
-            .then(Commands.argument("player", EntityArgument.player())
-                .executes(ctx -> {
-                    ServerPlayer target = EntityArgument.getPlayer(ctx, "player");
-                    return showPlayerBalance(ctx.getSource(), target, economy.get(), currencies.get(), permissions.get());
-                })
-            )
         );
 
         // /bal alias
@@ -72,22 +63,6 @@ public class BalanceCommand {
         var balance = economy.getBalance(player.getUUID(), currency);
         source.sendSuccess(() -> Component.translatable("ecocraft_core.command.balance.self",
                 balance.toPlainString(), currency.symbol()), false);
-        return Command.SINGLE_SUCCESS;
-    }
-
-    private static int showPlayerBalance(CommandSourceStack source, ServerPlayer target,
-                                          EconomyProvider economy, CurrencyRegistry currencies,
-                                          PermissionChecker permissions) {
-        ServerPlayer sender = source.getPlayer();
-        if (sender != null && !permissions.hasPermission(sender, "economy.balance.others")) {
-            source.sendFailure(Component.translatable("ecocraft_core.command.balance.no_permission"));
-            return 0;
-        }
-
-        Currency currency = currencies.getDefault();
-        var balance = economy.getBalance(target.getUUID(), currency);
-        source.sendSuccess(() -> Component.translatable("ecocraft_core.command.balance.other",
-                target.getName().getString(), balance.toPlainString(), currency.symbol()), false);
         return Command.SINGLE_SUCCESS;
     }
 

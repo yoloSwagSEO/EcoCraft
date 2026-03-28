@@ -120,6 +120,18 @@ public final class AHTestCommand {
         Random rng = new Random();
         int created = 0;
 
+        // Register fake sellers in GameProfileCache so /balance list shows names
+        var server = source.getServer();
+        if (server != null) {
+            var profileCache = server.getProfileCache();
+            if (profileCache != null) {
+                for (String seller : SELLERS) {
+                    UUID uuid = fakeUuid(seller);
+                    profileCache.add(new com.mojang.authlib.GameProfile(uuid, seller));
+                }
+            }
+        }
+
         // Give all fake sellers a large balance
         for (String seller : SELLERS) {
             UUID uuid = fakeUuid(seller);
