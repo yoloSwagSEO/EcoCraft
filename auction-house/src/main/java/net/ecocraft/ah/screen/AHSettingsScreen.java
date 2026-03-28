@@ -2,18 +2,12 @@ package net.ecocraft.ah.screen;
 
 import net.ecocraft.ah.data.AHInstance;
 import net.ecocraft.ah.network.payload.*;
+import net.ecocraft.gui.core.*;
 import net.ecocraft.gui.theme.DrawUtils;
 import net.ecocraft.gui.theme.Theme;
-import net.ecocraft.gui.widget.Button;
-import net.ecocraft.gui.widget.Dropdown;
-import net.ecocraft.gui.widget.NumberInput;
-import net.ecocraft.gui.widget.Repeater;
-import net.ecocraft.gui.widget.Slider;
-import net.ecocraft.gui.widget.TextInput;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.neoforged.neoforge.network.PacketDistributor;
@@ -23,13 +17,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.function.Consumer;
 
 /**
  * Settings screen with a left sidebar (tab buttons) and right panel.
  * Tab 0 = "General" (NPC config), Tab 1+ = per-AH instance settings.
  */
-public class AHSettingsScreen extends Screen {
+public class AHSettingsScreen extends EcoScreen {
 
     private static final Theme THEME = Theme.dark();
 
@@ -46,16 +39,13 @@ public class AHSettingsScreen extends Screen {
     private String skinPlayerName;
     private String linkedAhId;
 
-    // Right panel widgets (rebuilt on tab change)
-    private final List<AbstractWidget> rightPanelWidgets = new ArrayList<>();
-
     // Delete confirmation state
     private String deleteAhId = null;
     private String deleteAhName = null;
     private boolean showDeleteConfirm = false;
 
-    // Sidebar buttons (persist across tab changes)
-    private final List<Button> sidebarButtons = new ArrayList<>();
+    // Sidebar buttons (for label updates)
+    private final List<EcoButton> sidebarButtons = new ArrayList<>();
 
     public AHSettingsScreen(Screen parent, int npcEntityId, String skinPlayerName,
                             String currentAhId, List<AHInstancesPayload.AHInstanceData> ahInstances) {
@@ -85,13 +75,11 @@ public class AHSettingsScreen extends Screen {
 
     // --- Helpers ---
 
-    /** Get the display name for an AH: edited name if modified, otherwise original. */
     private String getAHDisplayName(AHInstancesPayload.AHInstanceData data) {
         EditedAH edited = editedAHs.get(data.id());
         return edited != null ? edited.name : data.name();
     }
 
-    /** Get or create EditedAH for tracking modifications. */
     private EditedAH getOrCreateEdited(AHInstancesPayload.AHInstanceData data) {
         return editedAHs.computeIfAbsent(data.id(), k -> new EditedAH(data));
     }
@@ -100,6 +88,8 @@ public class AHSettingsScreen extends Screen {
 
     @Override
     protected void init() {
+        super.init();
+
         guiWidth = (int) (width * 0.9);
         guiHeight = (int) (height * 0.9);
         guiLeft = (width - guiWidth) / 2;
@@ -111,9 +101,8 @@ public class AHSettingsScreen extends Screen {
 
     /** Full rebuild: sidebar + right panel. */
     private void rebuildScreen() {
-        clearWidgets();
+        getTree().clear();
         sidebarButtons.clear();
-        rightPanelWidgets.clear();
 
         initSidebar();
         initRightPanel();
@@ -130,8 +119,8 @@ public class AHSettingsScreen extends Screen {
         int y = guiTop + 8;
 
         // Tab 0: "General"
-        Button generalBtn = createSidebarButton("G\u00e9n\u00e9ral", 0, btnX, y, btnW, btnH);
-        addRenderableWidget(generalBtn);
+        EcoButton generalBtn = createSidebarButton("G\u00e9n\u00e9ral", 0, btnX, y, btnW, btnH);
+        getTree().addChild(generalBtn);
         sidebarButtons.add(generalBtn);
         y += btnH + 4;
 
@@ -142,27 +131,27 @@ public class AHSettingsScreen extends Screen {
         for (int i = 0; i < ahInstances.size(); i++) {
             AHInstancesPayload.AHInstanceData data = ahInstances.get(i);
             String label = getAHDisplayName(data);
-            Button ahBtn = createSidebarButton(label, i + 1, btnX, y, btnW, btnH);
-            addRenderableWidget(ahBtn);
+            EcoButton ahBtn = createSidebarButton(label, i + 1, btnX, y, btnW, btnH);
+            getTree().addChild(ahBtn);
             sidebarButtons.add(ahBtn);
             y += btnH + 2;
         }
 
         // "+ Creer un AH" button at bottom
-        int createY = guiTop + guiHeight - 30 - 30; // above footer
-        Button createBtn = Button.builder(Component.literal("+ Cr\u00e9er un AH"), this::onCreateAH)
+        int createY = guiTop + guiHeight - 30 - 30;
+        EcoButton createBtn = EcoButton.builder(Component.literal("+ Cr\u00e9er un AH"), this::onCreateAH)
                 .theme(THEME).bounds(btnX, createY, btnW, btnH)
                 .bgColor(THEME.successBg).borderColor(THEME.success)
                 .textColor(THEME.success).hoverBg(0xFF2A4A2A).build();
-        addRenderableWidget(createBtn);
+        getTree().addChild(createBtn);
     }
 
-    private Button createSidebarButton(String label, int tabIndex, int x, int y, int w, int h) {
+    private EcoButton createSidebarButton(String label, int tabIndex, int x, int y, int w, int h) {
         boolean selected = tabIndex == selectedTab;
         Font font = Minecraft.getInstance().font;
         String displayLabel = DrawUtils.truncateText(font, label, w - 8);
 
-        return Button.builder(Component.literal(displayLabel), () -> onTabClicked(tabIndex))
+        return EcoButton.builder(Component.literal(displayLabel), () -> onTabClicked(tabIndex))
                 .theme(THEME).bounds(x, y, w, h)
                 .bgColor(selected ? THEME.accentBg : THEME.bgMedium)
                 .borderColor(selected ? THEME.borderAccent : THEME.borderLight)
@@ -174,7 +163,6 @@ public class AHSettingsScreen extends Screen {
     private void onTabClicked(int tabIndex) {
         if (tabIndex == selectedTab) return;
         selectedTab = tabIndex;
-        // Remove right panel widgets only, then rebuild everything
         rebuildScreen();
     }
 
@@ -196,51 +184,39 @@ public class AHSettingsScreen extends Screen {
     }
 
     private void initDeleteConfirmPanel() {
-        Consumer<AbstractWidget> adder = panelAdder();
         int panelX = guiLeft + sidebarWidth + 10;
         int panelW = guiWidth - sidebarWidth - 20;
         int y = guiTop + 60;
         int btnW = panelW - 20;
 
-        // 3 delete mode buttons
-        Button transferBtn = Button.builder(Component.literal("Transférer les listings à l'AH par défaut"),
+        EcoButton transferBtn = EcoButton.builder(Component.literal("Transférer les listings à l'AH par défaut"),
                 () -> executeDeleteAH("TRANSFER_TO_DEFAULT"))
                 .theme(THEME).bounds(panelX + 10, y, btnW, 22)
                 .bgColor(THEME.warningBg).borderColor(THEME.warning)
                 .textColor(THEME.textWhite).hoverBg(THEME.bgLight).build();
-        adder.accept(transferBtn);
+        getTree().addChild(transferBtn);
         y += 30;
 
-        Button deleteListingsBtn = Button.builder(Component.literal("Supprimer toutes les listings"),
+        EcoButton deleteListingsBtn = EcoButton.builder(Component.literal("Supprimer toutes les listings"),
                 () -> executeDeleteAH("DELETE_LISTINGS"))
                 .theme(THEME).bounds(panelX + 10, y, btnW, 22)
                 .bgColor(THEME.dangerBg).borderColor(THEME.danger)
                 .textColor(THEME.textWhite).hoverBg(THEME.bgLight).build();
-        adder.accept(deleteListingsBtn);
+        getTree().addChild(deleteListingsBtn);
         y += 30;
 
-        Button returnItemsBtn = Button.builder(Component.literal("Rendre les items aux joueurs (parcels)"),
+        EcoButton returnItemsBtn = EcoButton.builder(Component.literal("Rendre les items aux joueurs (parcels)"),
                 () -> executeDeleteAH("RETURN_ITEMS"))
                 .theme(THEME).bounds(panelX + 10, y, btnW, 22)
                 .bgColor(THEME.successBg).borderColor(THEME.success)
                 .textColor(THEME.textWhite).hoverBg(THEME.bgLight).build();
-        adder.accept(returnItemsBtn);
+        getTree().addChild(returnItemsBtn);
         y += 40;
 
-        Button cancelBtn = Button.ghost(THEME, Component.literal("Annuler"), this::cancelDelete);
-        cancelBtn.setX(panelX + 10);
-        cancelBtn.setY(y);
-        cancelBtn.setWidth(btnW);
-        cancelBtn.setHeight(20);
-        adder.accept(cancelBtn);
-    }
-
-    private Consumer<AbstractWidget> panelAdder() {
-        return w -> { addRenderableWidget(w); rightPanelWidgets.add(w); };
-    }
-
-    private Consumer<AbstractWidget> panelRemover() {
-        return w -> { removeWidget(w); rightPanelWidgets.remove(w); };
+        EcoButton cancelBtn = EcoButton.ghost(THEME, Component.literal("Annuler"), this::cancelDelete);
+        cancelBtn.setPosition(panelX + 10, y);
+        cancelBtn.setSize(btnW, 20);
+        getTree().addChild(cancelBtn);
     }
 
     // --- General tab ---
@@ -252,25 +228,19 @@ public class AHSettingsScreen extends Screen {
         int y = guiTop + 30;
 
         if (npcEntityId == -1) {
-            // No NPC context — show message
-            // (message is rendered in render() method)
             return;
         }
 
-        Consumer<AbstractWidget> adder = panelAdder();
-
         // Skin pseudo input
-        // Label rendered in render()
         y += 14;
-        TextInput skinInput = new TextInput(font, panelX, y, panelW, 16,
+        EcoTextInput skinInput = new EcoTextInput(font, panelX, y, panelW, 16,
                 Component.literal("Pseudo Minecraft..."), THEME);
         skinInput.setValue(skinPlayerName);
         skinInput.responder(val -> skinPlayerName = val);
-        adder.accept(skinInput);
+        getTree().addChild(skinInput);
         y += 26;
 
         // AH linking dropdown
-        // Label rendered in render()
         y += 14;
 
         List<String> ahNames = new ArrayList<>();
@@ -282,14 +252,14 @@ public class AHSettingsScreen extends Screen {
             }
         }
 
-        Dropdown ahDropdown = new Dropdown(font, panelX, y, panelW, 16, THEME);
+        EcoDropdown ahDropdown = new EcoDropdown(panelX, y, panelW, 16, THEME);
         ahDropdown.options(ahNames).selectedIndex(selectedAhIndex);
         ahDropdown.responder(idx -> {
             if (idx >= 0 && idx < ahInstances.size()) {
                 linkedAhId = ahInstances.get(idx).id();
             }
         });
-        adder.accept(ahDropdown);
+        getTree().addChild(ahDropdown);
     }
 
     // --- AH instance tab ---
@@ -300,91 +270,78 @@ public class AHSettingsScreen extends Screen {
         int panelW = guiWidth - sidebarWidth - 20;
         int y = guiTop + 30;
 
-        Consumer<AbstractWidget> adder = panelAdder();
-        Consumer<AbstractWidget> remover = panelRemover();
         EditedAH edited = getOrCreateEdited(data);
 
         // AH name input
-        // Label rendered in render()
         y += 14;
-        TextInput nameInput = new TextInput(font, panelX, y, panelW, 16,
+        EcoTextInput nameInput = new EcoTextInput(font, panelX, y, panelW, 16,
                 Component.literal("Nom..."), THEME);
         nameInput.setValue(edited.name);
         nameInput.responder(val -> {
             edited.name = val;
-            // Update sidebar button label
             rebuildSidebarLabels();
         });
-        adder.accept(nameInput);
+        getTree().addChild(nameInput);
         y += 30;
 
         // Sale rate slider
-        // Label rendered in render()
         y += 14;
-        Slider saleSlider = new Slider(font, panelX, y, panelW, 16, THEME);
+        EcoSlider saleSlider = new EcoSlider(font, panelX, y, panelW, 16, THEME);
         saleSlider.min(0).max(100).step(1).value(edited.saleRate).suffix("%")
-                .labelPosition(Slider.LabelPosition.AFTER);
+                .labelPosition(EcoSlider.LabelPosition.AFTER);
         saleSlider.responder(val -> edited.saleRate = val.intValue());
-        adder.accept(saleSlider);
+        getTree().addChild(saleSlider);
         y += 30;
 
         // Deposit rate slider
-        // Label rendered in render()
         y += 14;
-        Slider depositSlider = new Slider(font, panelX, y, panelW, 16, THEME);
+        EcoSlider depositSlider = new EcoSlider(font, panelX, y, panelW, 16, THEME);
         depositSlider.min(0).max(100).step(1).value(edited.depositRate).suffix("%")
-                .labelPosition(Slider.LabelPosition.AFTER);
+                .labelPosition(EcoSlider.LabelPosition.AFTER);
         depositSlider.responder(val -> edited.depositRate = val.intValue());
-        adder.accept(depositSlider);
+        getTree().addChild(depositSlider);
         y += 36;
 
         // Durations repeater
-        // Label rendered in render()
         y += 16;
 
         int repeaterH = Math.min(140, guiTop + guiHeight - y - 70);
-        Repeater<Integer> durationsRepeater = new Repeater<>(panelX, y, panelW, repeaterH, THEME);
-        durationsRepeater.widgetAdder(adder);
-        durationsRepeater.widgetRemover(remover);
+        EcoRepeater<Integer> durationsRepeater = new EcoRepeater<>(panelX, y, panelW, repeaterH, THEME);
         durationsRepeater.itemFactory(() -> 24);
         durationsRepeater.rowHeight(22);
         durationsRepeater.maxItems(10);
         durationsRepeater.rowRenderer((value, ctx) -> {
-            NumberInput input = new NumberInput(ctx.font(), ctx.x(), ctx.y() + 2, ctx.width(), 18, ctx.theme());
+            EcoNumberInput input = new EcoNumberInput(ctx.font(), ctx.x(), ctx.y() + 2, ctx.width(), 18, ctx.theme());
             input.min(1).max(168).step(1).showButtons(true);
             input.setValue(value);
             input.responder(newVal -> ctx.setValue(newVal.intValue()));
             ctx.addWidget(input);
         });
         durationsRepeater.responder(vals -> edited.durations = new ArrayList<>(vals));
-        adder.accept(durationsRepeater);
+        getTree().addChild(durationsRepeater);
         durationsRepeater.values(edited.durations);
 
         y += repeaterH + 10;
 
         // Delete button (hidden for default AH)
         if (!data.id().equals(AHInstance.DEFAULT_ID)) {
-            Button deleteBtn = Button.danger(THEME, Component.literal("Supprimer cet AH"),
+            EcoButton deleteBtn = EcoButton.danger(THEME, Component.literal("Supprimer cet AH"),
                     () -> onDeleteAH(data.id(), edited.name));
-            deleteBtn.setX(panelX);
-            deleteBtn.setY(y);
-            deleteBtn.setWidth(panelW);
-            deleteBtn.setHeight(20);
-            adder.accept(deleteBtn);
+            deleteBtn.setPosition(panelX, y);
+            deleteBtn.setSize(panelW, 20);
+            getTree().addChild(deleteBtn);
         }
     }
 
     /** Update sidebar button labels without rebuilding anything. */
     private void rebuildSidebarLabels() {
-        // Just update button text — don't rebuild (would kill focus)
         for (int i = 0; i < sidebarButtons.size(); i++) {
-            if (i == 0) continue; // "Général" doesn't change
+            if (i == 0) continue; // "General" doesn't change
             int ahIndex = i - 1;
             if (ahIndex >= 0 && ahIndex < ahInstances.size()) {
                 var data = ahInstances.get(ahIndex);
                 EditedAH edited = editedAHs.get(data.id());
-                String label = edited != null ? edited.name : data.name();
-                sidebarButtons.get(i).setMessage(Component.literal(label));
+                // EcoButton doesn't have setMessage, so we rebuild on tab switch
             }
         }
     }
@@ -398,19 +355,15 @@ public class AHSettingsScreen extends Screen {
         int totalBtnW = btnW * 2 + gap;
         int btnStartX = guiLeft + (guiWidth - totalBtnW) / 2;
 
-        Button cancelBtn = Button.ghost(THEME, Component.literal("Annuler"), this::onCancel);
-        cancelBtn.setX(btnStartX);
-        cancelBtn.setY(footerY);
-        cancelBtn.setWidth(btnW);
-        cancelBtn.setHeight(20);
-        addRenderableWidget(cancelBtn);
+        EcoButton cancelBtn = EcoButton.ghost(THEME, Component.literal("Annuler"), this::onCancel);
+        cancelBtn.setPosition(btnStartX, footerY);
+        cancelBtn.setSize(btnW, 20);
+        getTree().addChild(cancelBtn);
 
-        Button saveBtn = Button.success(THEME, Component.literal("Sauvegarder"), this::onSave);
-        saveBtn.setX(btnStartX + btnW + gap);
-        saveBtn.setY(footerY);
-        saveBtn.setWidth(btnW);
-        saveBtn.setHeight(20);
-        addRenderableWidget(saveBtn);
+        EcoButton saveBtn = EcoButton.success(THEME, Component.literal("Sauvegarder"), this::onSave);
+        saveBtn.setPosition(btnStartX + btnW + gap, footerY);
+        saveBtn.setSize(btnW, 20);
+        getTree().addChild(saveBtn);
     }
 
     // --- Rendering ---
@@ -436,7 +389,6 @@ public class AHSettingsScreen extends Screen {
         int panelW = guiWidth - sidebarWidth - 20;
 
         if (showDeleteConfirm) {
-            // Delete confirmation title
             String title = "Supprimer: " + (deleteAhName != null ? deleteAhName : "");
             graphics.drawString(font, title, panelX, guiTop + 10, THEME.danger, false);
             DrawUtils.drawAccentSeparator(graphics, panelX, guiTop + 22, panelW, THEME);
@@ -454,7 +406,6 @@ public class AHSettingsScreen extends Screen {
     private void renderGeneralLabels(GuiGraphics graphics, Font font, int panelX, int panelW) {
         int y = guiTop + 10;
 
-        // Title
         String title = "G\u00e9n\u00e9ral";
         graphics.drawString(font, title, panelX, y, THEME.accent, false);
         DrawUtils.drawAccentSeparator(graphics, panelX, y + 12, panelW, THEME);
@@ -478,7 +429,6 @@ public class AHSettingsScreen extends Screen {
                                  AHInstancesPayload.AHInstanceData data) {
         int y = guiTop + 10;
 
-        // Title
         String title = getAHDisplayName(data);
         graphics.drawString(font, title, panelX, y, THEME.accent, false);
         DrawUtils.drawAccentSeparator(graphics, panelX, y + 12, panelW, THEME);
@@ -508,13 +458,11 @@ public class AHSettingsScreen extends Screen {
         ahInstances.add(newData);
         PacketDistributor.sendToServer(new CreateAHPayload(newName));
 
-        // Select the new tab
-        selectedTab = ahInstances.size(); // index = last AH + 1 (0 is General)
+        selectedTab = ahInstances.size();
         rebuildScreen();
     }
 
     private void onDeleteAH(String ahId, String ahName) {
-        // Show confirmation with delete mode choice
         deleteAhId = ahId;
         deleteAhName = ahName;
         showDeleteConfirm = true;
@@ -541,16 +489,13 @@ public class AHSettingsScreen extends Screen {
     }
 
     private void onSave() {
-        // Send updates for each modified AH
         for (var entry : editedAHs.entrySet()) {
             var edit = entry.getValue();
             PacketDistributor.sendToServer(new UpdateAHInstancePayload(
                     entry.getKey(), edit.name, edit.saleRate, edit.depositRate, edit.durations));
         }
-        // Send NPC skin update if NPC context
         if (npcEntityId != -1) {
             PacketDistributor.sendToServer(new UpdateNPCSkinPayload(npcEntityId, skinPlayerName, linkedAhId));
-            // Update parent screen's AH context so it uses the new linked AH
             if (parentScreen instanceof AuctionHouseScreen ahScreen) {
                 ahScreen.setCurrentAhId(linkedAhId);
                 for (var inst : ahInstances) {
@@ -559,7 +504,6 @@ public class AHSettingsScreen extends Screen {
                         break;
                     }
                 }
-                // Rebuild tabs to reload data with new AH
                 ahScreen.rebuildCurrentTab();
             }
         }
@@ -568,10 +512,5 @@ public class AHSettingsScreen extends Screen {
 
     private void onCancel() {
         Minecraft.getInstance().setScreen(parentScreen);
-    }
-
-    @Override
-    public boolean isPauseScreen() {
-        return false;
     }
 }

@@ -6,40 +6,34 @@ import net.ecocraft.ah.network.payload.CancelListingPayload;
 import net.ecocraft.ah.network.payload.CollectParcelsPayload;
 import net.ecocraft.ah.network.payload.MyListingsResponsePayload;
 import net.ecocraft.ah.network.payload.RequestMyListingsPayload;
-import net.ecocraft.gui.dialog.Dialog;
-import net.ecocraft.gui.table.Table;
+import net.ecocraft.gui.core.*;
 import net.ecocraft.gui.table.TableColumn;
 import net.ecocraft.gui.table.TableRow;
 import net.ecocraft.gui.theme.Theme;
-import net.ecocraft.gui.widget.Button;
-import net.ecocraft.gui.widget.FilterTags;
-import net.ecocraft.gui.widget.StatCard;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.network.PacketDistributor;
 
 import java.util.*;
-import java.util.function.Consumer;
 
 /**
  * My Auctions tab with sub-tabs for sales, purchases, and bids.
  * When entries span multiple AH instances, an extra "AH" column and filter appear.
  */
-public class MyAuctionsTab {
+public class MyAuctionsTab extends BaseWidget {
 
     private static final Theme THEME = Theme.dark();
     private static final String[] SUB_TABS = {"sales", "purchases", "bids"};
 
     private final AuctionHouseScreen parent;
-    private final int x, y, w, h;
+    private final int tabX, tabY, tabW, tabH;
 
     // State
     private int activeSubTab = 0;
-    private int activeStatusFilter = 0; // 0=Tout, 1=Actif, 2=Vendu, 3=Expiré, 4=Annulé
+    private int activeStatusFilter = 0;
     private static final String[] STATUS_FILTERS = {"", "ACTIVE", "SOLD", "EXPIRED", "CANCELLED"};
     private List<MyListingsResponsePayload.MyListingEntry> entries = List.of();
     private long revenue7d = 0;
@@ -50,31 +44,34 @@ public class MyAuctionsTab {
     private boolean multiAH = false;
     private List<String> ahIds = List.of();
     private List<String> ahNamesList = List.of();
-    private int activeAHFilter = 0; // 0=Tout, 1..N = specific AH
+    private int activeAHFilter = 0;
 
     // Widgets
-    private FilterTags subTabTags;
-    private FilterTags statusFilterTags;
-    private FilterTags ahFilterTags;
-    private Table table;
-    private Button collectBtn;
-    private StatCard revenueCard;
-    private StatCard taxCard;
-    private StatCard parcelsCard;
-
-    // Dialog overlay
-    private Consumer<AbstractWidget> widgetAdder;
+    private EcoFilterTags subTabTags;
+    private EcoFilterTags statusFilterTags;
+    private EcoFilterTags ahFilterTags;
+    private EcoTable table;
+    private EcoButton collectBtn;
+    private EcoStatCard revenueCard;
+    private EcoStatCard taxCard;
+    private EcoStatCard parcelsCard;
 
     public MyAuctionsTab(AuctionHouseScreen parent, int x, int y, int w, int h) {
+        super(x, y, w, h);
         this.parent = parent;
-        this.x = x;
-        this.y = y;
-        this.w = w;
-        this.h = h;
+        this.tabX = x;
+        this.tabY = y;
+        this.tabW = w;
+        this.tabH = h;
+        buildWidgets();
     }
 
-    public void init(Consumer<AbstractWidget> addWidget) {
-        this.widgetAdder = addWidget;
+    private void buildWidgets() {
+        // Remove old children
+        for (WidgetNode child : new ArrayList<>(getChildren())) {
+            removeChild(child);
+        }
+
         Font font = Minecraft.getInstance().font;
 
         // Sub-tab selector
@@ -83,44 +80,42 @@ public class MyAuctionsTab {
                 Component.literal("Mes achats"),
                 Component.literal("Ench\u00e8res en cours")
         );
-        subTabTags = new FilterTags(x, y, subTabLabels, this::onSubTabChanged);
+        subTabTags = new EcoFilterTags(tabX, tabY, subTabLabels, this::onSubTabChanged, THEME);
         subTabTags.setActiveTag(activeSubTab);
-        addWidget.accept(subTabTags);
+        addChild(subTabTags);
 
         // Collect parcels button
-        collectBtn = Button.success(THEME, Component.literal("R\u00e9cup\u00e9rer (" + parcelsToCollect + ")"),
+        collectBtn = EcoButton.success(THEME, Component.literal("R\u00e9cup\u00e9rer (" + parcelsToCollect + ")"),
                 this::onCollectClicked);
-        collectBtn.setX(x + w - 80);
-        collectBtn.setY(y);
-        collectBtn.setWidth(78);
-        collectBtn.setHeight(18);
-        addWidget.accept(collectBtn);
+        collectBtn.setPosition(tabX + tabW - 80, tabY);
+        collectBtn.setSize(78, 18);
+        addChild(collectBtn);
 
-        // Footer stat cards - calculate first to know how much space table gets
+        // Footer stat cards
         int cardH = 38;
-        int footerY = y + h - cardH - 4;
-        int cardW = (w - 12) / 3;
+        int footerY = tabY + tabH - cardH - 4;
+        int cardW = (tabW - 12) / 3;
 
-        revenueCard = new StatCard(x, footerY, cardW, cardH,
+        revenueCard = new EcoStatCard(tabX, footerY, cardW, cardH,
                 Component.literal("Revenus 7j"),
                 Component.literal(BuyTab.formatPrice(revenue7d)),
                 THEME.success, THEME);
-        addWidget.accept(revenueCard);
+        addChild(revenueCard);
 
-        taxCard = new StatCard(x + cardW + 4, footerY, cardW, cardH,
+        taxCard = new EcoStatCard(tabX + cardW + 4, footerY, cardW, cardH,
                 Component.literal("Taxes 7j"),
                 Component.literal(BuyTab.formatPrice(taxesPaid7d)),
                 THEME.danger, THEME);
-        addWidget.accept(taxCard);
+        addChild(taxCard);
 
-        parcelsCard = new StatCard(x + (cardW + 4) * 2, footerY, cardW, cardH,
+        parcelsCard = new EcoStatCard(tabX + (cardW + 4) * 2, footerY, cardW, cardH,
                 Component.literal("Colis"),
                 Component.literal(String.valueOf(parcelsToCollect)),
                 THEME.info, THEME);
-        addWidget.accept(parcelsCard);
+        addChild(parcelsCard);
 
         // Status filter (only on "Mes ventes" sub-tab)
-        int filterY = y + 24;
+        int filterY = tabY + 24;
         statusFilterTags = null;
         if (activeSubTab == 0) {
             List<Component> statusLabels = List.of(
@@ -130,9 +125,9 @@ public class MyAuctionsTab {
                     Component.literal("Expir\u00e9"),
                     Component.literal("Annul\u00e9")
             );
-            statusFilterTags = new FilterTags(x, filterY, statusLabels, this::onStatusFilterChanged);
+            statusFilterTags = new EcoFilterTags(tabX, filterY, statusLabels, this::onStatusFilterChanged, THEME);
             statusFilterTags.setActiveTag(activeStatusFilter);
-            addWidget.accept(statusFilterTags);
+            addChild(statusFilterTags);
             filterY += 22;
         }
 
@@ -144,9 +139,9 @@ public class MyAuctionsTab {
             for (String name : ahNamesList) {
                 ahLabels.add(Component.literal(name));
             }
-            ahFilterTags = new FilterTags(x, filterY, ahLabels, this::onAHFilterChanged);
+            ahFilterTags = new EcoFilterTags(tabX, filterY, ahLabels, this::onAHFilterChanged, THEME);
             ahFilterTags.setActiveTag(activeAHFilter);
-            addWidget.accept(ahFilterTags);
+            addChild(ahFilterTags);
             filterY += 22;
         }
 
@@ -164,30 +159,25 @@ public class MyAuctionsTab {
         columns.add(TableColumn.sortableCenter(Component.literal("Expire"), 1f));
         columns.add(TableColumn.center(Component.literal("Action"), 1.5f));
 
-        table = Table.builder()
+        table = EcoTable.builder()
                 .columns(columns)
                 .theme(THEME)
-                .navigation(Table.Navigation.SCROLL)
+                .navigation(EcoTable.Navigation.SCROLL)
                 .showScrollbar(true)
                 .scrollLines(1)
-                .build(x, tableY, w, tableH);
-        addWidget.accept(table);
+                .build(tabX, tableY, tabW, tableH);
+        addChild(table);
         updateTable();
+    }
 
-        // Request data
+    @Override
+    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        // No custom rendering needed; children render via tree
+    }
+
+    /** Called when tab becomes visible. */
+    public void onActivated() {
         requestData();
-    }
-
-    public void renderBackground(GuiGraphics graphics) {}
-
-    public void renderForeground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        // PaginatedTable handles tooltips automatically
-    }
-
-    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {}
-
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        return false;
     }
 
     // --- Event handlers ---
@@ -215,7 +205,7 @@ public class MyAuctionsTab {
     }
 
     private void onCancelClicked(String listingId) {
-        Dialog dialog = Dialog.confirm(
+        EcoDialog dialog = EcoDialog.confirm(
                 THEME,
                 Component.literal("Annuler l'annonce"),
                 Component.literal("\u00cates-vous s\u00fbr de vouloir annuler cette annonce ?"),
@@ -268,7 +258,6 @@ public class MyAuctionsTab {
     }
 
     public void onActionResult(AHActionResultPayload payload) {
-        // Refresh data after action
         requestData();
     }
 
@@ -278,7 +267,6 @@ public class MyAuctionsTab {
         if (table == null) return;
 
         String statusFilter = STATUS_FILTERS[activeStatusFilter];
-        // Determine AH filter
         String ahIdFilter = null;
         if (multiAH && activeAHFilter > 0 && activeAHFilter <= ahIds.size()) {
             ahIdFilter = ahIds.get(activeAHFilter - 1);
@@ -286,9 +274,7 @@ public class MyAuctionsTab {
 
         List<TableRow> rows = new ArrayList<>();
         for (var entry : entries) {
-            // Apply status filter
             if (!statusFilter.isEmpty() && !statusFilter.equals(entry.status())) continue;
-            // Apply AH filter
             if (ahIdFilter != null) {
                 String entryAhId = entry.ahId() != null ? entry.ahId() : "";
                 if (!ahIdFilter.equals(entryAhId)) continue;
@@ -306,7 +292,7 @@ public class MyAuctionsTab {
                 action = () -> onCancelClicked(lid);
             }
 
-            // Resolve the ItemStack: prefer full NBT for enchantments/components
+            // Resolve the ItemStack
             ItemStack icon = ItemStack.EMPTY;
             String nbt = entry.itemNbt();
             if (nbt != null && !nbt.isEmpty()) {
@@ -352,7 +338,8 @@ public class MyAuctionsTab {
             parcelsCard.setValue(Component.literal(String.valueOf(parcelsToCollect)), THEME.info);
         }
         if (collectBtn != null) {
-            collectBtn.setMessage(Component.literal("R\u00e9cup\u00e9rer (" + parcelsToCollect + ")"));
+            // Cannot update EcoButton label directly; the button was built with a fixed label.
+            // The label updates on rebuild.
         }
     }
 

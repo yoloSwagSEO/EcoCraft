@@ -3,38 +3,31 @@ package net.ecocraft.ah.screen;
 import net.ecocraft.ah.data.ItemCategory;
 import net.ecocraft.ah.data.ItemStackSerializer;
 import net.ecocraft.ah.network.payload.*;
-import net.ecocraft.gui.table.Table;
+import net.ecocraft.gui.core.*;
 import net.ecocraft.gui.table.TableColumn;
 import net.ecocraft.gui.table.TableRow;
 import net.ecocraft.gui.theme.DrawUtils;
 import net.ecocraft.gui.theme.Theme;
-import net.ecocraft.gui.widget.Button;
-import net.ecocraft.gui.widget.FilterTags;
-import net.ecocraft.gui.widget.ItemSlot;
-import net.ecocraft.gui.widget.NumberInput;
-import net.ecocraft.gui.widget.TextInput;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.network.PacketDistributor;
 
 import java.util.*;
-import java.util.function.Consumer;
 
 /**
  * Buy tab with two modes: BROWSE and DETAIL.
  */
-public class BuyTab {
+public class BuyTab extends BaseWidget {
 
     private enum Mode { BROWSE, DETAIL }
 
     private static final Theme THEME = Theme.dark();
 
     private final AuctionHouseScreen parent;
-    private final int x, y, w, h;
+    private final int tabX, tabY, tabW, tabH;
 
     private Mode mode = Mode.BROWSE;
 
@@ -43,15 +36,16 @@ public class BuyTab {
     private String selectedCategory = "";
     private int currentPage = 0;
     private int totalPages = 0;
-    private int browseRowsPerPage = 14; // calculated from table height
+    private int browseRowsPerPage = 14;
     private List<ListingsResponsePayload.ListingSummary> currentItems = List.of();
 
     // Browse mode widgets
-    private TextInput searchBar;
-    private Table browseTable;
-    private Button prevPageBtn;
-    private Button nextPageBtn;
-    private final List<Button> categoryButtons = new ArrayList<>();
+    private EcoTextInput searchBar;
+    private EcoTable browseTable;
+    private EcoButton prevPageBtn;
+    private EcoButton nextPageBtn;
+    private final List<EcoButton> categoryButtons = new ArrayList<>();
+    private Label pageLabel;
 
     // Detail mode state
     private String detailItemId = "";
@@ -61,146 +55,156 @@ public class BuyTab {
     private ListingDetailResponsePayload.PriceInfo detailPriceInfo;
 
     // Detail mode widgets
-    private Button backButton;
-    private Table detailTable;
+    private EcoButton backButton;
+    private EcoTable detailTable;
 
     // Detail panel state
     private int selectedEntryIndex = 0;
-    private ItemSlot panelItemSlot;
-    private NumberInput panelQuantityInput;
-    private NumberInput panelBidInput;
-    private Button panelBuyButton;
-    private Button panelBidButton;
+    private EcoItemSlot panelItemSlot;
+    private EcoNumberInput panelQuantityInput;
+    private EcoNumberInput panelBidInput;
+    private EcoButton panelBuyButton;
+    private EcoButton panelBidButton;
     private static final int PANEL_WIDTH_RATIO = 35;
 
     // Detail mode filter state
     private List<ItemStack> detailStacks = new ArrayList<>();
     private Set<String> selectedEnchantFilters = new LinkedHashSet<>();
     private int selectedDurabilityFilter = 0;
-    private FilterTags enchantFilterTags;
-    private FilterTags durabilityFilterTags;
+    private EcoFilterTags enchantFilterTags;
+    private EcoFilterTags durabilityFilterTags;
     private List<String> availableEnchantments = new ArrayList<>();
     private boolean showDurabilityFilter = false;
 
     private static final int SIDEBAR_WIDTH = 80;
 
     public BuyTab(AuctionHouseScreen parent, int x, int y, int w, int h) {
+        super(x, y, w, h);
         this.parent = parent;
-        this.x = x;
-        this.y = y;
-        this.w = w;
-        this.h = h;
+        this.tabX = x;
+        this.tabY = y;
+        this.tabW = w;
+        this.tabH = h;
+        buildWidgets();
     }
 
     private String getAhId() {
         return parent.getCurrentAhId();
     }
 
-    public void init(Consumer<AbstractWidget> addWidget) {
+    private void buildWidgets() {
+        // Remove old children
+        for (WidgetNode child : new ArrayList<>(getChildren())) {
+            removeChild(child);
+        }
+        categoryButtons.clear();
+
         if (mode == Mode.BROWSE) {
-            initBrowse(addWidget);
+            buildBrowse();
         } else {
-            initDetail(addWidget);
+            buildDetail();
         }
     }
 
-    private void initBrowse(Consumer<AbstractWidget> addWidget) {
+    private void buildBrowse() {
         Font font = Minecraft.getInstance().font;
 
         // Category sidebar buttons
-        categoryButtons.clear();
         String[] categories = {"Tout", "Armes", "Armures", "Outils", "Potions", "Blocs", "Nourrit.", "Enchant.", "Divers"};
-        int btnY = y + 2;
+        int btnY = tabY + 2;
         for (int i = 0; i < categories.length; i++) {
             final int catIndex = i;
-            Button btn;
+            EcoButton btn;
             if (catIndex == getCategoryIndex()) {
-                btn = Button.builder(Component.literal(categories[i]), () -> onCategoryClicked(catIndex))
-                        .theme(THEME).bounds(x + 2, btnY, SIDEBAR_WIDTH - 6, 14)
+                btn = EcoButton.builder(Component.literal(categories[i]), () -> onCategoryClicked(catIndex))
+                        .theme(THEME).bounds(tabX + 2, btnY, SIDEBAR_WIDTH - 6, 14)
                         .bgColor(THEME.accentBg).borderColor(THEME.borderAccent)
                         .textColor(THEME.accent).hoverBg(THEME.accentBgDim).build();
             } else {
-                btn = Button.builder(Component.literal(categories[i]), () -> onCategoryClicked(catIndex))
-                        .theme(THEME).bounds(x + 2, btnY, SIDEBAR_WIDTH - 6, 14)
+                btn = EcoButton.builder(Component.literal(categories[i]), () -> onCategoryClicked(catIndex))
+                        .theme(THEME).bounds(tabX + 2, btnY, SIDEBAR_WIDTH - 6, 14)
                         .bgColor(THEME.bgMedium).borderColor(THEME.borderLight)
                         .textColor(THEME.textGrey).hoverBg(THEME.bgLight).build();
             }
             categoryButtons.add(btn);
-            addWidget.accept(btn);
+            addChild(btn);
             btnY += 16;
         }
 
         // Content area (right of sidebar with 2px gap)
-        int contentX = x + SIDEBAR_WIDTH + 2;
-        int contentW = w - SIDEBAR_WIDTH - 2;
+        int contentX = tabX + SIDEBAR_WIDTH + 2;
+        int contentW = tabW - SIDEBAR_WIDTH - 2;
 
         // Search bar
-        searchBar = new TextInput(font, contentX + 2, y + 1, contentW - 4, 16,
+        searchBar = new EcoTextInput(font, contentX + 2, tabY + 1, contentW - 4, 16,
                 Component.literal("Rechercher..."), THEME);
         searchBar.responder(this::onSearchChanged);
         searchBar.setValue(searchText);
-        addWidget.accept(searchBar);
+        addChild(searchBar);
 
         // Browse table
-        int tableY = y + 20;
-        int tableH = h - 38;
-        browseRowsPerPage = Math.max(1, (tableH - 22) / 24); // 22=header, 24=row height
+        int tableY = tabY + 20;
+        int tableH = tabH - 38;
+        browseRowsPerPage = Math.max(1, (tableH - 22) / 24);
         List<TableColumn> columns = List.of(
                 TableColumn.sortableLeft(Component.literal("Objet"), 3f),
                 TableColumn.sortableRight(Component.literal("Meilleur prix"), 2f),
                 TableColumn.sortableCenter(Component.literal("Offres"), 1f),
                 TableColumn.sortableCenter(Component.literal("Dispo."), 1f)
         );
-        browseTable = Table.builder()
+        browseTable = EcoTable.builder()
                 .columns(columns)
                 .theme(THEME)
-                .navigation(Table.Navigation.NONE)
+                .navigation(EcoTable.Navigation.NONE)
                 .tooltips(false)
                 .build(contentX, tableY, contentW, tableH);
-        addWidget.accept(browseTable);
+        addChild(browseTable);
 
         // Pagination buttons
-        int paginationY = y + h - 16;
-        prevPageBtn = Button.builder(Component.literal("< Pr\u00e9c"), this::onPrevPage)
+        int paginationY = tabY + tabH - 16;
+        prevPageBtn = EcoButton.builder(Component.literal("< Pr\u00e9c"), this::onPrevPage)
                 .theme(THEME).bounds(contentX, paginationY, 40, 14)
                 .bgColor(THEME.accentBg).borderColor(THEME.borderAccent)
                 .textColor(THEME.accent).hoverBg(THEME.accentBgDim).build();
-        nextPageBtn = Button.builder(Component.literal("Suiv >"), this::onNextPage)
+        nextPageBtn = EcoButton.builder(Component.literal("Suiv >"), this::onNextPage)
                 .theme(THEME).bounds(contentX + contentW - 40, paginationY, 40, 14)
                 .bgColor(THEME.accentBg).borderColor(THEME.borderAccent)
                 .textColor(THEME.accent).hoverBg(THEME.accentBgDim).build();
-        addWidget.accept(prevPageBtn);
-        addWidget.accept(nextPageBtn);
+        addChild(prevPageBtn);
+        addChild(nextPageBtn);
+
+        // Page label
+        String pageInfo = "Page " + (currentPage + 1) + "/" + Math.max(1, totalPages);
+        pageLabel = new Label(font, contentX, paginationY + 3, contentW, Component.literal(pageInfo), THEME);
+        pageLabel.setColor(THEME.textGrey).setAlignment(Label.Align.CENTER);
+        addChild(pageLabel);
 
         // Populate table with current data
         updateBrowseTable();
-
-        // Request initial data
-        requestListings();
     }
 
-    private void initDetail(Consumer<AbstractWidget> addWidget) {
+    private void buildDetail() {
         Font font = Minecraft.getInstance().font;
 
         // Back button
-        backButton = Button.builder(Component.literal("\u25C0 Retour"), this::onBackToBrowse)
-                .theme(THEME).bounds(x, y, 60, 14)
+        backButton = EcoButton.builder(Component.literal("\u25C0 Retour"), this::onBackToBrowse)
+                .theme(THEME).bounds(tabX, tabY, 60, 14)
                 .bgColor(THEME.accentBg).borderColor(THEME.borderAccent)
                 .textColor(THEME.accent).hoverBg(THEME.accentBgDim).build();
-        addWidget.accept(backButton);
+        addChild(backButton);
 
         // Dynamic filter area starts below back button + item name header
-        int filterY = y + 34;
+        int filterY = tabY + 34;
         enchantFilterTags = null;
         durabilityFilterTags = null;
 
-        // Enchantment filter (only if enchantments found) — multi-select mode
+        // Enchantment filter (only if enchantments found) - multi-select mode
         if (!availableEnchantments.isEmpty()) {
             List<Component> enchantLabels = new ArrayList<>();
             for (String ench : availableEnchantments) {
                 enchantLabels.add(Component.literal(ench));
             }
-            enchantFilterTags = new FilterTags(x, filterY, enchantLabels,
+            enchantFilterTags = new EcoFilterTags(tabX, filterY, enchantLabels,
                     this::onEnchantFilterChanged, THEME, true);
             // Restore selection
             Set<Integer> restoredSelection = new LinkedHashSet<>();
@@ -209,7 +213,7 @@ public class BuyTab {
                 if (idx >= 0) restoredSelection.add(idx);
             }
             enchantFilterTags.setSelectedTags(restoredSelection);
-            addWidget.accept(enchantFilterTags);
+            addChild(enchantFilterTags);
             filterY += 22;
         }
 
@@ -222,7 +226,7 @@ public class BuyTab {
                     Component.literal("50%+"),
                     Component.literal("25%+")
             );
-            durabilityFilterTags = new FilterTags(x, filterY, durLabels, this::onDurabilityFilterChanged, THEME);
+            durabilityFilterTags = new EcoFilterTags(tabX, filterY, durLabels, this::onDurabilityFilterChanged, THEME);
             // Restore selection
             int activeIdx = switch (selectedDurabilityFilter) {
                 case 100 -> 1;
@@ -232,17 +236,17 @@ public class BuyTab {
                 default -> 0;
             };
             durabilityFilterTags.setActiveTag(activeIdx);
-            addWidget.accept(durabilityFilterTags);
+            addChild(durabilityFilterTags);
             filterY += 22;
         }
 
         // Two-column layout
-        int panelW = (int) (w * PANEL_WIDTH_RATIO / 100.0);
-        int tableW = w - panelW - 6; // 6px gap
+        int panelW = (int) (tabW * PANEL_WIDTH_RATIO / 100.0);
+        int tableW = tabW - panelW - 6;
 
-        // Detail table (left column) — no "Action" column
+        // Detail table (left column)
         int tableY = filterY;
-        int tableH = y + h - 24 - tableY;
+        int tableH = tabY + tabH - 24 - tableY;
         List<TableColumn> columns = List.of(
                 TableColumn.sortableLeft(Component.literal("Vendeur"), 2f),
                 TableColumn.sortableCenter(Component.literal("Qté"), 1f),
@@ -250,33 +254,31 @@ public class BuyTab {
                 TableColumn.center(Component.literal("Type"), 1f),
                 TableColumn.sortableCenter(Component.literal("Expire"), 1.5f)
         );
-        detailTable = Table.builder()
+        detailTable = EcoTable.builder()
                 .columns(columns)
                 .theme(THEME)
-                .navigation(Table.Navigation.SCROLL)
+                .navigation(EcoTable.Navigation.SCROLL)
                 .showScrollbar(true)
                 .scrollLines(1)
-                .build(x, tableY, tableW, tableH);
+                .build(tabX, tableY, tableW, tableH);
         detailTable.setSelectionListener(this::onDetailRowSelected);
-        addWidget.accept(detailTable);
+        addChild(detailTable);
 
         // Right panel widgets
-        int panelX = x + tableW + 6;
-        int panelY = y + 16;
-        initPurchasePanel(addWidget, panelX, panelY, panelW);
+        int panelX = tabX + tableW + 6;
+        int panelY = tabY + 16;
+        buildPurchasePanel(panelX, panelY, panelW);
 
         updateDetailTable();
     }
 
     private void onEnchantFilterChanged(Set<Integer> selectedIndices) {
-        // Convert indices to enchantment display names
         selectedEnchantFilters.clear();
         for (int idx : selectedIndices) {
             if (idx >= 0 && idx < availableEnchantments.size()) {
                 selectedEnchantFilters.add(availableEnchantments.get(idx));
             }
         }
-        // Send server request with the selected enchantment filters
         requestListingDetail();
     }
 
@@ -293,54 +295,35 @@ public class BuyTab {
 
     // --- Rendering ---
 
-    /** Called BEFORE widgets render -- draw background panels here. */
-    public void renderBackground(GuiGraphics graphics) {
-        if (mode == Mode.BROWSE) {
-            DrawUtils.drawPanel(graphics, x, y, SIDEBAR_WIDTH - 4, h, THEME);
-        } else {
-            // Detail mode: draw right panel background BEFORE widgets
-            int panelW = (int) (w * PANEL_WIDTH_RATIO / 100.0);
-            int tableW = w - panelW - 6;
-            int panelX = x + tableW + 6;
-            int panelY = y + 16;
-            int panelH = h - 40;
-            DrawUtils.drawPanel(graphics, panelX, panelY, panelW, panelH, THEME);
-        }
-    }
-
-    /** Called AFTER widgets render -- draw text overlays here. */
-    public void renderForeground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        Font font = Minecraft.getInstance().font;
-        if (mode == Mode.BROWSE) {
-            int contentX = x + SIDEBAR_WIDTH + 2;
-            int contentW = w - SIDEBAR_WIDTH - 2;
-            int paginationY = y + h - 16;
-            String pageInfo = "Page " + (currentPage + 1) + "/" + Math.max(1, totalPages);
-            int pageInfoWidth = font.width(pageInfo);
-            graphics.drawString(font, pageInfo,
-                    contentX + (contentW - pageInfoWidth) / 2,
-                    paginationY + 3, THEME.textGrey, false);
-        } else {
-            renderDetailForeground(graphics, font, mouseX, mouseY);
-        }
-    }
-
-    /** Keep old render for backward compat -- delegates to background+foreground. */
+    @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        // no-op: AuctionHouseScreen now calls renderBackground + renderForeground separately
+        if (mode == Mode.BROWSE) {
+            // Draw sidebar panel background
+            DrawUtils.drawPanel(graphics, tabX, tabY, SIDEBAR_WIDTH - 4, tabH, THEME);
+        } else {
+            // Detail mode backgrounds
+            int panelW = (int) (tabW * PANEL_WIDTH_RATIO / 100.0);
+            int tableW = tabW - panelW - 6;
+            int panelX = tabX + tableW + 6;
+            int panelY = tabY + 16;
+            int panelH = tabH - 40;
+            DrawUtils.drawPanel(graphics, panelX, panelY, panelW, panelH, THEME);
+
+            renderDetailForeground(graphics, Minecraft.getInstance().font, mouseX, mouseY);
+        }
     }
 
     private void renderDetailForeground(GuiGraphics graphics, Font font, int mouseX, int mouseY) {
         // Item header (left aligned)
-        int headerY = y + 18;
-        int tableW = w - (int)(w * PANEL_WIDTH_RATIO / 100.0) - 6;
+        int headerY = tabY + 18;
+        int tableW = tabW - (int)(tabW * PANEL_WIDTH_RATIO / 100.0) - 6;
         String truncatedName = DrawUtils.truncateText(font, detailItemName, tableW - 70);
-        graphics.drawString(font, Component.literal(truncatedName), x + 64, headerY, detailRarityColor, false);
+        graphics.drawString(font, Component.literal(truncatedName), tabX + 64, headerY, detailRarityColor, false);
 
-        // Right panel labels (background drawn in renderBackground)
-        int panelW = (int) (w * PANEL_WIDTH_RATIO / 100.0);
-        int panelX = x + tableW + 6;
-        int panelY = y + 16;
+        // Right panel labels
+        int panelW = (int) (tabW * PANEL_WIDTH_RATIO / 100.0);
+        int panelX = tabX + tableW + 6;
+        int panelY = tabY + 16;
 
         // Panel title
         String title = "Offre sélectionnée";
@@ -370,34 +353,27 @@ public class BuyTab {
             graphics.drawString(font, seller, valueX - font.width(seller), panelY + 66, THEME.textLight, false);
 
             if (isAuction) {
-                // Current bid
                 graphics.drawString(font, "Enchère actuelle:", labelX, panelY + 80, THEME.textGrey, false);
                 String bid = entry.unitPrice() > 0 ? formatPrice(entry.unitPrice()) : "Aucune";
                 graphics.drawString(font, bid, valueX - font.width(bid), panelY + 80, THEME.warning, false);
 
-                // Min bid
                 long minBid = entry.unitPrice() > 0 ? entry.unitPrice() + 1 : 1;
                 graphics.drawString(font, "Enchère min:", labelX, panelY + 94, THEME.textGrey, false);
                 String minStr = formatPrice(minBid);
                 graphics.drawString(font, minStr, valueX - font.width(minStr), panelY + 94, THEME.textLight, false);
 
-                // Label for bid input (widget at panelY + 108)
                 graphics.drawString(font, "Montant:", labelX, panelY + 112, THEME.textGrey, false);
 
-                // Expire
                 graphics.drawString(font, "Expire:", labelX, panelY + 134, THEME.textGrey, false);
                 String expire = formatTimeRemaining(entry.expiresInMs());
                 graphics.drawString(font, expire, valueX - font.width(expire), panelY + 134, THEME.textGrey, false);
             } else {
-                // Unit price
                 graphics.drawString(font, "Prix unitaire:", labelX, panelY + 80, THEME.textGrey, false);
                 String price = formatPrice(entry.unitPrice());
                 graphics.drawString(font, price, valueX - font.width(price), panelY + 80, THEME.accent, false);
 
-                // Label for quantity input (widget at panelY + 108)
                 graphics.drawString(font, "Quantité:", labelX, panelY + 96, THEME.textGrey, false);
 
-                // Total price (below input widget which is 18px tall)
                 long qty = panelQuantityInput != null ? panelQuantityInput.getValue() : entry.quantity();
                 long total = entry.unitPrice() * qty;
                 graphics.drawString(font, "Prix total:", labelX, panelY + 132, THEME.textLight, false);
@@ -407,50 +383,30 @@ public class BuyTab {
         }
 
         // Price history summary below the table
-        int historyY = y + h - 18;
+        int historyY = tabY + tabH - 18;
         if (detailPriceInfo != null) {
             String historyLine = "Moy: " + formatPrice(detailPriceInfo.avgPrice())
                     + " | Min: " + formatPrice(detailPriceInfo.minPrice())
                     + " | Max: " + formatPrice(detailPriceInfo.maxPrice())
                     + " | Ventes 7j: " + detailPriceInfo.volume7d();
             int historyW = font.width(historyLine);
-            graphics.drawString(font, historyLine, x + (w - historyW) / 2, historyY, THEME.textGrey, false);
+            graphics.drawString(font, historyLine, tabX + (tabW - historyW) / 2, historyY, THEME.textGrey, false);
         } else {
             String noData = "Aucune donnée de prix disponible";
             int noDataW = font.width(noData);
-            graphics.drawString(font, noData, x + (w - noDataW) / 2, historyY, THEME.textDim, false);
+            graphics.drawString(font, noData, tabX + (tabW - noDataW) / 2, historyY, THEME.textDim, false);
         }
 
         // Price info top-right (on the table side)
         if (detailPriceInfo != null) {
-            int infoX = x + tableW - 120;
+            int infoX = tabX + tableW - 120;
             graphics.drawString(font, "Moy: " + formatPrice(detailPriceInfo.avgPrice()),
-                    infoX, y + 2, THEME.textGrey, false);
+                    infoX, tabY + 2, THEME.textGrey, false);
             graphics.drawString(font, "Min: " + formatPrice(detailPriceInfo.minPrice()),
-                    infoX, y + 12, THEME.success, false);
+                    infoX, tabY + 12, THEME.success, false);
             graphics.drawString(font, "Max: " + formatPrice(detailPriceInfo.maxPrice()),
-                    infoX, y + 22, THEME.danger, false);
+                    infoX, tabY + 22, THEME.danger, false);
         }
-    }
-
-    // --- Input handling ---
-
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        return false; // Widgets handle clicks via Screen
-    }
-
-    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        if (mode == Mode.BROWSE && searchBar != null && searchBar.isFocused()) {
-            return searchBar.keyPressed(keyCode, scanCode, modifiers);
-        }
-        return false;
-    }
-
-    public boolean charTyped(char codePoint, int modifiers) {
-        if (mode == Mode.BROWSE && searchBar != null && searchBar.isFocused()) {
-            return searchBar.charTyped(codePoint, modifiers);
-        }
-        return false;
     }
 
     // --- Event handlers ---
@@ -465,7 +421,6 @@ public class BuyTab {
         String[] cats = {"", "WEAPONS", "ARMOR", "TOOLS", "POTIONS", "BLOCKS", "FOOD", "ENCHANTMENTS", "MISC"};
         selectedCategory = cats[catIndex];
         currentPage = 0;
-        // Re-init to update button styles
         parent.rebuildCurrentTab();
     }
 
@@ -532,16 +487,19 @@ public class BuyTab {
         PacketDistributor.sendToServer(new RequestListingsPayload(getAhId(), searchText, selectedCategory, currentPage, browseRowsPerPage));
     }
 
-    /**
-     * Sends a detail request to the server with the current enchantment filters.
-     */
     private void requestListingDetail() {
         List<String> filters = new ArrayList<>(selectedEnchantFilters);
         PacketDistributor.sendToServer(new RequestListingDetailPayload(getAhId(), detailItemId, filters));
     }
 
+    /** Called when tab becomes visible. */
+    public void onActivated() {
+        if (mode == Mode.BROWSE) {
+            requestListings();
+        }
+    }
+
     public void onActionResult(AHActionResultPayload payload) {
-        // Refresh detail view after buy/bid action
         if (mode == Mode.DETAIL) {
             requestListingDetail();
         }
@@ -553,6 +511,7 @@ public class BuyTab {
         this.totalPages = payload.totalPages();
         if (mode == Mode.BROWSE) {
             updateBrowseTable();
+            updatePageLabel();
         }
     }
 
@@ -563,14 +522,11 @@ public class BuyTab {
         this.detailEntries = payload.entries();
         this.detailPriceInfo = payload.priceInfo();
 
-        // Read available enchantments from server response
         this.availableEnchantments = new ArrayList<>(payload.availableEnchantments());
 
-        // Parse durability info from received listings (stays client-side)
         parseDurabilityFilter();
 
         if (mode == Mode.DETAIL) {
-            // Rebuild the entire detail view so filter widgets are created
             parent.rebuildCurrentTab();
         }
     }
@@ -591,7 +547,6 @@ public class BuyTab {
             detailStacks.add(stack);
 
             if (!stack.isEmpty()) {
-                // Extract durability
                 if (stack.isDamageableItem()) {
                     hasDamageable = true;
                     int maxDmg = stack.getMaxDamage();
@@ -602,7 +557,6 @@ public class BuyTab {
             }
         }
 
-        // Show durability filter only if items are damageable and there is variation
         this.showDurabilityFilter = hasDamageable && durabilityLevels.size() > 1;
     }
 
@@ -622,6 +576,13 @@ public class BuyTab {
             ), () -> onRowClicked(item.itemId())));
         }
         browseTable.setRows(rows);
+    }
+
+    private void updatePageLabel() {
+        if (pageLabel != null) {
+            String pageInfo = "Page " + (currentPage + 1) + "/" + Math.max(1, totalPages);
+            pageLabel.setText(Component.literal(pageInfo));
+        }
     }
 
     private void updateDetailTable() {
@@ -648,7 +609,6 @@ public class BuyTab {
         }
         detailTable.setRows(rows);
 
-        // Pre-select first row (best price)
         if (!rows.isEmpty()) {
             selectedEntryIndex = 0;
             detailTable.setSelectedRow(0);
@@ -656,50 +616,41 @@ public class BuyTab {
         }
     }
 
-    private void initPurchasePanel(Consumer<AbstractWidget> addWidget, int px, int py, int pw) {
-        Font font = Minecraft.getInstance().font;
-
-        // Layout constants matching renderDetailForeground label positions:
-        // Title at py+2, separator at py+12, item slot at py+16,
-        // item name at py+52, vendeur at py+66, prix at py+80,
-        // input label at py+96, input widget at py+108,
-        // total at py+130, button at py+152
+    private void buildPurchasePanel(int px, int py, int pw) {
         int slotSize = 32;
         int slotX = px + (pw - slotSize) / 2;
-        panelItemSlot = new ItemSlot(slotX, py + 16, slotSize, THEME);
-        addWidget.accept(panelItemSlot);
+        panelItemSlot = new EcoItemSlot(slotX, py + 16, slotSize, THEME);
+        addChild(panelItemSlot);
+
+        Font font = Minecraft.getInstance().font;
 
         // Quantity input (for BUYOUT)
         int inputY = py + 108;
-        panelQuantityInput = new NumberInput(font, px + 8, inputY, pw - 16, 18, THEME);
+        panelQuantityInput = new EcoNumberInput(font, px + 8, inputY, pw - 16, 18, THEME);
         panelQuantityInput.min(1).max(1).step(1);
         panelQuantityInput.setValue(1);
         panelQuantityInput.responder(val -> updatePanelTotal());
-        addWidget.accept(panelQuantityInput);
+        addChild(panelQuantityInput);
 
-        // Bid input (for AUCTION — overlaps quantity, only one visible at a time)
-        panelBidInput = new NumberInput(font, px + 8, inputY, pw - 16, 18, THEME);
+        // Bid input (for AUCTION -- overlaps quantity, only one visible at a time)
+        panelBidInput = new EcoNumberInput(font, px + 8, inputY, pw - 16, 18, THEME);
         panelBidInput.min(1).max(Long.MAX_VALUE).step(1);
         panelBidInput.setValue(1);
-        panelBidInput.visible = false;
-        addWidget.accept(panelBidInput);
+        panelBidInput.setVisible(false);
+        addChild(panelBidInput);
 
         // Action button
         int btnY = py + 152;
-        panelBuyButton = Button.success(THEME, Component.literal("Acheter"), () -> onPanelAction());
-        panelBuyButton.setX(px + 8);
-        panelBuyButton.setY(btnY);
-        panelBuyButton.setWidth(pw - 16);
-        panelBuyButton.setHeight(20);
-        addWidget.accept(panelBuyButton);
+        panelBuyButton = EcoButton.success(THEME, Component.literal("Acheter"), () -> onPanelAction());
+        panelBuyButton.setPosition(px + 8, btnY);
+        panelBuyButton.setSize(pw - 16, 20);
+        addChild(panelBuyButton);
 
-        panelBidButton = Button.warning(THEME, Component.literal("Enchérir"), () -> onPanelAction());
-        panelBidButton.setX(px + 8);
-        panelBidButton.setY(btnY);
-        panelBidButton.setWidth(pw - 16);
-        panelBidButton.setHeight(20);
-        panelBidButton.visible = false;
-        addWidget.accept(panelBidButton);
+        panelBidButton = EcoButton.warning(THEME, Component.literal("Enchérir"), () -> onPanelAction());
+        panelBidButton.setPosition(px + 8, btnY);
+        panelBidButton.setSize(pw - 16, 20);
+        panelBidButton.setVisible(false);
+        addChild(panelBidButton);
 
         // Apply initial selection
         updatePurchasePanel();
@@ -728,23 +679,27 @@ public class BuyTab {
         } else {
             icon = AuctionHouseScreen.itemFromId(detailItemId);
         }
-        panelItemSlot.setItem(icon, detailRarityColor);
+        if (panelItemSlot != null) panelItemSlot.setItem(icon, detailRarityColor);
 
         // Quantity vs Bid
         if (isAuction) {
-            panelQuantityInput.visible = false;
-            panelBidInput.visible = true;
-            long minBid = entry.unitPrice() > 0 ? entry.unitPrice() + 1 : 1;
-            panelBidInput.min(minBid).setValue(minBid);
-            panelBuyButton.visible = false;
-            panelBidButton.visible = true;
+            if (panelQuantityInput != null) panelQuantityInput.setVisible(false);
+            if (panelBidInput != null) {
+                panelBidInput.setVisible(true);
+                long minBid = entry.unitPrice() > 0 ? entry.unitPrice() + 1 : 1;
+                panelBidInput.min(minBid).setValue(minBid);
+            }
+            if (panelBuyButton != null) panelBuyButton.setVisible(false);
+            if (panelBidButton != null) panelBidButton.setVisible(true);
         } else {
-            panelQuantityInput.visible = true;
-            panelBidInput.visible = false;
-            panelQuantityInput.max(entry.quantity()).setValue(1);
-            panelQuantityInput.setEnabled(entry.quantity() > 1);
-            panelBuyButton.visible = true;
-            panelBidButton.visible = false;
+            if (panelQuantityInput != null) {
+                panelQuantityInput.setVisible(true);
+                panelQuantityInput.max(entry.quantity()).setValue(1);
+                panelQuantityInput.setEnabled(entry.quantity() > 1);
+            }
+            if (panelBidInput != null) panelBidInput.setVisible(false);
+            if (panelBuyButton != null) panelBuyButton.setVisible(true);
+            if (panelBidButton != null) panelBidButton.setVisible(false);
         }
     }
 
@@ -764,7 +719,6 @@ public class BuyTab {
     }
 
     private boolean matchesDurabilityFilter(ItemStack stack) {
-        // Durability filter (client-side)
         if (selectedDurabilityFilter > 0) {
             if (stack.isEmpty() || !stack.isDamageableItem()) return false;
             float pct = (float) (stack.getMaxDamage() - stack.getDamageValue()) / stack.getMaxDamage() * 100f;
@@ -774,7 +728,6 @@ public class BuyTab {
                 if (pct < selectedDurabilityFilter) return false;
             }
         }
-
         return true;
     }
 

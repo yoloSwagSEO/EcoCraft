@@ -3,13 +3,15 @@ package net.ecocraft.ah.screen;
 import com.mojang.logging.LogUtils;
 import net.ecocraft.ah.data.AHInstance;
 import net.ecocraft.ah.network.payload.*;
+import net.ecocraft.gui.core.EcoButton;
+import net.ecocraft.gui.core.EcoScreen;
+import net.ecocraft.gui.core.EcoTabBar;
+import net.ecocraft.gui.core.Label;
 import net.ecocraft.gui.theme.DrawUtils;
 import net.ecocraft.gui.theme.Theme;
-import net.ecocraft.gui.widget.TabBar;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -22,7 +24,7 @@ import java.util.List;
  * Main auction house screen with 4 tabs:
  * Buy, Sell, My Auctions, Ledger.
  */
-public class AuctionHouseScreen extends Screen {
+public class AuctionHouseScreen extends EcoScreen {
 
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final Theme THEME = Theme.dark();
@@ -32,21 +34,22 @@ public class AuctionHouseScreen extends Screen {
     private int guiLeft;
     private int guiTop;
 
-    private TabBar tabBar;
+    private EcoTabBar tabBar;
     private int activeTab = 0;
-
-    // Modal dialog overlay — when non-null, captures all input
-    private net.ecocraft.gui.dialog.Dialog activeDialog;
 
     // Balance display
     private long playerBalance = -1; // -1 = not yet received
     private String currencySymbol = "";
+    private Label balanceLabel;
 
     // Settings (received from server)
     private boolean isAdmin = false;
     private int settingsSaleRate = 5;
     private int settingsDepositRate = 2;
     private java.util.List<Integer> settingsDurations = java.util.List.of(12, 24, 48);
+
+    // Gear button for admin settings
+    private EcoButton gearButton;
 
     private int npcEntityId = -1;
     private String npcSkinName = "";
@@ -117,6 +120,8 @@ public class AuctionHouseScreen extends Screen {
 
     @Override
     protected void init() {
+        super.init();
+
         guiWidth = (int) (width * 0.9);
         guiHeight = (int) (height * 0.9);
         guiLeft = (width - guiWidth) / 2;
@@ -129,8 +134,8 @@ public class AuctionHouseScreen extends Screen {
                 Component.literal("\uD83D\uDCD2 Livre de compte")
         );
 
-        tabBar = new TabBar(guiLeft + 4, guiTop + 4, tabLabels, this::onTabChanged);
-        addRenderableWidget(tabBar);
+        tabBar = new EcoTabBar(guiLeft + 4, guiTop + 4, tabLabels, this::onTabChanged);
+        getTree().addChild(tabBar);
 
         int contentX = guiLeft + 4;
         int contentY = guiTop + 30;
@@ -142,6 +147,25 @@ public class AuctionHouseScreen extends Screen {
         myAuctionsTab = new MyAuctionsTab(this, contentX, contentY, contentW, contentH);
         ledgerTab = new LedgerTab(this, contentX, contentY, contentW, contentH);
 
+        getTree().addChild(buyTab);
+        getTree().addChild(sellTab);
+        getTree().addChild(myAuctionsTab);
+        getTree().addChild(ledgerTab);
+
+        // Balance label in top-right corner
+        Font font = Minecraft.getInstance().font;
+        balanceLabel = new Label(font, 0, guiTop + 10, Component.literal(""), THEME);
+        balanceLabel.setColor(THEME.accent);
+        getTree().addChild(balanceLabel);
+
+        // Gear button for admin settings
+        gearButton = EcoButton.builder(Component.literal("\u2699"), this::onGearClicked)
+                .theme(THEME).bounds(guiLeft + guiWidth - 20, guiTop + 6, 16, 16)
+                .bgColor(THEME.bgMedium).borderColor(THEME.borderLight)
+                .textColor(THEME.accent).hoverBg(THEME.bgLight).build();
+        gearButton.setVisible(isAdmin);
+        getTree().addChild(gearButton);
+
         activateTab(activeTab);
     }
 
@@ -151,17 +175,25 @@ public class AuctionHouseScreen extends Screen {
     }
 
     private void activateTab(int tab) {
-        // Remove all child widgets except the tab bar, then add current tab's widgets
-        clearWidgets();
-        addRenderableWidget(tabBar);
         tabBar.setActiveTab(tab);
+        buyTab.setVisible(tab == 0);
+        sellTab.setVisible(tab == 1);
+        myAuctionsTab.setVisible(tab == 2);
+        ledgerTab.setVisible(tab == 3);
 
+        // Request data for the newly activated tab
         switch (tab) {
-            case 0 -> buyTab.init(this::addRenderableWidget);
-            case 1 -> sellTab.init(this::addRenderableWidget);
-            case 2 -> myAuctionsTab.init(this::addRenderableWidget);
-            case 3 -> ledgerTab.init(this::addRenderableWidget);
+            case 0 -> buyTab.onActivated();
+            case 1 -> sellTab.onActivated();
+            case 2 -> myAuctionsTab.onActivated();
+            case 3 -> ledgerTab.onActivated();
         }
+    }
+
+    private void onGearClicked() {
+        Minecraft.getInstance().setScreen(new AHSettingsScreen(
+                this, npcEntityId, npcSkinName,
+                npcLinkedAhId, new java.util.ArrayList<>(ahInstances)));
     }
 
     @Override
@@ -170,143 +202,32 @@ public class AuctionHouseScreen extends Screen {
         DrawUtils.drawPanel(graphics, guiLeft, guiTop, guiWidth, guiHeight, THEME.bgDarkest, THEME.borderAccent);
     }
 
-    @Override
-    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        // Render tab backgrounds BEFORE widgets (so panels don't cover buttons)
-        switch (activeTab) {
-            case 0 -> buyTab.renderBackground(graphics);
-            case 1 -> sellTab.renderBackground(graphics);
-            case 2 -> myAuctionsTab.renderBackground(graphics);
-            case 3 -> ledgerTab.renderBackground(graphics);
-        }
-
-        // Render widgets — hide mouse from widgets when dialog is open (prevents tooltips)
-        boolean dialogOpen = activeDialog != null && !activeDialog.isClosed();
-        int wmx = dialogOpen ? -1 : mouseX;
-        int wmy = dialogOpen ? -1 : mouseY;
-        super.render(graphics, wmx, wmy, partialTick);
-
-        // Render balance in top-right corner (after widgets so it's on top)
-        if (playerBalance >= 0) {
-            Font font = Minecraft.getInstance().font;
+    private void updateBalanceLabel() {
+        if (playerBalance >= 0 && balanceLabel != null) {
             String balanceText = BuyTab.formatPrice(playerBalance);
-            int textW = font.width(balanceText);
-            int rightEdge = isAdmin ? guiLeft + guiWidth - font.width("\u2699") - 12 : guiLeft + guiWidth;
-            int bx = rightEdge - textW - 8;
-            int by = guiTop + 10;
-            graphics.drawString(font, balanceText, bx, by, THEME.accent, false);
+            balanceLabel.setText(Component.literal(balanceText));
+            int textW = Minecraft.getInstance().font.width(balanceText);
+            int rightEdge = isAdmin ? guiLeft + guiWidth - 24 : guiLeft + guiWidth;
+            balanceLabel.setPosition(rightEdge - textW - 8, guiTop + 10);
         }
-
-        // Gear icon for admin settings
-        if (isAdmin) {
-            Font font = Minecraft.getInstance().font;
-            String gear = "\u2699";
-            int gearW = font.width(gear);
-            int gearX = guiLeft + guiWidth - gearW - 4;
-            int gearY = guiTop + 8;
-            boolean gearHovered = mouseX >= gearX - 2 && mouseX <= gearX + gearW + 2
-                    && mouseY >= gearY - 2 && mouseY <= gearY + font.lineHeight + 2;
-            int gearColor = gearHovered ? THEME.textWhite : THEME.accent;
-            graphics.drawString(font, gear, gearX, gearY, gearColor, false);
-        }
-
-        // Render foreground text/overlays AFTER widgets
-        switch (activeTab) {
-            case 0 -> buyTab.renderForeground(graphics, mouseX, mouseY, partialTick);
-            case 1 -> sellTab.renderForeground(graphics, mouseX, mouseY, partialTick);
-            case 2 -> myAuctionsTab.renderForeground(graphics, mouseX, mouseY, partialTick);
-            case 3 -> ledgerTab.renderForeground(graphics, mouseX, mouseY, partialTick);
-        }
-
-        // Dialog overlay — rendered last, on top of everything
-        if (activeDialog != null) {
-            if (activeDialog.isClosed()) {
-                activeDialog = null;
-            } else {
-                activeDialog.renderWidget(graphics, mouseX, mouseY, partialTick);
-            }
-        }
-    }
-
-    @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        // Gear icon click → open settings
-        if (isAdmin) {
-            Font font = Minecraft.getInstance().font;
-            String gear = "\u2699";
-            int gearW = font.width(gear);
-            int gearX = guiLeft + guiWidth - gearW - 4;
-            int gearY = guiTop + 8;
-            if (mouseX >= gearX - 2 && mouseX <= gearX + gearW + 2
-                    && mouseY >= gearY - 2 && mouseY <= gearY + font.lineHeight + 2) {
-                Minecraft.getInstance().setScreen(new AHSettingsScreen(
-                        this, npcEntityId, npcSkinName,
-                        npcLinkedAhId, new java.util.ArrayList<>(ahInstances)));
-                return true;
-            }
-        }
-
-        // Modal dialog captures all input
-        if (activeDialog != null && !activeDialog.isClosed()) {
-            return activeDialog.mouseClicked(mouseX, mouseY, button);
-        }
-        boolean handled = super.mouseClicked(mouseX, mouseY, button);
-        if (!handled) {
-            switch (activeTab) {
-                case 0 -> handled = buyTab.mouseClicked(mouseX, mouseY, button);
-                case 1 -> handled = sellTab.mouseClicked(mouseX, mouseY, button);
-                case 2 -> handled = myAuctionsTab.mouseClicked(mouseX, mouseY, button);
-                case 3 -> handled = ledgerTab.mouseClicked(mouseX, mouseY, button);
-            }
-        }
-        return handled;
-    }
-
-    @Override
-    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        if (activeDialog != null && !activeDialog.isClosed()) {
-            return activeDialog.keyPressed(keyCode, scanCode, modifiers);
-        }
-        boolean handled = false;
-        switch (activeTab) {
-            case 0 -> handled = buyTab.keyPressed(keyCode, scanCode, modifiers);
-            case 1 -> handled = sellTab.keyPressed(keyCode, scanCode, modifiers);
-        }
-        if (handled) return true;
-        return super.keyPressed(keyCode, scanCode, modifiers);
-    }
-
-    @Override
-    public boolean charTyped(char codePoint, int modifiers) {
-        if (activeDialog != null && !activeDialog.isClosed()) {
-            return activeDialog.charTyped(codePoint, modifiers);
-        }
-        boolean handled = false;
-        switch (activeTab) {
-            case 0 -> handled = buyTab.charTyped(codePoint, modifiers);
-            case 1 -> handled = sellTab.charTyped(codePoint, modifiers);
-        }
-        if (handled) return true;
-        return super.charTyped(codePoint, modifiers);
     }
 
     /**
-     * Called by tabs to trigger a full widget rebuild for the current tab.
+     * Called by tabs that need to rebuild their children.
+     * In V2, tabs manage their own children, so this just triggers a re-init.
      */
     public void rebuildCurrentTab() {
-        activateTab(activeTab);
+        // In V2, tabs manage their own state. This is called for backward compat
+        // when tabs need to rebuild (e.g. category change, mode switch).
+        // Re-init the screen to rebuild everything.
+        init();
     }
 
     /**
-     * Opens a modal dialog overlay. While open, all input is captured by the dialog.
+     * Opens a modal dialog overlay via the tree portal system.
      */
-    public void openDialog(net.ecocraft.gui.dialog.Dialog dialog) {
-        this.activeDialog = dialog;
-    }
-
-    @Override
-    public boolean isPauseScreen() {
-        return false;
+    public void openDialog(net.ecocraft.gui.core.EcoDialog dialog) {
+        getTree().addPortal(dialog);
     }
 
     // --- Static methods called by ClientPayloadHandler ---
@@ -390,7 +311,6 @@ public class AuctionHouseScreen extends Screen {
 
     protected void onReceiveActionResult(AHActionResultPayload payload) {
         LOGGER.debug("ActionResult: success={} message='{}'", payload.success(), payload.message());
-        // Could show a toast/notification; for now tabs can refresh data
         if (activeTab == 0) buyTab.onActionResult(payload);
         if (activeTab == 1) sellTab.onActionResult(payload);
         if (activeTab == 2) myAuctionsTab.onActionResult(payload);
@@ -411,6 +331,7 @@ public class AuctionHouseScreen extends Screen {
     protected void onReceiveBalanceUpdate(BalanceUpdatePayload payload) {
         this.playerBalance = payload.balance();
         this.currencySymbol = payload.currencySymbol();
+        updateBalanceLabel();
     }
 
     protected void onReceiveSettings(AHSettingsPayload payload) {
@@ -422,5 +343,10 @@ public class AuctionHouseScreen extends Screen {
         SellTab.activeDurations = payload.durations().stream().mapToInt(Integer::intValue).toArray();
         SellTab.activeTaxRate = payload.saleRate() / 100.0;
         SellTab.activeDepositRate = payload.depositRate() / 100.0;
+        // Update gear button visibility
+        if (gearButton != null) {
+            gearButton.setVisible(isAdmin);
+            updateBalanceLabel();
+        }
     }
 }

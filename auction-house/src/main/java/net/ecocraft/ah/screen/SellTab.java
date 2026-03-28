@@ -2,30 +2,25 @@ package net.ecocraft.ah.screen;
 
 import net.ecocraft.ah.network.payload.AHActionResultPayload;
 import net.ecocraft.ah.network.payload.CreateListingPayload;
+import net.ecocraft.gui.core.*;
 import net.ecocraft.gui.theme.DrawUtils;
 import net.ecocraft.gui.theme.Theme;
-import net.ecocraft.gui.widget.Button;
-import net.ecocraft.gui.widget.FilterTags;
-import net.ecocraft.gui.widget.InventoryGrid;
-import net.ecocraft.gui.widget.ItemSlot;
-import net.ecocraft.gui.widget.NumberInput;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.network.PacketDistributor;
 
+import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Consumer;
 
 /**
  * Sell tab: two-column layout.
  * Left column: item slot, type toggle, price input, duration, tax summary, sell button.
  * Right column: full 9x4 inventory grid.
  */
-public class SellTab {
+public class SellTab extends BaseWidget {
 
     private static final Theme THEME = Theme.dark();
     private static final int INV_COLS = 9;
@@ -36,7 +31,7 @@ public class SellTab {
     static double activeDepositRate = 0.02;
 
     private final AuctionHouseScreen parent;
-    private final int x, y, w, h;
+    private final int tabX, tabY, tabW, tabH;
 
     // State
     private boolean isBuyout = true;
@@ -44,94 +39,94 @@ public class SellTab {
     private long priceValue = 0;
     private String lastMessage = "";
     private boolean lastSuccess = false;
-    private int selectedInventorySlot = -1; // -1 means nothing selected
+    private int selectedInventorySlot = -1;
 
     // Widgets
-    private ItemSlot itemSlot;
-    private Button buyoutBtn;
-    private Button auctionBtn;
-    private NumberInput priceInput;
-    private FilterTags durationTags;
-    private Button sellButton;
-    private InventoryGrid inventoryGrid;
+    private EcoItemSlot itemSlot;
+    private EcoButton buyoutBtn;
+    private EcoButton auctionBtn;
+    private EcoNumberInput priceInput;
+    private EcoFilterTags durationTags;
+    private EcoButton sellButton;
+    private EcoInventoryGrid inventoryGrid;
 
-    // Layout positions computed in init
+    // Layout positions computed in buildWidgets
     private int leftColX, leftColW;
     private int rightColX, rightColW;
     private int summaryY;
 
     public SellTab(AuctionHouseScreen parent, int x, int y, int w, int h) {
+        super(x, y, w, h);
         this.parent = parent;
-        this.x = x;
-        this.y = y;
-        this.w = w;
-        this.h = h;
+        this.tabX = x;
+        this.tabY = y;
+        this.tabW = w;
+        this.tabH = h;
+        buildWidgets();
     }
 
     private String getAhId() {
         return parent.getCurrentAhId();
     }
 
-    public void init(Consumer<AbstractWidget> addWidget) {
+    private void buildWidgets() {
+        // Remove old children
+        for (WidgetNode child : new ArrayList<>(getChildren())) {
+            removeChild(child);
+        }
+
         Font font = Minecraft.getInstance().font;
 
         // Two-column layout: 60% left, 40% right
-        leftColX = x + 4;
-        leftColW = (int) (w * 0.6) - 8;
-        rightColX = x + (int) (w * 0.6) + 4;
-        rightColW = w - (int) (w * 0.6) - 8;
+        leftColX = tabX + 4;
+        leftColW = (int) (tabW * 0.6) - 8;
+        rightColX = tabX + (int) (tabW * 0.6) + 4;
+        rightColW = tabW - (int) (tabW * 0.6) - 8;
 
         int leftCenterX = leftColX + leftColW / 2;
-        int currentY = y + 4;
+        int currentY = tabY + 4;
 
         // 1. Item slot (32x32) + item name
-        itemSlot = new ItemSlot(leftCenterX - 16, currentY, 32);
+        itemSlot = new EcoItemSlot(leftCenterX - 16, currentY, 32);
         updateSelectedItem();
-        addWidget.accept(itemSlot);
-        currentY += 36; // 32 slot + 4 gap
+        addChild(itemSlot);
+        currentY += 36;
 
         // Item name label space (rendered in render())
-        currentY += 12; // text height + gap
-
+        currentY += 12;
         currentY += 4;
 
         // 2. Type toggle: Achat immediat / Enchere
         if (isBuyout) {
-            buyoutBtn = Button.success(THEME, Component.literal("Achat imm\u00e9diat"), () -> { isBuyout = true; parent.rebuildCurrentTab(); });
+            buyoutBtn = EcoButton.success(THEME, Component.literal("Achat imm\u00e9diat"), () -> { isBuyout = true; parent.rebuildCurrentTab(); });
         } else {
-            buyoutBtn = Button.ghost(THEME, Component.literal("Achat imm\u00e9diat"), () -> { isBuyout = true; parent.rebuildCurrentTab(); });
+            buyoutBtn = EcoButton.ghost(THEME, Component.literal("Achat imm\u00e9diat"), () -> { isBuyout = true; parent.rebuildCurrentTab(); });
         }
-        buyoutBtn.setX(leftCenterX - 82);
-        buyoutBtn.setY(currentY);
-        buyoutBtn.setWidth(80);
-        buyoutBtn.setHeight(16);
+        buyoutBtn.setPosition(leftCenterX - 82, currentY);
+        buyoutBtn.setSize(80, 16);
 
         if (!isBuyout) {
-            auctionBtn = Button.warning(THEME, Component.literal("Ench\u00e8re"), () -> { isBuyout = false; parent.rebuildCurrentTab(); });
+            auctionBtn = EcoButton.warning(THEME, Component.literal("Ench\u00e8re"), () -> { isBuyout = false; parent.rebuildCurrentTab(); });
         } else {
-            auctionBtn = Button.ghost(THEME, Component.literal("Ench\u00e8re"), () -> { isBuyout = false; parent.rebuildCurrentTab(); });
+            auctionBtn = EcoButton.ghost(THEME, Component.literal("Ench\u00e8re"), () -> { isBuyout = false; parent.rebuildCurrentTab(); });
         }
-        auctionBtn.setX(leftCenterX + 2);
-        auctionBtn.setY(currentY);
-        auctionBtn.setWidth(80);
-        auctionBtn.setHeight(16);
+        auctionBtn.setPosition(leftCenterX + 2, currentY);
+        auctionBtn.setSize(80, 16);
 
-        addWidget.accept(buyoutBtn);
-        addWidget.accept(auctionBtn);
+        addChild(buyoutBtn);
+        addChild(auctionBtn);
         currentY += 20;
-
         currentY += 4;
 
-        // 3. "Prix unitaire:" label + price input (NumberInput replaces EditBox)
-        priceInput = new NumberInput(font, leftCenterX - 60, currentY, 120, 14, THEME);
+        // 3. "Prix unitaire:" label + price input
+        priceInput = new EcoNumberInput(font, leftCenterX - 60, currentY, 120, 14, THEME);
         priceInput.min(0).max(999_999_999_999L).step(1).showButtons(false);
         priceInput.responder(this::onPriceChanged);
         if (priceValue > 0) {
             priceInput.setValue(priceValue);
         }
-        addWidget.accept(priceInput);
+        addChild(priceInput);
         currentY += 18;
-
         currentY += 4;
 
         // 4. Duration selector
@@ -139,55 +134,48 @@ public class SellTab {
         for (int d : activeDurations) {
             durationLabels.add(Component.literal(d + "h"));
         }
-        // Calculate total width matching FilterTags layout: (font.width + 24px padding) + 6px gap
         int totalTagsW = 0;
         for (var label : durationLabels) {
             totalTagsW += Minecraft.getInstance().font.width(label) + 24 + 6;
         }
-        totalTagsW -= 6; // no gap after last tag
+        totalTagsW -= 6;
         int tagsX = leftCenterX - totalTagsW / 2;
         if (selectedDuration >= activeDurations.length) selectedDuration = 0;
-        durationTags = new FilterTags(tagsX, currentY, durationLabels, idx -> selectedDuration = idx);
+        durationTags = new EcoFilterTags(tagsX, currentY, durationLabels, idx -> selectedDuration = idx, THEME);
         durationTags.setActiveTag(selectedDuration);
-        addWidget.accept(durationTags);
+        addChild(durationTags);
         currentY += 18;
-
         currentY += 4;
 
         // 5. Quantity info (rendered in render())
-        currentY += 12; // "Quantite: X" line
+        currentY += 12;
         currentY += 4;
 
-        // 6. Tax summary panel (rendered in render()) - reserve space
+        // 6. Tax summary panel (rendered in render())
         summaryY = currentY;
-        int summaryH = 68; // taller to include unit price + total price + tax + deposit + net
+        int summaryH = 68;
         currentY += summaryH + 4;
-
         currentY += 4;
 
         // 7. "Mettre en vente" button
-        sellButton = Button.success(THEME, Component.literal("Mettre en vente"), this::onSellClicked);
-        sellButton.setX(leftCenterX - 60);
-        sellButton.setY(currentY);
-        sellButton.setWidth(120);
-        sellButton.setHeight(18);
-        addWidget.accept(sellButton);
+        sellButton = EcoButton.success(THEME, Component.literal("Mettre en vente"), this::onSellClicked);
+        sellButton.setPosition(leftCenterX - 60, currentY);
+        sellButton.setSize(120, 18);
+        addChild(sellButton);
         currentY += 22;
 
-        // 8. Status message space (rendered in render())
-
         // --- Right column: Inventory grid ---
-        buildInventoryGrid(addWidget);
+        buildInventoryGrid();
     }
 
-    private void buildInventoryGrid(Consumer<AbstractWidget> addWidget) {
+    private void buildInventoryGrid() {
         var player = Minecraft.getInstance().player;
         if (player == null) return;
 
-        inventoryGrid = InventoryGrid.builder()
+        inventoryGrid = EcoInventoryGrid.builder()
                 .inventory(player.getInventory())
                 .columns(INV_COLS)
-                .slotSize(InventoryGrid.SlotSize.MEDIUM)
+                .slotSize(EcoInventoryGrid.SlotSize.MEDIUM)
                 .scrollable(true)
                 .showMain(true)
                 .showHotbar(true)
@@ -198,23 +186,20 @@ public class SellTab {
                 .theme(THEME)
                 .build();
 
-        int gridY = y + 4; // sections have their own labels now
-        int gridH = h - 8;
+        int gridY = tabY + 4;
+        int gridH = tabH - 8;
         inventoryGrid.setBounds(rightColX, gridY, rightColW, gridH);
         inventoryGrid.setSelectedSlot(selectedInventorySlot);
-        addWidget.accept(inventoryGrid);
+        addChild(inventoryGrid);
     }
 
-    public void renderBackground(GuiGraphics graphics) {
-        // No background panels needed before widgets
-    }
-
-    public void renderForeground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+    @Override
+    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         Font font = Minecraft.getInstance().font;
         int leftCenterX = leftColX + leftColW / 2;
 
         // Item name (below the slot)
-        int nameY = y + 40;
+        int nameY = tabY + 40;
         ItemStack selected = getSelectedItem();
         if (selected.isEmpty()) {
             String msg = "S\u00e9lectionnez un objet";
@@ -235,7 +220,7 @@ public class SellTab {
         }
 
         // Quantity info below duration
-        int quantityY = (durationTags != null) ? durationTags.getY() + 22 : y + 130;
+        int quantityY = (durationTags != null) ? durationTags.getY() + 22 : tabY + 130;
         int quantity = selected.isEmpty() ? 0 : selected.getCount();
         String qtyText = "Quantit\u00e9: " + quantity;
         int qtyW = font.width(qtyText);
@@ -266,20 +251,17 @@ public class SellTab {
             DrawUtils.drawAccentSeparator(graphics, panelX + 4, panelY + 51, panelW - 8, THEME);
             drawSummaryLine(graphics, font, "Net:", BuyTab.formatPrice(net), labelX, valueX, panelY + 56, THEME.textLight, THEME.success);
         } else {
-            // Draw empty summary placeholder
             DrawUtils.drawPanel(graphics, panelX, panelY, panelW, panelH, THEME);
             String placeholder = "Entrez un prix pour voir le r\u00e9sum\u00e9";
             int phW = font.width(placeholder);
             graphics.drawString(font, placeholder, panelX + (panelW - phW) / 2, panelY + 28, THEME.textDim, false);
         }
 
-        // InventoryGrid renders its own section labels
-
         // Status message at bottom left
         if (!lastMessage.isEmpty()) {
             int msgColor = lastSuccess ? THEME.success : THEME.danger;
             int msgW = font.width(lastMessage);
-            graphics.drawString(font, lastMessage, leftCenterX - msgW / 2, y + h - 10, msgColor, false);
+            graphics.drawString(font, lastMessage, leftCenterX - msgW / 2, tabY + tabH - 10, msgColor, false);
         }
     }
 
@@ -290,22 +272,12 @@ public class SellTab {
         graphics.drawString(font, value, rightEdge - valW, y, valueColor, false);
     }
 
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        return false;
-    }
-
-    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        if (priceInput != null && priceInput.isFocused()) {
-            return priceInput.keyPressed(keyCode, scanCode, modifiers);
+    /** Called when tab becomes visible. */
+    public void onActivated() {
+        // Refresh inventory grid
+        if (inventoryGrid != null) {
+            inventoryGrid.refresh();
         }
-        return false;
-    }
-
-    public boolean charTyped(char codePoint, int modifiers) {
-        if (priceInput != null && priceInput.isFocused()) {
-            return priceInput.charTyped(codePoint, modifiers);
-        }
-        return false;
     }
 
     // --- Event handlers ---
@@ -315,7 +287,6 @@ public class SellTab {
     }
 
     private void onInventorySlotClicked(int inventoryIndex) {
-        // If clicking an empty slot, deselect
         var player = Minecraft.getInstance().player;
         if (player != null) {
             ItemStack stack = player.getInventory().getItem(inventoryIndex);
@@ -323,7 +294,6 @@ public class SellTab {
                 selectedInventorySlot = -1;
             } else {
                 selectedInventorySlot = inventoryIndex;
-                // Request best price for this item
                 String itemId = net.minecraft.core.registries.BuiltInRegistries.ITEM
                         .getKey(stack.getItem()).toString();
                 String fingerprint = net.ecocraft.ah.data.ItemFingerprint.compute(stack);
@@ -371,7 +341,6 @@ public class SellTab {
     }
 
     public void onActionResult(AHActionResultPayload payload) {
-        // Translate known English messages to French
         String msg = payload.message();
         if ("Listing created successfully.".equals(msg)) {
             msg = "Objet mis en vente !";
@@ -389,14 +358,12 @@ public class SellTab {
         lastMessage = msg;
         lastSuccess = payload.success();
 
-        // Clear selection and reset after successful sale
         if (payload.success()) {
             selectedInventorySlot = -1;
             priceValue = 0;
             if (itemSlot != null) {
                 itemSlot.setItem(ItemStack.EMPTY);
             }
-            // Refresh the inventory grid to reflect updated inventory state
             if (inventoryGrid != null) {
                 inventoryGrid.setSelectedSlot(-1);
                 inventoryGrid.refresh();
@@ -409,10 +376,8 @@ public class SellTab {
 
     private void updateSelectedItem() {
         ItemStack selected = getSelectedItem();
-        if (!selected.isEmpty()) {
-            itemSlot.setItem(selected);
-        } else {
-            itemSlot.setItem(ItemStack.EMPTY);
+        if (itemSlot != null) {
+            itemSlot.setItem(selected.isEmpty() ? ItemStack.EMPTY : selected);
         }
     }
 
@@ -422,10 +387,8 @@ public class SellTab {
         if (selectedInventorySlot >= 0) {
             ItemStack stack = player.getInventory().getItem(selectedInventorySlot);
             if (!stack.isEmpty()) return stack;
-            // Selection is now empty, fall back
             selectedInventorySlot = -1;
         }
-        return ItemStack.EMPTY; // No default to main hand; require explicit selection
+        return ItemStack.EMPTY;
     }
-
 }
