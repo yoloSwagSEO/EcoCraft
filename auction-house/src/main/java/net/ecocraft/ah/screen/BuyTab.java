@@ -529,7 +529,8 @@ public class BuyTab extends BaseWidget {
         parseDurabilityFilter();
 
         if (mode == Mode.DETAIL) {
-            buildWidgets();
+            updateDetailTable();
+            updatePurchasePanel();
         }
     }
 

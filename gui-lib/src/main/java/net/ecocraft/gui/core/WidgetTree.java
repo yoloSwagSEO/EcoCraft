@@ -100,9 +100,22 @@ public class WidgetTree {
 
     // --- Rendering ---
 
+    /** Returns true if any visible portal is modal. */
+    private boolean hasModalPortal() {
+        for (WidgetNode p : portals) {
+            if (p.isVisible() && p.isModal()) return true;
+        }
+        return false;
+    }
+
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        // 1. Render root's children
-        renderNode(root, graphics, mouseX, mouseY, partialTick);
+        // If a modal portal is open, hide mouse from root widgets (prevents hover/tooltips)
+        boolean modal = hasModalPortal();
+        int rootMx = modal ? -1 : mouseX;
+        int rootMy = modal ? -1 : mouseY;
+
+        // 1. Render root's children (with hidden mouse if modal)
+        renderNode(root, graphics, rootMx, rootMy, partialTick);
 
         // 2. Render portals (on top)
         for (WidgetNode portal : portals) {

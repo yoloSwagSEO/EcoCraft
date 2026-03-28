@@ -119,7 +119,7 @@ public class SellTab extends BaseWidget {
         currentY += 4;
 
         // 3. "Prix unitaire:" label + price input
-        priceInput = new EcoNumberInput(font, leftCenterX - 60, currentY, 120, 14, THEME);
+        priceInput = new EcoNumberInput(font, leftCenterX - 60, currentY, 120, 18, THEME);
         priceInput.min(0).max(999_999_999_999L).step(1).showButtons(false);
         priceInput.responder(this::onPriceChanged);
         if (priceValue > 0) {
@@ -274,6 +274,8 @@ public class SellTab extends BaseWidget {
 
     /** Called when tab becomes visible. */
     public void onActivated() {
+        // Rebuild widgets to pick up any config changes (durations, rates)
+        buildWidgets();
         // Refresh inventory grid
         if (inventoryGrid != null) {
             inventoryGrid.refresh();

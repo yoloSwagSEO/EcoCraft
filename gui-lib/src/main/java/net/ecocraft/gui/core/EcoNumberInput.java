@@ -149,8 +149,10 @@ public class EcoNumberInput extends BaseWidget {
             border = theme.border;
         }
 
-        // Main background
-        DrawUtils.drawPanel(graphics, getX(), getY(), getWidth(), getHeight(), bg, border);
+        // Main background (only when showing buttons — otherwise EcoEditBox draws its own)
+        if (showButtons) {
+            DrawUtils.drawPanel(graphics, getX(), getY(), getWidth(), getHeight(), bg, border);
+        }
 
         // +/- buttons
         if (showButtons) {
