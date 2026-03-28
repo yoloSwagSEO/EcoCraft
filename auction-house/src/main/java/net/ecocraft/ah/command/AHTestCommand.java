@@ -2,6 +2,7 @@ package net.ecocraft.ah.command;
 
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
+import net.ecocraft.ah.data.AHInstance;
 import net.ecocraft.ah.data.ItemCategory;
 import net.ecocraft.ah.data.ListingType;
 import net.ecocraft.ah.data.ListingStatus;
@@ -142,7 +143,7 @@ public final class AHTestCommand {
                     item.id, item.name, null, qty,
                     ListingType.BUYOUT, BigDecimal.valueOf(price),
                     hours, currency.id(), item.cat,
-                    item.id
+                    item.id, AHInstance.DEFAULT_ID
                 );
                 created++;
             } catch (Exception e) {

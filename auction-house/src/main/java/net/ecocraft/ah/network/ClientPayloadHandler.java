@@ -18,8 +18,9 @@ public final class ClientPayloadHandler {
 
     public static void handleOpenAH(OpenAHPayload payload, IPayloadContext context) {
         context.enqueueWork(() -> {
-            LOGGER.debug("AH: Received OpenAH entityId={}", payload.entityId());
-            AuctionHouseScreen.open(payload.entityId());
+            LOGGER.info("[AH Client] Received OpenAH entityId={} ahId={} ahName='{}'",
+                    payload.entityId(), payload.ahId(), payload.ahName());
+            AuctionHouseScreen.open(payload.entityId(), payload.ahId(), payload.ahName());
         });
     }
 

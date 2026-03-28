@@ -91,14 +91,16 @@ public class TextInput extends EditBox {
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (!enabled) return false;
-        // Use outer bounds for click detection since inner EditBox is smaller
+        if (!enabled || button != 0) return false;
         if (mouseX >= outerX && mouseX < outerX + outerW
                 && mouseY >= outerY && mouseY < outerY + outerH) {
-            // Forward click to inner EditBox coordinates to ensure focus
-            return super.mouseClicked(getX() + 1, getY() + 1, button);
+            this.setFocused(true);
+            // Position cursor at click location
+            super.mouseClicked(mouseX, getY(), button);
+            return true;
         }
-        return super.mouseClicked(mouseX, mouseY, button);
+        this.setFocused(false);
+        return false;
     }
 
     @Override

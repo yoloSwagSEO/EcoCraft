@@ -49,6 +49,11 @@ public class AHSettingsScreen extends Screen {
     // Right panel widgets (rebuilt on tab change)
     private final List<AbstractWidget> rightPanelWidgets = new ArrayList<>();
 
+    // Delete confirmation state
+    private String deleteAhId = null;
+    private String deleteAhName = null;
+    private boolean showDeleteConfirm = false;
+
     // Sidebar buttons (persist across tab changes)
     private final List<Button> sidebarButtons = new ArrayList<>();
 
@@ -176,6 +181,10 @@ public class AHSettingsScreen extends Screen {
     // --- Right Panel ---
 
     private void initRightPanel() {
+        if (showDeleteConfirm) {
+            initDeleteConfirmPanel();
+            return;
+        }
         if (selectedTab == 0) {
             initGeneralPanel();
         } else {
@@ -184,6 +193,46 @@ public class AHSettingsScreen extends Screen {
                 initAHPanel(ahInstances.get(ahIndex));
             }
         }
+    }
+
+    private void initDeleteConfirmPanel() {
+        Consumer<AbstractWidget> adder = panelAdder();
+        int panelX = guiLeft + sidebarWidth + 10;
+        int panelW = guiWidth - sidebarWidth - 20;
+        int y = guiTop + 60;
+        int btnW = panelW - 20;
+
+        // 3 delete mode buttons
+        Button transferBtn = Button.builder(Component.literal("Transférer les listings à l'AH par défaut"),
+                () -> executeDeleteAH("TRANSFER_TO_DEFAULT"))
+                .theme(THEME).bounds(panelX + 10, y, btnW, 22)
+                .bgColor(THEME.warningBg).borderColor(THEME.warning)
+                .textColor(THEME.textWhite).hoverBg(THEME.bgLight).build();
+        adder.accept(transferBtn);
+        y += 30;
+
+        Button deleteListingsBtn = Button.builder(Component.literal("Supprimer toutes les listings"),
+                () -> executeDeleteAH("DELETE_LISTINGS"))
+                .theme(THEME).bounds(panelX + 10, y, btnW, 22)
+                .bgColor(THEME.dangerBg).borderColor(THEME.danger)
+                .textColor(THEME.textWhite).hoverBg(THEME.bgLight).build();
+        adder.accept(deleteListingsBtn);
+        y += 30;
+
+        Button returnItemsBtn = Button.builder(Component.literal("Rendre les items aux joueurs (parcels)"),
+                () -> executeDeleteAH("RETURN_ITEMS"))
+                .theme(THEME).bounds(panelX + 10, y, btnW, 22)
+                .bgColor(THEME.successBg).borderColor(THEME.success)
+                .textColor(THEME.textWhite).hoverBg(THEME.bgLight).build();
+        adder.accept(returnItemsBtn);
+        y += 40;
+
+        Button cancelBtn = Button.ghost(THEME, Component.literal("Annuler"), this::cancelDelete);
+        cancelBtn.setX(panelX + 10);
+        cancelBtn.setY(y);
+        cancelBtn.setWidth(btnW);
+        cancelBtn.setHeight(20);
+        adder.accept(cancelBtn);
     }
 
     private Consumer<AbstractWidget> panelAdder() {
@@ -325,10 +374,19 @@ public class AHSettingsScreen extends Screen {
         }
     }
 
-    /** Rebuild sidebar button labels without changing tab selection. */
+    /** Update sidebar button labels without rebuilding anything. */
     private void rebuildSidebarLabels() {
-        // Full rebuild is simplest since we need to update button labels
-        rebuildScreen();
+        // Just update button text — don't rebuild (would kill focus)
+        for (int i = 0; i < sidebarButtons.size(); i++) {
+            if (i == 0) continue; // "Général" doesn't change
+            int ahIndex = i - 1;
+            if (ahIndex >= 0 && ahIndex < ahInstances.size()) {
+                var data = ahInstances.get(ahIndex);
+                EditedAH edited = editedAHs.get(data.id());
+                String label = edited != null ? edited.name : data.name();
+                sidebarButtons.get(i).setMessage(Component.literal(label));
+            }
+        }
     }
 
     // --- Footer ---
@@ -377,7 +435,13 @@ public class AHSettingsScreen extends Screen {
         int panelX = guiLeft + sidebarWidth + 10;
         int panelW = guiWidth - sidebarWidth - 20;
 
-        if (selectedTab == 0) {
+        if (showDeleteConfirm) {
+            // Delete confirmation title
+            String title = "Supprimer: " + (deleteAhName != null ? deleteAhName : "");
+            graphics.drawString(font, title, panelX, guiTop + 10, THEME.danger, false);
+            DrawUtils.drawAccentSeparator(graphics, panelX, guiTop + 22, panelW, THEME);
+            graphics.drawString(font, "Que faire des listings actives ?", panelX, guiTop + 36, THEME.textLight, false);
+        } else if (selectedTab == 0) {
             renderGeneralLabels(graphics, font, panelX, panelW);
         } else {
             int ahIndex = selectedTab - 1;
@@ -450,11 +514,29 @@ public class AHSettingsScreen extends Screen {
     }
 
     private void onDeleteAH(String ahId, String ahName) {
-        // V1: simple delete with transfer to default
-        PacketDistributor.sendToServer(new DeleteAHPayload(ahId, "TRANSFER_TO_DEFAULT"));
-        ahInstances.removeIf(a -> a.id().equals(ahId));
-        editedAHs.remove(ahId);
+        // Show confirmation with delete mode choice
+        deleteAhId = ahId;
+        deleteAhName = ahName;
+        showDeleteConfirm = true;
+        rebuildScreen();
+    }
+
+    private void executeDeleteAH(String mode) {
+        if (deleteAhId == null) return;
+        PacketDistributor.sendToServer(new DeleteAHPayload(deleteAhId, mode));
+        ahInstances.removeIf(a -> a.id().equals(deleteAhId));
+        editedAHs.remove(deleteAhId);
+        deleteAhId = null;
+        deleteAhName = null;
+        showDeleteConfirm = false;
         selectedTab = 0;
+        rebuildScreen();
+    }
+
+    private void cancelDelete() {
+        deleteAhId = null;
+        deleteAhName = null;
+        showDeleteConfirm = false;
         rebuildScreen();
     }
 
@@ -468,6 +550,18 @@ public class AHSettingsScreen extends Screen {
         // Send NPC skin update if NPC context
         if (npcEntityId != -1) {
             PacketDistributor.sendToServer(new UpdateNPCSkinPayload(npcEntityId, skinPlayerName, linkedAhId));
+            // Update parent screen's AH context so it uses the new linked AH
+            if (parentScreen instanceof AuctionHouseScreen ahScreen) {
+                ahScreen.setCurrentAhId(linkedAhId);
+                for (var inst : ahInstances) {
+                    if (inst.id().equals(linkedAhId)) {
+                        ahScreen.setCurrentAhName(inst.name());
+                        break;
+                    }
+                }
+                // Rebuild tabs to reload data with new AH
+                ahScreen.rebuildCurrentTab();
+            }
         }
         Minecraft.getInstance().setScreen(parentScreen);
     }

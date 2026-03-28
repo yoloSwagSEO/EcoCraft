@@ -246,7 +246,7 @@ public class AuctionStorageProvider {
     }
 
     public AHInstance getDefaultAHInstance() {
-        return getAHInstanceBySlug("default");
+        return getAHInstance(AHInstance.DEFAULT_ID);
     }
 
     public void createAHInstance(AHInstance ah) {

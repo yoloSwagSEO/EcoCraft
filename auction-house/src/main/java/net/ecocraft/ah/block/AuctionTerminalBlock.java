@@ -26,8 +26,8 @@ public class AuctionTerminalBlock extends Block {
                                                Level level, BlockPos pos, Player player,
                                                BlockHitResult hitResult) {
         if (!level.isClientSide && player instanceof ServerPlayer serverPlayer) {
-            PacketDistributor.sendToPlayer(serverPlayer, new OpenAHPayload(-1));
-            ServerPayloadHandler.sendAHContext(serverPlayer, AHInstance.DEFAULT_ID);
+            PacketDistributor.sendToPlayer(serverPlayer, new OpenAHPayload(-1, AHInstance.DEFAULT_ID,
+                    ServerPayloadHandler.resolveAHName(AHInstance.DEFAULT_ID)));
             ServerPayloadHandler.sendBalanceUpdate(serverPlayer);
             ServerPayloadHandler.sendAHSettings(serverPlayer);
             ServerPayloadHandler.sendAHInstances(serverPlayer);

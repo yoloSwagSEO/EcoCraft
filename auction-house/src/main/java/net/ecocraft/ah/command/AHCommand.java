@@ -35,8 +35,8 @@ public final class AHCommand {
                 // /ah — open auction house GUI
                 .executes(ctx -> {
                     ServerPlayer player = ctx.getSource().getPlayerOrException();
-                    PacketDistributor.sendToPlayer(player, new OpenAHPayload(-1));
-                    ServerPayloadHandler.sendAHContext(player, AHInstance.DEFAULT_ID);
+                    PacketDistributor.sendToPlayer(player, new OpenAHPayload(-1, AHInstance.DEFAULT_ID,
+                            ServerPayloadHandler.resolveAHName(AHInstance.DEFAULT_ID)));
                     ServerPayloadHandler.sendBalanceUpdate(player);
                     ServerPayloadHandler.sendAHSettings(player);
                     ServerPayloadHandler.sendAHInstances(player);
@@ -60,8 +60,8 @@ public final class AHCommand {
                                 .executes(ctx -> {
                                     ServerPlayer player = ctx.getSource().getPlayerOrException();
                                     // For now, just open the AH — search pre-fill can come later
-                                    PacketDistributor.sendToPlayer(player, new OpenAHPayload(-1));
-                                    ServerPayloadHandler.sendAHContext(player, AHInstance.DEFAULT_ID);
+                                    PacketDistributor.sendToPlayer(player, new OpenAHPayload(-1, AHInstance.DEFAULT_ID,
+                                            ServerPayloadHandler.resolveAHName(AHInstance.DEFAULT_ID)));
                                     ServerPayloadHandler.sendBalanceUpdate(player);
                                     ServerPayloadHandler.sendAHSettings(player);
                                     ServerPayloadHandler.sendAHInstances(player);
@@ -178,11 +178,12 @@ public final class AHCommand {
         try {
             String itemId = BuiltInRegistries.ITEM.getKey(held.getItem()).toString();
             String itemName = held.getHoverName().getString();
-            // In 1.21.1, items use the component system; serialize the full stack for storage
-            String nbt = null; // Component-based serialisation deferred to a helper
+            String nbt = net.ecocraft.ah.data.ItemStackSerializer.serialize(held, player.registryAccess());
             int quantity = held.getCount();
 
+            String currencyId = net.ecocraft.core.EcoServerEvents.getCurrencyRegistry().getDefault().id();
             String fingerprint = net.ecocraft.ah.data.ItemFingerprint.compute(held);
+            net.ecocraft.ah.data.ItemCategory category = net.ecocraft.ah.data.ItemCategoryDetector.detect(held);
             service.createListing(
                     player.getUUID(),
                     player.getName().getString(),
@@ -193,9 +194,10 @@ public final class AHCommand {
                     ListingType.BUYOUT,
                     BigDecimal.valueOf(price),
                     24,
-                    "default",
-                    ItemCategory.MISC,
-                    fingerprint
+                    currencyId,
+                    category,
+                    fingerprint,
+                    AHInstance.DEFAULT_ID
             );
 
             // Remove item from hand
@@ -221,8 +223,7 @@ public final class AHCommand {
             source.sendFailure(Component.literal("Hôtel des Ventes introuvable : " + slug));
             return 0;
         }
-        PacketDistributor.sendToPlayer(player, new OpenAHPayload(-1));
-        ServerPayloadHandler.sendAHContext(player, ah.id());
+        PacketDistributor.sendToPlayer(player, new OpenAHPayload(-1, ah.id(), ah.name()));
         ServerPayloadHandler.sendBalanceUpdate(player);
         ServerPayloadHandler.sendAHSettings(player);
         ServerPayloadHandler.sendAHInstances(player);
@@ -248,13 +249,13 @@ public final class AHCommand {
             source.sendFailure(Component.literal("Service de stockage non disponible."));
             return 0;
         }
-        if ("default".equals(slug)) {
-            source.sendFailure(Component.literal("Impossible de supprimer l'Hôtel des Ventes par défaut."));
-            return 0;
-        }
         AHInstance ah = storage.getAHInstanceBySlug(slug);
         if (ah == null) {
             source.sendFailure(Component.literal("Hôtel des Ventes introuvable : " + slug));
+            return 0;
+        }
+        if (AHInstance.DEFAULT_ID.equals(ah.id())) {
+            source.sendFailure(Component.literal("Impossible de supprimer l'Hôtel des Ventes par défaut."));
             return 0;
         }
         AHInstance defaultAh = storage.getDefaultAHInstance();

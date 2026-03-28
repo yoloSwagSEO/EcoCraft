@@ -31,14 +31,20 @@ public class AuctionService {
     /** Default deposit rate deducted from the seller at listing creation (2%). Refunded if sold. */
     public static final double DEFAULT_DEPOSIT_RATE = 0.02;
 
-    private static double getTaxRate() {
-        try { return net.ecocraft.ah.config.AHConfig.CONFIG.getSaleRateDecimal(); }
-        catch (Throwable e) { return DEFAULT_TAX_RATE; }
+    private double getTaxRate(String ahId) {
+        try {
+            AHInstance ah = storage.getAHInstance(ahId);
+            if (ah != null) return ah.saleRate() / 100.0;
+        } catch (Exception ignored) {}
+        return DEFAULT_TAX_RATE;
     }
 
-    private static double getDepositRate() {
-        try { return net.ecocraft.ah.config.AHConfig.CONFIG.getDepositRateDecimal(); }
-        catch (Throwable e) { return DEFAULT_DEPOSIT_RATE; }
+    private double getDepositRate(String ahId) {
+        try {
+            AHInstance ah = storage.getAHInstance(ahId);
+            if (ah != null) return ah.depositRate() / 100.0;
+        } catch (Exception ignored) {}
+        return DEFAULT_DEPOSIT_RATE;
     }
 
     private final AuctionStorageProvider storage;
@@ -91,7 +97,8 @@ public class AuctionService {
             int durationHours,
             String currencyId,
             ItemCategory category,
-            @Nullable String fingerprint) {
+            @Nullable String fingerprint,
+            @Nullable String ahId) {
 
         // --- Validation ---
         if (quantity <= 0) throw new AuctionException("Quantity must be positive");
@@ -104,8 +111,9 @@ public class AuctionService {
 
         long priceUnits = toSmallestUnit(price, currency);
         long totalPrice = priceUnits * quantity;
-        long depositUnits = Math.max(1, (long) (totalPrice * getDepositRate()));
-        long taxUnits = Math.max(1, (long) (totalPrice * getTaxRate()));
+        String effectiveAhId = ahId != null ? ahId : AHInstance.DEFAULT_ID;
+        long depositUnits = Math.max(1, (long) (totalPrice * getDepositRate(effectiveAhId)));
+        long taxUnits = Math.max(1, (long) (totalPrice * getTaxRate(effectiveAhId)));
 
         System.out.println("[AH] CREATE LISTING: seller=" + sellerName + " item=" + itemName + " qty=" + quantity
                 + " unitPrice=" + priceUnits + " totalPrice=" + totalPrice + " deposit=" + depositUnits + " tax=" + taxUnits);
@@ -144,7 +152,7 @@ public class AuctionService {
                 taxUnits,
                 now,
                 fingerprint,
-                null // ahId — will be set to DEFAULT_ID by storage
+                ahId != null ? ahId : AHInstance.DEFAULT_ID
         );
 
         storage.createListing(listing);
@@ -210,7 +218,8 @@ public class AuctionService {
         System.out.println("[AH] Buyer charged: " + buyoutBD + " " + currency.symbol());
 
         // Credit seller (total price - proportional tax)
-        long proportionalTax = Math.max(1, (long) (totalPrice * getTaxRate()));
+        String effectiveAhId = listing.ahId() != null ? listing.ahId() : AHInstance.DEFAULT_ID;
+        long proportionalTax = Math.max(1, (long) (totalPrice * getTaxRate(effectiveAhId)));
         long sellerAmountUnits = totalPrice - proportionalTax;
         BigDecimal sellerAmountBD = fromSmallestUnit(sellerAmountUnits, currency);
         if (sellerAmountBD.compareTo(BigDecimal.ZERO) > 0) {

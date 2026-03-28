@@ -528,6 +528,7 @@ public class BuyTab {
     // --- Network ---
 
     private void requestListings() {
+        com.mojang.logging.LogUtils.getLogger().info("[AH Client] BuyTab.requestListings ahId={}", getAhId());
         PacketDistributor.sendToServer(new RequestListingsPayload(getAhId(), searchText, selectedCategory, currentPage, browseRowsPerPage));
     }
 

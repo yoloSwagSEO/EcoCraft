@@ -69,6 +69,8 @@ public class AuctionHouseScreen extends Screen {
     }
 
     public String getCurrentAhId() { return currentAhId; }
+    public void setCurrentAhId(String ahId) { this.currentAhId = ahId; }
+    public void setCurrentAhName(String name) { this.currentAhName = name; }
 
     public static void receiveAHContext(AHContextPayload payload) {
         if (Minecraft.getInstance().screen instanceof AuctionHouseScreen screen) {
@@ -293,12 +295,15 @@ public class AuctionHouseScreen extends Screen {
 
     // --- Static methods called by ClientPayloadHandler ---
 
-    public static void open(int entityId) {
+    public static void open(int entityId, String ahId, String ahName) {
         AuctionHouseScreen screen = new AuctionHouseScreen();
         screen.npcEntityId = entityId;
+        screen.currentAhId = ahId;
+        screen.currentAhName = ahName;
         Minecraft.getInstance().setScreen(screen);
     }
 
+    public static void open(int entityId) { open(entityId, AHInstance.DEFAULT_ID, ""); }
     public static void open() { open(-1); }
 
     public static void receiveNPCSkin(NPCSkinPayload payload) {

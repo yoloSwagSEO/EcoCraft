@@ -33,12 +33,13 @@ public final class ServerPayloadHandler {
         context.enqueueWork(() -> {
             try {
                 AuctionService service = requireService();
+                LOGGER.info("[AH] handleRequestListings: ahId={} search='{}' category='{}'", payload.ahId(), payload.search(), payload.category());
                 String search = payload.search().isEmpty() ? null : payload.search();
                 ItemCategory category = payload.category().isEmpty() ? null : ItemCategory.valueOf(payload.category());
 
                 // Fetch all results (no category filter in SQL) and filter dynamically
                 List<AuctionStorageProvider.ListingGroupSummary> allResults =
-                        service.searchListings(AHInstance.DEFAULT_ID, search, null, 0, Integer.MAX_VALUE);
+                        service.searchListings(payload.ahId(), search, null, 0, Integer.MAX_VALUE);
 
                 // Filter by dynamically detected category if requested
                 List<AuctionStorageProvider.ListingGroupSummary> filtered;
@@ -99,9 +100,9 @@ public final class ServerPayloadHandler {
                         ? new LinkedHashSet<>(payload.enchantmentFilters()) : Set.of();
 
                 if (!enchantFilters.isEmpty() && storage != null) {
-                    listings = storage.getListingsForItemFiltered(AHInstance.DEFAULT_ID, payload.itemId(), enchantFilters, 0, Integer.MAX_VALUE);
+                    listings = storage.getListingsForItemFiltered(payload.ahId(), payload.itemId(), enchantFilters, 0, Integer.MAX_VALUE);
                 } else {
-                    listings = service.getListingDetail(AHInstance.DEFAULT_ID, payload.itemId());
+                    listings = service.getListingDetail(payload.ahId(), payload.itemId());
                 }
 
                 // Group by seller UUID + itemNbt hash + price
@@ -165,6 +166,7 @@ public final class ServerPayloadHandler {
             try {
                 AuctionService service = requireService();
                 ServerPlayer player = (ServerPlayer) context.player();
+                LOGGER.info("[AH] handleCreateListing: ahId={} type={} price={}", payload.ahId(), payload.listingType(), payload.price());
 
                 // Get item from the specified slot, or main hand if -1
                 ItemStack itemToSell;
@@ -206,7 +208,8 @@ public final class ServerPayloadHandler {
                         payload.durationHours(),
                         currencyId,
                         category,
-                        fingerprint
+                        fingerprint,
+                        payload.ahId()
                 );
 
                 // Index enchantments for server-side filtering
@@ -403,7 +406,7 @@ public final class ServerPayloadHandler {
         context.enqueueWork(() -> {
             try {
                 AuctionService service = requireService();
-                long bestPrice = service.getBestPrice(AHInstance.DEFAULT_ID, payload.fingerprint(), payload.itemId());
+                long bestPrice = service.getBestPrice(payload.ahId(), payload.fingerprint(), payload.itemId());
                 context.reply(new BestPriceResponsePayload(payload.itemId(), bestPrice));
             } catch (Exception e) {
                 LOGGER.error("Error handling RequestBestPrice", e);
@@ -534,7 +537,7 @@ public final class ServerPayloadHandler {
                 context.reply(new AHActionResultPayload(false, "AH introuvable."));
                 return;
             }
-            if ("default".equals(ah.slug())) {
+            if (AHInstance.DEFAULT_ID.equals(ah.id())) {
                 context.reply(new AHActionResultPayload(false, "Impossible de supprimer l'AH par défaut."));
                 return;
             }
@@ -583,6 +586,14 @@ public final class ServerPayloadHandler {
             context.reply(new AHActionResultPayload(true, "AH mis à jour: " + updated.name()));
             sendAHInstances(player);
         });
+    }
+
+    public static String resolveAHName(String ahId) {
+        AuctionStorageProvider storage = AHServerEvents.getStorage();
+        if (storage == null) return "";
+        AHInstance ah = storage.getAHInstance(ahId);
+        if (ah == null) ah = storage.getDefaultAHInstance();
+        return ah != null ? ah.name() : "";
     }
 
     public static void sendAHContext(ServerPlayer player, String ahId) {

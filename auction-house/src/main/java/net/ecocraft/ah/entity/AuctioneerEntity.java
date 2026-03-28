@@ -55,8 +55,10 @@ public class AuctioneerEntity extends Mob {
     public InteractionResult mobInteract(Player player, InteractionHand hand) {
         if (!level().isClientSide && hand == InteractionHand.MAIN_HAND
                 && player instanceof ServerPlayer serverPlayer) {
-            PacketDistributor.sendToPlayer(serverPlayer, new OpenAHPayload(this.getId()));
-            ServerPayloadHandler.sendAHContext(serverPlayer, this.getLinkedAhId());
+            String ahId = this.getLinkedAhId();
+            String ahName = ServerPayloadHandler.resolveAHName(ahId);
+            com.mojang.logging.LogUtils.getLogger().info("[AH NPC] Opening AH: linkedAhId={} ahName='{}' skinPlayerName='{}'", ahId, ahName, skinPlayerName);
+            PacketDistributor.sendToPlayer(serverPlayer, new OpenAHPayload(this.getId(), ahId, ahName));
             ServerPayloadHandler.sendBalanceUpdate(serverPlayer);
             ServerPayloadHandler.sendAHSettings(serverPlayer);
             ServerPayloadHandler.sendAHInstances(serverPlayer);

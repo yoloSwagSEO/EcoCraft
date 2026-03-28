@@ -364,6 +364,7 @@ public class SellTab {
         String listingType = isBuyout ? "BUYOUT" : "AUCTION";
         int hours = activeDurations[selectedDuration];
         int slotToSend = selectedInventorySlot >= 0 ? selectedInventorySlot : -1;
+        com.mojang.logging.LogUtils.getLogger().info("[AH Client] SellTab.createListing ahId={} price={}", getAhId(), priceValue);
         PacketDistributor.sendToServer(new CreateListingPayload(getAhId(), listingType, priceValue, hours, slotToSend));
         lastMessage = "Envoi en cours...";
         lastSuccess = true;
