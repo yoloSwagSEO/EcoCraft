@@ -625,7 +625,7 @@ public final class ServerPayloadHandler {
         if (entityId < 0) return;
         var entity = player.level().getEntity(entityId);
         if (entity instanceof net.ecocraft.ah.entity.AuctioneerEntity npc) {
-            PacketDistributor.sendToPlayer(player, new NPCSkinPayload(entityId, npc.getSkinPlayerName()));
+            PacketDistributor.sendToPlayer(player, new NPCSkinPayload(entityId, npc.getSkinPlayerName(), npc.getLinkedAhId()));
         }
     }
 
@@ -645,6 +645,7 @@ public final class ServerPayloadHandler {
 
             String skinName = payload.skinPlayerName().trim();
             npc.setSkinPlayerName(skinName);
+            npc.setLinkedAhId(payload.linkedAhId());
 
             if (skinName.isEmpty()) {
                 npc.setSkinProfile(null);

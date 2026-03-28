@@ -467,8 +467,7 @@ public class AHSettingsScreen extends Screen {
         }
         // Send NPC skin update if NPC context
         if (npcEntityId != -1) {
-            PacketDistributor.sendToServer(new UpdateNPCSkinPayload(npcEntityId, skinPlayerName));
-            // TODO: send linkedAhId update when payload is available
+            PacketDistributor.sendToServer(new UpdateNPCSkinPayload(npcEntityId, skinPlayerName, linkedAhId));
         }
         Minecraft.getInstance().setScreen(parentScreen);
     }

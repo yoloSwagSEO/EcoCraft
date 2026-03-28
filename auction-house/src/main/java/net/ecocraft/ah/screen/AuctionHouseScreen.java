@@ -50,6 +50,7 @@ public class AuctionHouseScreen extends Screen {
 
     private int npcEntityId = -1;
     private String npcSkinName = "";
+    private String npcLinkedAhId = AHInstance.DEFAULT_ID;
 
     // AH context (received from server)
     private String currentAhId = AHInstance.DEFAULT_ID;
@@ -222,7 +223,7 @@ public class AuctionHouseScreen extends Screen {
                     && mouseY >= gearY - 2 && mouseY <= gearY + font.lineHeight + 2) {
                 Minecraft.getInstance().setScreen(new AHSettingsScreen(
                         this, npcEntityId, npcSkinName,
-                        currentAhId, new java.util.ArrayList<>(ahInstances)));
+                        npcLinkedAhId, new java.util.ArrayList<>(ahInstances)));
                 return true;
             }
         }
@@ -304,6 +305,7 @@ public class AuctionHouseScreen extends Screen {
         if (Minecraft.getInstance().screen instanceof AuctionHouseScreen screen) {
             screen.npcEntityId = payload.entityId();
             screen.npcSkinName = payload.skinPlayerName();
+            screen.npcLinkedAhId = payload.linkedAhId();
         }
     }
 

@@ -35,6 +35,7 @@ public class AuctioneerEntity extends Mob {
             SynchedEntityData.defineId(AuctioneerEntity.class, EntityDataSerializers.COMPOUND_TAG);
 
     private String skinPlayerName = "";
+    private String linkedAhId = AHInstance.DEFAULT_ID;
 
     public AuctioneerEntity(EntityType<? extends Mob> type, Level level) {
         super(type, level);
@@ -55,7 +56,7 @@ public class AuctioneerEntity extends Mob {
         if (!level().isClientSide && hand == InteractionHand.MAIN_HAND
                 && player instanceof ServerPlayer serverPlayer) {
             PacketDistributor.sendToPlayer(serverPlayer, new OpenAHPayload(this.getId()));
-            ServerPayloadHandler.sendAHContext(serverPlayer, AHInstance.DEFAULT_ID);
+            ServerPayloadHandler.sendAHContext(serverPlayer, this.getLinkedAhId());
             ServerPayloadHandler.sendBalanceUpdate(serverPlayer);
             ServerPayloadHandler.sendAHSettings(serverPlayer);
             ServerPayloadHandler.sendAHInstances(serverPlayer);
@@ -99,6 +100,7 @@ public class AuctioneerEntity extends Mob {
     public void addAdditionalSaveData(CompoundTag tag) {
         super.addAdditionalSaveData(tag);
         tag.putString("SkinPlayerName", skinPlayerName);
+        tag.putString("LinkedAhId", linkedAhId);
         CompoundTag profileTag = entityData.get(DATA_SKIN_PROFILE);
         if (!profileTag.isEmpty()) {
             tag.put("SkinProfile", profileTag);
@@ -109,6 +111,7 @@ public class AuctioneerEntity extends Mob {
     public void readAdditionalSaveData(CompoundTag tag) {
         super.readAdditionalSaveData(tag);
         skinPlayerName = tag.getString("SkinPlayerName");
+        if (tag.contains("LinkedAhId")) linkedAhId = tag.getString("LinkedAhId");
         if (tag.contains("SkinProfile")) {
             entityData.set(DATA_SKIN_PROFILE, tag.getCompound("SkinProfile"));
         }
@@ -117,6 +120,10 @@ public class AuctioneerEntity extends Mob {
     public String getSkinPlayerName() { return skinPlayerName; }
 
     public void setSkinPlayerName(String name) { this.skinPlayerName = name; }
+
+    public String getLinkedAhId() { return linkedAhId; }
+
+    public void setLinkedAhId(String ahId) { this.linkedAhId = ahId; }
 
     public Optional<GameProfile> getSkinProfile() {
         CompoundTag tag = entityData.get(DATA_SKIN_PROFILE);
