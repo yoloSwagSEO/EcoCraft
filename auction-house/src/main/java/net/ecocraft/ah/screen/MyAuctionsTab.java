@@ -76,16 +76,16 @@ public class MyAuctionsTab extends BaseWidget {
 
         // Sub-tab selector
         List<Component> subTabLabels = List.of(
-                Component.literal("Mes ventes"),
-                Component.literal("Mes achats"),
-                Component.literal("Ench\u00e8res en cours")
+                Component.translatable("ecocraft_ah.subtab.my_sales"),
+                Component.translatable("ecocraft_ah.subtab.my_purchases"),
+                Component.translatable("ecocraft_ah.subtab.active_bids")
         );
         subTabTags = new EcoFilterTags(tabX, tabY, subTabLabels, this::onSubTabChanged, THEME);
         subTabTags.setActiveTag(activeSubTab);
         addChild(subTabTags);
 
         // Collect parcels button
-        collectBtn = EcoButton.success(THEME, Component.literal("R\u00e9cup\u00e9rer (" + parcelsToCollect + ")"),
+        collectBtn = EcoButton.success(THEME, Component.translatable("ecocraft_ah.collect_button", parcelsToCollect),
                 this::onCollectClicked);
         collectBtn.setPosition(tabX + tabW - 80, tabY);
         collectBtn.setSize(78, 18);
@@ -97,19 +97,19 @@ public class MyAuctionsTab extends BaseWidget {
         int cardW = (tabW - 12) / 3;
 
         revenueCard = new EcoStatCard(tabX, footerY, cardW, cardH,
-                Component.literal("Revenus 7j"),
+                Component.translatable("ecocraft_ah.stat.revenue_7d"),
                 Component.literal(BuyTab.formatPrice(revenue7d)),
                 THEME.success, THEME);
         addChild(revenueCard);
 
         taxCard = new EcoStatCard(tabX + cardW + 4, footerY, cardW, cardH,
-                Component.literal("Taxes 7j"),
+                Component.translatable("ecocraft_ah.stat.taxes_7d"),
                 Component.literal(BuyTab.formatPrice(taxesPaid7d)),
                 THEME.danger, THEME);
         addChild(taxCard);
 
         parcelsCard = new EcoStatCard(tabX + (cardW + 4) * 2, footerY, cardW, cardH,
-                Component.literal("Colis"),
+                Component.translatable("ecocraft_ah.stat.parcels"),
                 Component.literal(String.valueOf(parcelsToCollect)),
                 THEME.info, THEME);
         addChild(parcelsCard);
@@ -119,11 +119,11 @@ public class MyAuctionsTab extends BaseWidget {
         statusFilterTags = null;
         if (activeSubTab == 0) {
             List<Component> statusLabels = List.of(
-                    Component.literal("Tout"),
-                    Component.literal("Actif"),
-                    Component.literal("Vendu"),
-                    Component.literal("Expir\u00e9"),
-                    Component.literal("Annul\u00e9")
+                    Component.translatable("ecocraft_ah.filter.all"),
+                    Component.translatable("ecocraft_ah.status.active"),
+                    Component.translatable("ecocraft_ah.status.sold"),
+                    Component.translatable("ecocraft_ah.status.expired"),
+                    Component.translatable("ecocraft_ah.status.cancelled")
             );
             statusFilterTags = new EcoFilterTags(tabX, filterY, statusLabels, this::onStatusFilterChanged, THEME);
             statusFilterTags.setActiveTag(activeStatusFilter);
@@ -135,7 +135,7 @@ public class MyAuctionsTab extends BaseWidget {
         ahFilterTags = null;
         if (multiAH && !ahNamesList.isEmpty()) {
             List<Component> ahLabels = new ArrayList<>();
-            ahLabels.add(Component.literal("Tout"));
+            ahLabels.add(Component.translatable("ecocraft_ah.filter.all"));
             for (String name : ahNamesList) {
                 ahLabels.add(Component.literal(name));
             }
@@ -149,15 +149,15 @@ public class MyAuctionsTab extends BaseWidget {
         int tableY = filterY;
         int tableH = footerY - tableY - 4;
         List<TableColumn> columns = new ArrayList<>();
-        columns.add(TableColumn.sortableLeft(Component.literal("Objet"), 2.5f));
-        columns.add(TableColumn.sortableRight(Component.literal("Prix"), 1.5f));
-        columns.add(TableColumn.center(Component.literal("Type"), 1f));
-        columns.add(TableColumn.center(Component.literal("Statut"), 1f));
+        columns.add(TableColumn.sortableLeft(Component.translatable("ecocraft_ah.column.item"), 2.5f));
+        columns.add(TableColumn.sortableRight(Component.translatable("ecocraft_ah.column.price"), 1.5f));
+        columns.add(TableColumn.center(Component.translatable("ecocraft_ah.column.type"), 1f));
+        columns.add(TableColumn.center(Component.translatable("ecocraft_ah.column.status"), 1f));
         if (multiAH) {
-            columns.add(TableColumn.center(Component.literal("AH"), 1f));
+            columns.add(TableColumn.center(Component.translatable("ecocraft_ah.column.ah"), 1f));
         }
-        columns.add(TableColumn.sortableCenter(Component.literal("Expire"), 1f));
-        columns.add(TableColumn.center(Component.literal("Action"), 1.5f));
+        columns.add(TableColumn.sortableCenter(Component.translatable("ecocraft_ah.column.expires"), 1f));
+        columns.add(TableColumn.center(Component.translatable("ecocraft_ah.column.action"), 1.5f));
 
         table = EcoTable.builder()
                 .columns(columns)
@@ -207,10 +207,10 @@ public class MyAuctionsTab extends BaseWidget {
     private void onCancelClicked(String listingId) {
         EcoDialog dialog = EcoDialog.confirm(
                 THEME,
-                Component.literal("Annuler l'annonce"),
-                Component.literal("\u00cates-vous s\u00fbr de vouloir annuler cette annonce ?"),
-                Component.literal("Confirmer"),
-                Component.literal("Retour"),
+                Component.translatable("ecocraft_ah.dialog.cancel_title"),
+                Component.translatable("ecocraft_ah.dialog.cancel_message"),
+                Component.translatable("ecocraft_ah.dialog.confirm"),
+                Component.translatable("ecocraft_ah.dialog.back"),
                 () -> PacketDistributor.sendToServer(new CancelListingPayload(listingId)),
                 () -> { /* cancelled, do nothing */ }
         );
@@ -311,7 +311,7 @@ public class MyAuctionsTab extends BaseWidget {
             List<TableRow.Cell> cells = new ArrayList<>();
             cells.add(TableRow.Cell.of(Component.literal(entry.itemName()), entry.rarityColor(), entry.itemName()));
             cells.add(TableRow.Cell.of(Component.literal(BuyTab.formatPrice(entry.price())), THEME.accent, entry.price()));
-            cells.add(TableRow.Cell.of(Component.literal("AUCTION".equals(entry.type()) ? "Ench\u00e8re" : "Achat"),
+            cells.add(TableRow.Cell.of(Component.translatable("AUCTION".equals(entry.type()) ? "ecocraft_ah.type.auction_short" : "ecocraft_ah.type.buyout_short"),
                     "AUCTION".equals(entry.type()) ? THEME.warning : THEME.success));
             cells.add(TableRow.Cell.of(Component.literal(translateStatus(entry.status())), statusColor));
             if (multiAH) {
@@ -338,7 +338,7 @@ public class MyAuctionsTab extends BaseWidget {
             parcelsCard.setValue(Component.literal(String.valueOf(parcelsToCollect)), THEME.info);
         }
         if (collectBtn != null) {
-            collectBtn.setLabel(Component.literal("R\u00e9cup\u00e9rer (" + parcelsToCollect + ")"));
+            collectBtn.setLabel(Component.translatable("ecocraft_ah.collect_button", parcelsToCollect));
         }
     }
 
@@ -356,17 +356,17 @@ public class MyAuctionsTab extends BaseWidget {
 
     private static String translateStatus(String status) {
         return switch (status) {
-            case "ACTIVE" -> "Actif";
-            case "SOLD" -> "Vendu";
-            case "EXPIRED" -> "Expir\u00e9";
-            case "CANCELLED" -> "Annul\u00e9";
+            case "ACTIVE" -> Component.translatable("ecocraft_ah.status.active").getString();
+            case "SOLD" -> Component.translatable("ecocraft_ah.status.sold").getString();
+            case "EXPIRED" -> Component.translatable("ecocraft_ah.status.expired").getString();
+            case "CANCELLED" -> Component.translatable("ecocraft_ah.status.cancelled").getString();
             default -> status;
         };
     }
 
     private static String getActionLabel(MyListingsResponsePayload.MyListingEntry entry) {
-        if (entry.canCollect()) return "R\u00e9cup\u00e9rer";
-        if ("ACTIVE".equals(entry.status())) return "Annuler";
+        if (entry.canCollect()) return Component.translatable("ecocraft_ah.action.collect").getString();
+        if ("ACTIVE".equals(entry.status())) return Component.translatable("ecocraft_ah.action.cancel").getString();
         return "-";
     }
 }

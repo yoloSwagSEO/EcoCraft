@@ -13,7 +13,9 @@ public record AHInstance(
         String name,
         int saleRate,
         int depositRate,
-        List<Integer> durations
+        List<Integer> durations,
+        boolean allowBuyout,
+        boolean allowAuction
 ) {
     public static final String DEFAULT_ID = "00000000-0000-0000-0000-000000000001";
     public static final int DEFAULT_SALE_RATE = 5;
@@ -23,16 +25,17 @@ public record AHInstance(
 
     public static AHInstance create(String name) {
         return new AHInstance(UUID.randomUUID().toString(), slugify(name), name,
-                DEFAULT_SALE_RATE, DEFAULT_DEPOSIT_RATE, DEFAULT_DURATIONS);
+                DEFAULT_SALE_RATE, DEFAULT_DEPOSIT_RATE, DEFAULT_DURATIONS, true, true);
     }
 
     public static AHInstance createDefault() {
         return new AHInstance(DEFAULT_ID, "default", DEFAULT_NAME,
-                DEFAULT_SALE_RATE, DEFAULT_DEPOSIT_RATE, DEFAULT_DURATIONS);
+                DEFAULT_SALE_RATE, DEFAULT_DEPOSIT_RATE, DEFAULT_DURATIONS, true, true);
     }
 
-    public AHInstance withConfig(String name, int saleRate, int depositRate, List<Integer> durations) {
-        return new AHInstance(id, slugify(name), name, saleRate, depositRate, durations);
+    public AHInstance withConfig(String name, int saleRate, int depositRate, List<Integer> durations,
+                                 boolean allowBuyout, boolean allowAuction) {
+        return new AHInstance(id, slugify(name), name, saleRate, depositRate, durations, allowBuyout, allowAuction);
     }
 
     public static String slugify(String name) {

@@ -1,0 +1,9 @@
+{
+  "ecocraft_gui.repeater.add": "+ Add",
+  "ecocraft_gui.repeater.empty": "No items",
+  "ecocraft_gui.inventory.main": "Inventory",
+  "ecocraft_gui.inventory.hotbar": "Hotbar",
+  "ecocraft_gui.inventory.armor": "Armor",
+  "ecocraft_gui.inventory.offhand": "Off Hand",
+  "ecocraft_gui.inventory.other": "Other"
+}

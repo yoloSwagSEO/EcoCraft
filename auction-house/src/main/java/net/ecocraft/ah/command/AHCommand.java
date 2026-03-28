@@ -97,7 +97,7 @@ public final class AHCommand {
                         .then(Commands.literal("reload")
                                 .executes(ctx -> {
                                     ctx.getSource().sendSuccess(
-                                            () -> Component.literal("Configuration de l'hôtel des ventes rechargée."), true);
+                                            () -> Component.translatable("ecocraft_ah.command.reload_success"), true);
                                     return 1;
                                 })
                         )
@@ -107,12 +107,12 @@ public final class AHCommand {
                                 .executes(ctx -> {
                                     AuctionService service = serviceSupplier.get();
                                     if (service == null) {
-                                        ctx.getSource().sendFailure(Component.literal("Service HDV non disponible."));
+                                        ctx.getSource().sendFailure(Component.translatable("ecocraft_ah.command.service_unavailable"));
                                         return 0;
                                     }
                                     service.expireListings();
                                     ctx.getSource().sendSuccess(
-                                            () -> Component.literal("Expiration forcée des anciennes annonces."), true);
+                                            () -> Component.translatable("ecocraft_ah.command.expire_success"), true);
                                     return 1;
                                 })
                         )
@@ -165,13 +165,13 @@ public final class AHCommand {
                                    Supplier<AuctionService> serviceSupplier) {
         AuctionService service = serviceSupplier.get();
         if (service == null) {
-            source.sendFailure(Component.literal("Service HDV non disponible."));
+            source.sendFailure(Component.translatable("ecocraft_ah.command.service_unavailable"));
             return 0;
         }
 
         ItemStack held = player.getMainHandItem();
         if (held.isEmpty()) {
-            source.sendFailure(Component.literal("Vous devez tenir un objet pour vendre."));
+            source.sendFailure(Component.translatable("ecocraft_ah.command.sell.must_hold"));
             return 0;
         }
 
@@ -203,11 +203,10 @@ public final class AHCommand {
             // Remove item from hand
             player.getMainHandItem().setCount(0);
 
-            source.sendSuccess(() -> Component.literal(
-                    quantity + "x " + itemName + " mis en vente pour " + price), false);
+            source.sendSuccess(() -> Component.translatable("ecocraft_ah.command.sell.success", quantity, itemName, price), false);
             return 1;
         } catch (AuctionService.AuctionException e) {
-            source.sendFailure(Component.literal("Échec de la mise en vente : " + e.getMessage()));
+            source.sendFailure(Component.translatable("ecocraft_ah.command.sell.fail", e.getMessage()));
             return 0;
         }
     }
@@ -215,12 +214,12 @@ public final class AHCommand {
     private static int executeBrowse(CommandSourceStack source, ServerPlayer player, String slug) {
         AuctionStorageProvider storage = AHServerEvents.getStorage();
         if (storage == null) {
-            source.sendFailure(Component.literal("Service de stockage non disponible."));
+            source.sendFailure(Component.translatable("ecocraft_ah.command.storage_unavailable"));
             return 0;
         }
         AHInstance ah = storage.getAHInstanceBySlug(slug);
         if (ah == null) {
-            source.sendFailure(Component.literal("Hôtel des Ventes introuvable : " + slug));
+            source.sendFailure(Component.translatable("ecocraft_ah.command.ah_not_found", slug));
             return 0;
         }
         PacketDistributor.sendToPlayer(player, new OpenAHPayload(-1, ah.id(), ah.name()));
@@ -233,55 +232,52 @@ public final class AHCommand {
     private static int executeAdminCreate(CommandSourceStack source, String name) {
         AuctionStorageProvider storage = AHServerEvents.getStorage();
         if (storage == null) {
-            source.sendFailure(Component.literal("Service de stockage non disponible."));
+            source.sendFailure(Component.translatable("ecocraft_ah.command.storage_unavailable"));
             return 0;
         }
         AHInstance ah = AHInstance.create(name);
         storage.createAHInstance(ah);
-        source.sendSuccess(() -> Component.literal(
-                "Hôtel des Ventes créé : " + ah.name() + " (slug: " + ah.slug() + ")"), true);
+        source.sendSuccess(() -> Component.translatable("ecocraft_ah.command.ah_created", ah.name(), ah.slug()), true);
         return 1;
     }
 
     private static int executeAdminDelete(CommandSourceStack source, String slug) {
         AuctionStorageProvider storage = AHServerEvents.getStorage();
         if (storage == null) {
-            source.sendFailure(Component.literal("Service de stockage non disponible."));
+            source.sendFailure(Component.translatable("ecocraft_ah.command.storage_unavailable"));
             return 0;
         }
         AHInstance ah = storage.getAHInstanceBySlug(slug);
         if (ah == null) {
-            source.sendFailure(Component.literal("Hôtel des Ventes introuvable : " + slug));
+            source.sendFailure(Component.translatable("ecocraft_ah.command.ah_not_found", slug));
             return 0;
         }
         if (AHInstance.DEFAULT_ID.equals(ah.id())) {
-            source.sendFailure(Component.literal("Impossible de supprimer l'Hôtel des Ventes par défaut."));
+            source.sendFailure(Component.translatable("ecocraft_ah.command.cannot_delete_default"));
             return 0;
         }
         AHInstance defaultAh = storage.getDefaultAHInstance();
         int transferred = storage.transferListings(ah.id(), defaultAh.id());
         storage.deleteAHInstance(ah.id());
-        source.sendSuccess(() -> Component.literal(
-                "Hôtel des Ventes supprimé : " + ah.name() + " (" + transferred + " annonce(s) transférée(s) vers " + defaultAh.name() + ")"), true);
+        source.sendSuccess(() -> Component.translatable("ecocraft_ah.command.ah_deleted", ah.name(), transferred, defaultAh.name()), true);
         return 1;
     }
 
     private static int executeAdminList(CommandSourceStack source) {
         AuctionStorageProvider storage = AHServerEvents.getStorage();
         if (storage == null) {
-            source.sendFailure(Component.literal("Service de stockage non disponible."));
+            source.sendFailure(Component.translatable("ecocraft_ah.command.storage_unavailable"));
             return 0;
         }
         var instances = storage.getAllAHInstances();
         if (instances.isEmpty()) {
-            source.sendSuccess(() -> Component.literal("Aucun Hôtel des Ventes configuré."), false);
+            source.sendSuccess(() -> Component.translatable("ecocraft_ah.command.no_ah_configured"), false);
             return 1;
         }
-        source.sendSuccess(() -> Component.literal("=== Hôtels des Ventes ==="), false);
+        source.sendSuccess(() -> Component.translatable("ecocraft_ah.command.ah_list_header"), false);
         for (AHInstance ah : instances) {
             int count = storage.countActiveListings(ah.id());
-            source.sendSuccess(() -> Component.literal(
-                    " - " + ah.slug() + " | " + ah.name() + " | " + count + " annonce(s) active(s)"), false);
+            source.sendSuccess(() -> Component.translatable("ecocraft_ah.command.ah_list_entry", ah.slug(), ah.name(), count), false);
         }
         return 1;
     }
@@ -289,18 +285,17 @@ public final class AHCommand {
     private static int executeAdminRename(CommandSourceStack source, String slug, String newName) {
         AuctionStorageProvider storage = AHServerEvents.getStorage();
         if (storage == null) {
-            source.sendFailure(Component.literal("Service de stockage non disponible."));
+            source.sendFailure(Component.translatable("ecocraft_ah.command.storage_unavailable"));
             return 0;
         }
         AHInstance ah = storage.getAHInstanceBySlug(slug);
         if (ah == null) {
-            source.sendFailure(Component.literal("Hôtel des Ventes introuvable : " + slug));
+            source.sendFailure(Component.translatable("ecocraft_ah.command.ah_not_found", slug));
             return 0;
         }
-        AHInstance updated = ah.withConfig(newName, ah.saleRate(), ah.depositRate(), ah.durations());
+        AHInstance updated = ah.withConfig(newName, ah.saleRate(), ah.depositRate(), ah.durations(), ah.allowBuyout(), ah.allowAuction());
         storage.updateAHInstance(updated);
-        source.sendSuccess(() -> Component.literal(
-                "Hôtel des Ventes renommé : " + updated.name() + " (slug: " + updated.slug() + ")"), true);
+        source.sendSuccess(() -> Component.translatable("ecocraft_ah.command.ah_renamed", updated.name(), updated.slug()), true);
         return 1;
     }
 
@@ -308,23 +303,22 @@ public final class AHCommand {
                                       Supplier<AuctionService> serviceSupplier) {
         AuctionService service = serviceSupplier.get();
         if (service == null) {
-            source.sendFailure(Component.literal("Service HDV non disponible."));
+            source.sendFailure(Component.translatable("ecocraft_ah.command.service_unavailable"));
             return 0;
         }
 
         try {
             var parcels = service.collectParcels(player.getUUID());
             if (parcels.isEmpty()) {
-                source.sendSuccess(() -> Component.literal("Aucun colis à récupérer."), false);
+                source.sendSuccess(() -> Component.translatable("ecocraft_ah.command.no_parcels"), false);
             } else {
                 // Item parcels would need to be given to player inventory — handled in the handler
                 int count = parcels.size();
-                source.sendSuccess(() -> Component.literal(
-                        count + " colis récupéré(s). Objets envoyés dans l'inventaire."), false);
+                source.sendSuccess(() -> Component.translatable("ecocraft_ah.command.parcels_collected", count), false);
             }
             return 1;
         } catch (Exception e) {
-            source.sendFailure(Component.literal("Échec de la récupération : " + e.getMessage()));
+            source.sendFailure(Component.translatable("ecocraft_ah.command.collect_fail", e.getMessage()));
             return 0;
         }
     }

@@ -24,9 +24,9 @@ public class LedgerTab extends BaseWidget {
 
     private static final Theme THEME = Theme.dark();
     private static final String[] PERIODS = {"24h", "7j", "30j", "all"};
-    private static final String[] PERIOD_LABELS = {"24h", "7j", "30j", "Tout"};
+    private static final String[] PERIOD_KEYS = {"ecocraft_ah.period.24h", "ecocraft_ah.period.7d", "ecocraft_ah.period.30d", "ecocraft_ah.period.all"};
     private static final String[] TYPE_FILTERS = {"all", "purchases", "sales", "auctions", "expired"};
-    private static final String[] TYPE_FILTER_LABELS = {"Tout", "Achats", "Ventes", "Ench\u00e8res", "Expirations"};
+    private static final String[] TYPE_FILTER_KEYS = {"ecocraft_ah.ledger_type.all", "ecocraft_ah.ledger_type.purchases", "ecocraft_ah.ledger_type.sales", "ecocraft_ah.ledger_type.auctions", "ecocraft_ah.ledger_type.expirations"};
 
     private final AuctionHouseScreen parent;
     private final int tabX, tabY, tabW, tabH;
@@ -76,14 +76,14 @@ public class LedgerTab extends BaseWidget {
 
         // Period filter
         List<Component> periodLabels = new ArrayList<>();
-        for (String label : PERIOD_LABELS) periodLabels.add(Component.literal(label));
+        for (String key : PERIOD_KEYS) periodLabels.add(Component.translatable(key));
         periodTags = new EcoFilterTags(tabX, tabY, periodLabels, this::onPeriodChanged, THEME);
         periodTags.setActiveTag(activePeriod);
         addChild(periodTags);
 
         // Type filter
         List<Component> typeLabels = new ArrayList<>();
-        for (String label : TYPE_FILTER_LABELS) typeLabels.add(Component.literal(label));
+        for (String key : TYPE_FILTER_KEYS) typeLabels.add(Component.translatable(key));
         typeTags = new EcoFilterTags(tabX, tabY + 22, typeLabels, this::onTypeFilterChanged, THEME);
         typeTags.setActiveTag(activeTypeFilter);
         addChild(typeTags);
@@ -94,7 +94,7 @@ public class LedgerTab extends BaseWidget {
         ahFilterTags = null;
         if (multiAH && !ahNamesList.isEmpty()) {
             List<Component> ahLabels = new ArrayList<>();
-            ahLabels.add(Component.literal("Tout"));
+            ahLabels.add(Component.translatable("ecocraft_ah.filter.all"));
             for (String name : ahNamesList) {
                 ahLabels.add(Component.literal(name));
             }
@@ -110,25 +110,25 @@ public class LedgerTab extends BaseWidget {
         int cardH = 38;
 
         profitCard = new EcoStatCard(tabX, statsY, cardW, cardH,
-                Component.literal("Profit net"),
+                Component.translatable("ecocraft_ah.stat.net_profit"),
                 Component.literal(formatStatPrice(netProfit)),
                 netProfit >= 0 ? THEME.success : THEME.danger, THEME);
         addChild(profitCard);
 
         salesCard = new EcoStatCard(tabX + cardW + 4, statsY, cardW, cardH,
-                Component.literal("Ventes"),
+                Component.translatable("ecocraft_ah.stat.sales"),
                 Component.literal(formatStatPrice(totalSales)),
                 THEME.success, THEME);
         addChild(salesCard);
 
         purchasesCard = new EcoStatCard(tabX + (cardW + 4) * 2, statsY, cardW, cardH,
-                Component.literal("Achats"),
+                Component.translatable("ecocraft_ah.stat.purchases"),
                 Component.literal(formatStatPrice(totalPurchases)),
                 THEME.info, THEME);
         addChild(purchasesCard);
 
         taxCard = new EcoStatCard(tabX + (cardW + 4) * 3, statsY, cardW, cardH,
-                Component.literal("Taxes"),
+                Component.translatable("ecocraft_ah.stat.taxes"),
                 Component.literal(formatStatPrice(taxesPaid)),
                 THEME.danger, THEME);
         addChild(taxCard);
@@ -137,14 +137,14 @@ public class LedgerTab extends BaseWidget {
         int tableY = statsY + cardH + 4;
         int tableH = tabH - (tableY - tabY) - 18;
         List<TableColumn> columns = new ArrayList<>();
-        columns.add(TableColumn.sortableLeft(Component.literal("Objet"), 2.5f));
-        columns.add(TableColumn.center(Component.literal("Type"), 1f));
-        columns.add(TableColumn.sortableRight(Component.literal("Montant"), 1.5f));
-        columns.add(TableColumn.left(Component.literal("Avec"), 1.5f));
+        columns.add(TableColumn.sortableLeft(Component.translatable("ecocraft_ah.column.item"), 2.5f));
+        columns.add(TableColumn.center(Component.translatable("ecocraft_ah.column.type"), 1f));
+        columns.add(TableColumn.sortableRight(Component.translatable("ecocraft_ah.column.amount"), 1.5f));
+        columns.add(TableColumn.left(Component.translatable("ecocraft_ah.column.with"), 1.5f));
         if (multiAH) {
-            columns.add(TableColumn.center(Component.literal("AH"), 1f));
+            columns.add(TableColumn.center(Component.translatable("ecocraft_ah.column.ah"), 1f));
         }
-        columns.add(TableColumn.sortableCenter(Component.literal("Date"), 1.5f));
+        columns.add(TableColumn.sortableCenter(Component.translatable("ecocraft_ah.column.date"), 1.5f));
 
         table = EcoTable.builder()
                 .columns(columns)
@@ -318,12 +318,12 @@ public class LedgerTab extends BaseWidget {
 
     private static String translateType(String type) {
         return switch (type) {
-            case "PURCHASE", "HDV_PURCHASE" -> "Achat";
-            case "SALE", "HDV_SALE" -> "Vente";
-            case "EXPIRED", "HDV_EXPIRED" -> "Expiration";
-            case "OUTBID", "HDV_OUTBID" -> "Surench.";
-            case "TAX" -> "Taxe";
-            case "LISTING_FEE", "HDV_LISTING_FEE" -> "D\u00e9p\u00f4t";
+            case "PURCHASE", "HDV_PURCHASE" -> Component.translatable("ecocraft_ah.transaction_type.purchase").getString();
+            case "SALE", "HDV_SALE" -> Component.translatable("ecocraft_ah.transaction_type.sale").getString();
+            case "EXPIRED", "HDV_EXPIRED" -> Component.translatable("ecocraft_ah.transaction_type.expired").getString();
+            case "OUTBID", "HDV_OUTBID" -> Component.translatable("ecocraft_ah.transaction_type.outbid").getString();
+            case "TAX" -> Component.translatable("ecocraft_ah.transaction_type.tax").getString();
+            case "LISTING_FEE", "HDV_LISTING_FEE" -> Component.translatable("ecocraft_ah.transaction_type.deposit").getString();
             default -> type;
         };
     }

@@ -12,7 +12,8 @@ import java.util.List;
 /**
  * Client -> Server payload to update an AH instance's configuration (admin only).
  */
-public record UpdateAHInstancePayload(String ahId, String name, int saleRate, int depositRate, List<Integer> durations)
+public record UpdateAHInstancePayload(String ahId, String name, int saleRate, int depositRate, List<Integer> durations,
+                                       boolean allowBuyout, boolean allowAuction)
         implements CustomPacketPayload {
 
     public static final Type<UpdateAHInstancePayload> TYPE =
@@ -30,7 +31,9 @@ public record UpdateAHInstancePayload(String ahId, String name, int saleRate, in
             for (int i = 0; i < count; i++) {
                 durations.add(ByteBufCodecs.VAR_INT.decode(buf));
             }
-            return new UpdateAHInstancePayload(ahId, name, saleRate, depositRate, durations);
+            boolean allowBuyout = ByteBufCodecs.BOOL.decode(buf);
+            boolean allowAuction = ByteBufCodecs.BOOL.decode(buf);
+            return new UpdateAHInstancePayload(ahId, name, saleRate, depositRate, durations, allowBuyout, allowAuction);
         }
 
         @Override
@@ -43,6 +46,8 @@ public record UpdateAHInstancePayload(String ahId, String name, int saleRate, in
             for (int d : payload.durations()) {
                 ByteBufCodecs.VAR_INT.encode(buf, d);
             }
+            ByteBufCodecs.BOOL.encode(buf, payload.allowBuyout());
+            ByteBufCodecs.BOOL.encode(buf, payload.allowAuction());
         }
     };
 

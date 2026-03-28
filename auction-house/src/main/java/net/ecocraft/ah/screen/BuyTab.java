@@ -110,18 +110,22 @@ public class BuyTab extends BaseWidget {
         Font font = Minecraft.getInstance().font;
 
         // Category sidebar buttons
-        String[] categories = {"Tout", "Armes", "Armures", "Outils", "Potions", "Blocs", "Nourrit.", "Enchant.", "Divers"};
+        String[] categoryKeys = {
+            "ecocraft_ah.filter.all", "ecocraft_ah.filter.weapons", "ecocraft_ah.filter.armor",
+            "ecocraft_ah.filter.tools", "ecocraft_ah.filter.potions", "ecocraft_ah.filter.blocks",
+            "ecocraft_ah.filter.food", "ecocraft_ah.filter.enchantments", "ecocraft_ah.filter.misc"
+        };
         int btnY = tabY + 2;
-        for (int i = 0; i < categories.length; i++) {
+        for (int i = 0; i < categoryKeys.length; i++) {
             final int catIndex = i;
             EcoButton btn;
             if (catIndex == getCategoryIndex()) {
-                btn = EcoButton.builder(Component.literal(categories[i]), () -> onCategoryClicked(catIndex))
+                btn = EcoButton.builder(Component.translatable(categoryKeys[i]), () -> onCategoryClicked(catIndex))
                         .theme(THEME).bounds(tabX + 2, btnY, SIDEBAR_WIDTH - 6, 14)
                         .bgColor(THEME.accentBg).borderColor(THEME.borderAccent)
                         .textColor(THEME.accent).hoverBg(THEME.accentBgDim).build();
             } else {
-                btn = EcoButton.builder(Component.literal(categories[i]), () -> onCategoryClicked(catIndex))
+                btn = EcoButton.builder(Component.translatable(categoryKeys[i]), () -> onCategoryClicked(catIndex))
                         .theme(THEME).bounds(tabX + 2, btnY, SIDEBAR_WIDTH - 6, 14)
                         .bgColor(THEME.bgMedium).borderColor(THEME.borderLight)
                         .textColor(THEME.textGrey).hoverBg(THEME.bgLight).build();
@@ -137,7 +141,7 @@ public class BuyTab extends BaseWidget {
 
         // Search bar
         searchBar = new EcoTextInput(font, contentX + 2, tabY + 1, contentW - 4, 16,
-                Component.literal("Rechercher..."), THEME);
+                Component.translatable("ecocraft_ah.search.placeholder"), THEME);
         searchBar.responder(this::onSearchChanged);
         searchBar.setValue(searchText);
         addChild(searchBar);
@@ -147,10 +151,10 @@ public class BuyTab extends BaseWidget {
         int tableH = tabH - 38;
         browseRowsPerPage = Math.max(1, (tableH - 22) / 24);
         List<TableColumn> columns = List.of(
-                TableColumn.sortableLeft(Component.literal("Objet"), 3f),
-                TableColumn.sortableRight(Component.literal("Meilleur prix"), 2f),
-                TableColumn.sortableCenter(Component.literal("Offres"), 1f),
-                TableColumn.sortableCenter(Component.literal("Dispo."), 1f)
+                TableColumn.sortableLeft(Component.translatable("ecocraft_ah.column.item"), 3f),
+                TableColumn.sortableRight(Component.translatable("ecocraft_ah.column.best_price"), 2f),
+                TableColumn.sortableCenter(Component.translatable("ecocraft_ah.column.offers"), 1f),
+                TableColumn.sortableCenter(Component.translatable("ecocraft_ah.column.available"), 1f)
         );
         browseTable = EcoTable.builder()
                 .columns(columns)
@@ -162,17 +166,17 @@ public class BuyTab extends BaseWidget {
 
         // Pagination: label FIRST (so buttons are on top in hit test)
         int paginationY = tabY + tabH - 16;
-        String pageInfo = "Page " + (currentPage + 1) + "/" + Math.max(1, totalPages);
-        pageLabel = new Label(font, contentX + 44, paginationY + 3, contentW - 88, Component.literal(pageInfo), THEME);
+        pageLabel = new Label(font, contentX + 44, paginationY + 3, contentW - 88,
+                Component.translatable("ecocraft_ah.label.page", currentPage + 1, Math.max(1, totalPages)), THEME);
         pageLabel.setColor(THEME.textGrey).setAlignment(Label.Align.CENTER);
         addChild(pageLabel);
 
         // Pagination buttons AFTER label (on top in hit test)
-        prevPageBtn = EcoButton.builder(Component.literal("< Pr\u00e9c"), this::onPrevPage)
+        prevPageBtn = EcoButton.builder(Component.translatable("ecocraft_ah.button.prev_page"), this::onPrevPage)
                 .theme(THEME).bounds(contentX, paginationY, 40, 14)
                 .bgColor(THEME.accentBg).borderColor(THEME.borderAccent)
                 .textColor(THEME.accent).hoverBg(THEME.accentBgDim).build();
-        nextPageBtn = EcoButton.builder(Component.literal("Suiv >"), this::onNextPage)
+        nextPageBtn = EcoButton.builder(Component.translatable("ecocraft_ah.button.next_page"), this::onNextPage)
                 .theme(THEME).bounds(contentX + contentW - 40, paginationY, 40, 14)
                 .bgColor(THEME.accentBg).borderColor(THEME.borderAccent)
                 .textColor(THEME.accent).hoverBg(THEME.accentBgDim).build();
@@ -187,7 +191,7 @@ public class BuyTab extends BaseWidget {
         Font font = Minecraft.getInstance().font;
 
         // Back button
-        backButton = EcoButton.builder(Component.literal("\u25C0 Retour"), this::onBackToBrowse)
+        backButton = EcoButton.builder(Component.translatable("ecocraft_ah.button.back"), this::onBackToBrowse)
                 .theme(THEME).bounds(tabX, tabY, 60, 14)
                 .bgColor(THEME.accentBg).borderColor(THEME.borderAccent)
                 .textColor(THEME.accent).hoverBg(THEME.accentBgDim).build();
@@ -220,7 +224,7 @@ public class BuyTab extends BaseWidget {
         // Durability filter (only if items have durability variation)
         if (showDurabilityFilter) {
             List<Component> durLabels = List.of(
-                    Component.literal("Tout"),
+                    Component.translatable("ecocraft_ah.durability.all"),
                     Component.literal("100%"),
                     Component.literal("75%+"),
                     Component.literal("50%+"),
@@ -248,11 +252,11 @@ public class BuyTab extends BaseWidget {
         int tableY = filterY;
         int tableH = tabY + tabH - 24 - tableY;
         List<TableColumn> columns = List.of(
-                TableColumn.sortableLeft(Component.literal("Vendeur"), 2f),
-                TableColumn.sortableCenter(Component.literal("Qté"), 1f),
-                TableColumn.sortableRight(Component.literal("Prix unit."), 2f),
-                TableColumn.center(Component.literal("Type"), 1f),
-                TableColumn.sortableCenter(Component.literal("Expire"), 1.5f)
+                TableColumn.sortableLeft(Component.translatable("ecocraft_ah.column.seller"), 2f),
+                TableColumn.sortableCenter(Component.translatable("ecocraft_ah.column.quantity"), 1f),
+                TableColumn.sortableRight(Component.translatable("ecocraft_ah.column.unit_price"), 2f),
+                TableColumn.center(Component.translatable("ecocraft_ah.column.type"), 1f),
+                TableColumn.sortableCenter(Component.translatable("ecocraft_ah.column.expires"), 1.5f)
         );
         detailTable = EcoTable.builder()
                 .columns(columns)
@@ -326,7 +330,7 @@ public class BuyTab extends BaseWidget {
         int panelY = tabY + 16;
 
         // Panel title
-        String title = "Offre sélectionnée";
+        Component title = Component.translatable("ecocraft_ah.label.selected_offer");
         int titleW = font.width(title);
         graphics.drawString(font, title, panelX + (panelW - titleW) / 2, panelY + 2, THEME.accent, false);
         DrawUtils.drawAccentSeparator(graphics, panelX + 4, panelY + 12, panelW - 8, THEME);
@@ -348,35 +352,35 @@ public class BuyTab extends BaseWidget {
             DrawUtils.drawAccentSeparator(graphics, panelX + 8, panelY + 62, panelW - 16, THEME);
 
             // Seller
-            graphics.drawString(font, "Vendeur:", labelX, panelY + 66, THEME.textGrey, false);
+            graphics.drawString(font, Component.translatable("ecocraft_ah.label.seller"), labelX, panelY + 66, THEME.textGrey, false);
             String seller = DrawUtils.truncateText(font, entry.sellerName(), panelW / 2);
             graphics.drawString(font, seller, valueX - font.width(seller), panelY + 66, THEME.textLight, false);
 
             if (isAuction) {
-                graphics.drawString(font, "Enchère actuelle:", labelX, panelY + 80, THEME.textGrey, false);
-                String bid = entry.unitPrice() > 0 ? formatPrice(entry.unitPrice()) : "Aucune";
+                graphics.drawString(font, Component.translatable("ecocraft_ah.label.current_bid"), labelX, panelY + 80, THEME.textGrey, false);
+                String bid = entry.unitPrice() > 0 ? formatPrice(entry.unitPrice()) : Component.translatable("ecocraft_ah.label.no_bid").getString();
                 graphics.drawString(font, bid, valueX - font.width(bid), panelY + 80, THEME.warning, false);
 
                 long minBid = entry.unitPrice() > 0 ? entry.unitPrice() + 1 : 1;
-                graphics.drawString(font, "Enchère min:", labelX, panelY + 94, THEME.textGrey, false);
+                graphics.drawString(font, Component.translatable("ecocraft_ah.label.min_bid"), labelX, panelY + 94, THEME.textGrey, false);
                 String minStr = formatPrice(minBid);
                 graphics.drawString(font, minStr, valueX - font.width(minStr), panelY + 94, THEME.textLight, false);
 
-                graphics.drawString(font, "Montant:", labelX, panelY + 112, THEME.textGrey, false);
+                graphics.drawString(font, Component.translatable("ecocraft_ah.label.bid_amount"), labelX, panelY + 112, THEME.textGrey, false);
 
-                graphics.drawString(font, "Expire:", labelX, panelY + 134, THEME.textGrey, false);
+                graphics.drawString(font, Component.translatable("ecocraft_ah.label.expires"), labelX, panelY + 134, THEME.textGrey, false);
                 String expire = formatTimeRemaining(entry.expiresInMs());
                 graphics.drawString(font, expire, valueX - font.width(expire), panelY + 134, THEME.textGrey, false);
             } else {
-                graphics.drawString(font, "Prix unitaire:", labelX, panelY + 80, THEME.textGrey, false);
+                graphics.drawString(font, Component.translatable("ecocraft_ah.label.unit_price"), labelX, panelY + 80, THEME.textGrey, false);
                 String price = formatPrice(entry.unitPrice());
                 graphics.drawString(font, price, valueX - font.width(price), panelY + 80, THEME.accent, false);
 
-                graphics.drawString(font, "Quantité:", labelX, panelY + 96, THEME.textGrey, false);
+                graphics.drawString(font, Component.translatable("ecocraft_ah.label.quantity"), labelX, panelY + 96, THEME.textGrey, false);
 
                 long qty = panelQuantityInput != null ? panelQuantityInput.getValue() : entry.quantity();
                 long total = entry.unitPrice() * qty;
-                graphics.drawString(font, "Prix total:", labelX, panelY + 132, THEME.textLight, false);
+                graphics.drawString(font, Component.translatable("ecocraft_ah.label.total_price"), labelX, panelY + 132, THEME.textLight, false);
                 String totalStr = formatPrice(total);
                 graphics.drawString(font, totalStr, valueX - font.width(totalStr), panelY + 132, THEME.accent, false);
             }
@@ -385,14 +389,13 @@ public class BuyTab extends BaseWidget {
         // Price history summary below the table
         int historyY = tabY + tabH - 18;
         if (detailPriceInfo != null) {
-            String historyLine = "Moy: " + formatPrice(detailPriceInfo.avgPrice())
-                    + " | Min: " + formatPrice(detailPriceInfo.minPrice())
-                    + " | Max: " + formatPrice(detailPriceInfo.maxPrice())
-                    + " | Ventes 7j: " + detailPriceInfo.volume7d();
+            Component historyLine = Component.translatable("ecocraft_ah.price_info.history_line",
+                    formatPrice(detailPriceInfo.avgPrice()), formatPrice(detailPriceInfo.minPrice()),
+                    formatPrice(detailPriceInfo.maxPrice()), detailPriceInfo.volume7d());
             int historyW = font.width(historyLine);
             graphics.drawString(font, historyLine, tabX + (tabW - historyW) / 2, historyY, THEME.textGrey, false);
         } else {
-            String noData = "Aucune donnée de prix disponible";
+            Component noData = Component.translatable("ecocraft_ah.price_info.no_data");
             int noDataW = font.width(noData);
             graphics.drawString(font, noData, tabX + (tabW - noDataW) / 2, historyY, THEME.textDim, false);
         }
@@ -400,11 +403,11 @@ public class BuyTab extends BaseWidget {
         // Price info top-right (on the table side)
         if (detailPriceInfo != null) {
             int infoX = tabX + tableW - 120;
-            graphics.drawString(font, "Moy: " + formatPrice(detailPriceInfo.avgPrice()),
+            graphics.drawString(font, Component.translatable("ecocraft_ah.price_info.avg", formatPrice(detailPriceInfo.avgPrice())),
                     infoX, tabY + 2, THEME.textGrey, false);
-            graphics.drawString(font, "Min: " + formatPrice(detailPriceInfo.minPrice()),
+            graphics.drawString(font, Component.translatable("ecocraft_ah.price_info.min", formatPrice(detailPriceInfo.minPrice())),
                     infoX, tabY + 12, THEME.success, false);
-            graphics.drawString(font, "Max: " + formatPrice(detailPriceInfo.maxPrice()),
+            graphics.drawString(font, Component.translatable("ecocraft_ah.price_info.max", formatPrice(detailPriceInfo.maxPrice())),
                     infoX, tabY + 22, THEME.danger, false);
         }
     }
@@ -583,8 +586,7 @@ public class BuyTab extends BaseWidget {
 
     private void updatePageLabel() {
         if (pageLabel != null) {
-            String pageInfo = "Page " + (currentPage + 1) + "/" + Math.max(1, totalPages);
-            pageLabel.setText(Component.literal(pageInfo));
+            pageLabel.setText(Component.translatable("ecocraft_ah.label.page", currentPage + 1, Math.max(1, totalPages)));
         }
     }
 
@@ -605,7 +607,7 @@ public class BuyTab extends BaseWidget {
                     TableRow.Cell.of(Component.literal(entry.sellerName()), THEME.textLight, entry.sellerName()),
                     TableRow.Cell.of(Component.literal(String.valueOf(entry.quantity())), THEME.textLight, entry.quantity()),
                     TableRow.Cell.of(Component.literal(formatPrice(entry.unitPrice())), THEME.accent, entry.unitPrice()),
-                    TableRow.Cell.of(Component.literal(isAuction ? "Enchère" : "Achat"),
+                    TableRow.Cell.of(Component.translatable(isAuction ? "ecocraft_ah.type.auction_short" : "ecocraft_ah.type.buyout_short"),
                             isAuction ? THEME.warning : THEME.success),
                     TableRow.Cell.of(Component.literal(formatTimeRemaining(entry.expiresInMs())), THEME.textGrey, entry.expiresInMs())
             ), null));
@@ -647,12 +649,12 @@ public class BuyTab extends BaseWidget {
 
         // Action button
         int btnY = py + 152;
-        panelBuyButton = EcoButton.success(THEME, Component.literal("Acheter"), () -> onPanelAction());
+        panelBuyButton = EcoButton.success(THEME, Component.translatable("ecocraft_ah.button.buy"), () -> onPanelAction());
         panelBuyButton.setPosition(px + 8, btnY);
         panelBuyButton.setSize(pw - 16, 20);
         addChild(panelBuyButton);
 
-        panelBidButton = EcoButton.warning(THEME, Component.literal("Enchérir"), () -> onPanelAction());
+        panelBidButton = EcoButton.warning(THEME, Component.translatable("ecocraft_ah.button.bid"), () -> onPanelAction());
         panelBidButton.setPosition(px + 8, btnY);
         panelBidButton.setSize(pw - 16, 20);
         panelBidButton.setVisible(false);
@@ -745,7 +747,7 @@ public class BuyTab extends BaseWidget {
     }
 
     static String formatTimeRemaining(long expiresInMs) {
-        if (expiresInMs <= 0) return "Expir\u00e9";
+        if (expiresInMs <= 0) return Component.translatable("ecocraft_ah.time.expired").getString();
         long hours = expiresInMs / 3_600_000;
         long minutes = (expiresInMs % 3_600_000) / 60_000;
         if (hours > 24) return (hours / 24) + "j";

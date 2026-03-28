@@ -102,8 +102,8 @@ public class AHServerEvents {
         try {
             int uncollected = auctionService.countUncollectedParcels(player.getUUID());
             if (uncollected > 0) {
-                player.sendSystemMessage(Component.literal(
-                        "[HDV] Vous avez " + uncollected + " colis en attente. Utilisez /ah collect ou visitez l'hôtel des ventes."
+                player.sendSystemMessage(Component.translatable(
+                        "ecocraft_ah.login.parcels_pending", uncollected
                 ));
             }
         } catch (Exception e) {

@@ -49,7 +49,7 @@ public class AHSettingsScreen extends EcoScreen {
 
     public AHSettingsScreen(Screen parent, int npcEntityId, String skinPlayerName,
                             String currentAhId, List<AHInstancesPayload.AHInstanceData> ahInstances) {
-        super(Component.literal("AH Settings"));
+        super(Component.translatable("ecocraft_ah.settings.title"));
         this.parentScreen = parent;
         this.npcEntityId = npcEntityId;
         this.skinPlayerName = skinPlayerName != null ? skinPlayerName : "";
@@ -64,12 +64,16 @@ public class AHSettingsScreen extends EcoScreen {
         int saleRate;
         int depositRate;
         List<Integer> durations;
+        boolean allowBuyout;
+        boolean allowAuction;
 
         EditedAH(AHInstancesPayload.AHInstanceData data) {
             this.name = data.name();
             this.saleRate = data.saleRate();
             this.depositRate = data.depositRate();
             this.durations = new ArrayList<>(data.durations());
+            this.allowBuyout = data.allowBuyout();
+            this.allowAuction = data.allowAuction();
         }
     }
 
@@ -119,7 +123,7 @@ public class AHSettingsScreen extends EcoScreen {
         int y = guiTop + 8;
 
         // Tab 0: "General"
-        EcoButton generalBtn = createSidebarButton("G\u00e9n\u00e9ral", 0, btnX, y, btnW, btnH);
+        EcoButton generalBtn = createSidebarButton(Component.translatable("ecocraft_ah.settings.general").getString(), 0, btnX, y, btnW, btnH);
         getTree().addChild(generalBtn);
         sidebarButtons.add(generalBtn);
         y += btnH + 4;
@@ -139,7 +143,7 @@ public class AHSettingsScreen extends EcoScreen {
 
         // "+ Creer un AH" button at bottom
         int createY = guiTop + guiHeight - 30 - 30;
-        EcoButton createBtn = EcoButton.builder(Component.literal("+ Cr\u00e9er un AH"), this::onCreateAH)
+        EcoButton createBtn = EcoButton.builder(Component.translatable("ecocraft_ah.settings.create_ah"), this::onCreateAH)
                 .theme(THEME).bounds(btnX, createY, btnW, btnH)
                 .bgColor(THEME.successBg).borderColor(THEME.success)
                 .textColor(THEME.success).hoverBg(0xFF2A4A2A).build();
@@ -189,7 +193,7 @@ public class AHSettingsScreen extends EcoScreen {
         int y = guiTop + 60;
         int btnW = panelW - 20;
 
-        EcoButton transferBtn = EcoButton.builder(Component.literal("Transférer les listings à l'AH par défaut"),
+        EcoButton transferBtn = EcoButton.builder(Component.translatable("ecocraft_ah.settings.delete_transfer"),
                 () -> executeDeleteAH("TRANSFER_TO_DEFAULT"))
                 .theme(THEME).bounds(panelX + 10, y, btnW, 22)
                 .bgColor(THEME.warningBg).borderColor(THEME.warning)
@@ -197,7 +201,7 @@ public class AHSettingsScreen extends EcoScreen {
         getTree().addChild(transferBtn);
         y += 30;
 
-        EcoButton deleteListingsBtn = EcoButton.builder(Component.literal("Supprimer toutes les listings"),
+        EcoButton deleteListingsBtn = EcoButton.builder(Component.translatable("ecocraft_ah.settings.delete_all"),
                 () -> executeDeleteAH("DELETE_LISTINGS"))
                 .theme(THEME).bounds(panelX + 10, y, btnW, 22)
                 .bgColor(THEME.dangerBg).borderColor(THEME.danger)
@@ -205,7 +209,7 @@ public class AHSettingsScreen extends EcoScreen {
         getTree().addChild(deleteListingsBtn);
         y += 30;
 
-        EcoButton returnItemsBtn = EcoButton.builder(Component.literal("Rendre les items aux joueurs (parcels)"),
+        EcoButton returnItemsBtn = EcoButton.builder(Component.translatable("ecocraft_ah.settings.delete_return"),
                 () -> executeDeleteAH("RETURN_ITEMS"))
                 .theme(THEME).bounds(panelX + 10, y, btnW, 22)
                 .bgColor(THEME.successBg).borderColor(THEME.success)
@@ -213,7 +217,7 @@ public class AHSettingsScreen extends EcoScreen {
         getTree().addChild(returnItemsBtn);
         y += 40;
 
-        EcoButton cancelBtn = EcoButton.ghost(THEME, Component.literal("Annuler"), this::cancelDelete);
+        EcoButton cancelBtn = EcoButton.ghost(THEME, Component.translatable("ecocraft_ah.button.cancel"), this::cancelDelete);
         cancelBtn.setPosition(panelX + 10, y);
         cancelBtn.setSize(btnW, 20);
         getTree().addChild(cancelBtn);
@@ -234,7 +238,7 @@ public class AHSettingsScreen extends EcoScreen {
         // Skin pseudo input
         y += 14;
         EcoTextInput skinInput = new EcoTextInput(font, panelX, y, panelW, 16,
-                Component.literal("Pseudo Minecraft..."), THEME);
+                Component.translatable("ecocraft_ah.settings.skin_placeholder"), THEME);
         skinInput.setValue(skinPlayerName);
         skinInput.responder(val -> skinPlayerName = val);
         getTree().addChild(skinInput);
@@ -275,7 +279,7 @@ public class AHSettingsScreen extends EcoScreen {
         // AH name input
         y += 14;
         EcoTextInput nameInput = new EcoTextInput(font, panelX, y, panelW, 16,
-                Component.literal("Nom..."), THEME);
+                Component.translatable("ecocraft_ah.settings.ah_name_placeholder"), THEME);
         nameInput.setValue(edited.name);
         nameInput.responder(val -> {
             edited.name = val;
@@ -325,7 +329,7 @@ public class AHSettingsScreen extends EcoScreen {
 
         // Delete button (hidden for default AH)
         if (!data.id().equals(AHInstance.DEFAULT_ID)) {
-            EcoButton deleteBtn = EcoButton.danger(THEME, Component.literal("Supprimer cet AH"),
+            EcoButton deleteBtn = EcoButton.danger(THEME, Component.translatable("ecocraft_ah.settings.delete_ah"),
                     () -> onDeleteAH(data.id(), edited.name));
             deleteBtn.setPosition(panelX, y);
             deleteBtn.setSize(panelW, 20);
@@ -355,12 +359,12 @@ public class AHSettingsScreen extends EcoScreen {
         int totalBtnW = btnW * 2 + gap;
         int btnStartX = guiLeft + (guiWidth - totalBtnW) / 2;
 
-        EcoButton cancelBtn = EcoButton.ghost(THEME, Component.literal("Annuler"), this::onCancel);
-        cancelBtn.setPosition(btnStartX, footerY);
-        cancelBtn.setSize(btnW, 20);
-        getTree().addChild(cancelBtn);
+        EcoButton footerCancelBtn = EcoButton.ghost(THEME, Component.translatable("ecocraft_ah.button.cancel"), this::onCancel);
+        footerCancelBtn.setPosition(btnStartX, footerY);
+        footerCancelBtn.setSize(btnW, 20);
+        getTree().addChild(footerCancelBtn);
 
-        EcoButton saveBtn = EcoButton.success(THEME, Component.literal("Sauvegarder"), this::onSave);
+        EcoButton saveBtn = EcoButton.success(THEME, Component.translatable("ecocraft_ah.button.save"), this::onSave);
         saveBtn.setPosition(btnStartX + btnW + gap, footerY);
         saveBtn.setSize(btnW, 20);
         getTree().addChild(saveBtn);
@@ -389,10 +393,10 @@ public class AHSettingsScreen extends EcoScreen {
         int panelW = guiWidth - sidebarWidth - 20;
 
         if (showDeleteConfirm) {
-            String title = "Supprimer: " + (deleteAhName != null ? deleteAhName : "");
-            graphics.drawString(font, title, panelX, guiTop + 10, THEME.danger, false);
+            Component deleteTitle = Component.translatable("ecocraft_ah.settings.delete_title", deleteAhName != null ? deleteAhName : "");
+            graphics.drawString(font, deleteTitle, panelX, guiTop + 10, THEME.danger, false);
             DrawUtils.drawAccentSeparator(graphics, panelX, guiTop + 22, panelW, THEME);
-            graphics.drawString(font, "Que faire des listings actives ?", panelX, guiTop + 36, THEME.textLight, false);
+            graphics.drawString(font, Component.translatable("ecocraft_ah.settings.delete_question"), panelX, guiTop + 36, THEME.textLight, false);
         } else if (selectedTab == 0) {
             renderGeneralLabels(graphics, font, panelX, panelW);
         } else {
@@ -406,12 +410,12 @@ public class AHSettingsScreen extends EcoScreen {
     private void renderGeneralLabels(GuiGraphics graphics, Font font, int panelX, int panelW) {
         int y = guiTop + 10;
 
-        String title = "G\u00e9n\u00e9ral";
-        graphics.drawString(font, title, panelX, y, THEME.accent, false);
+        Component genTitle = Component.translatable("ecocraft_ah.settings.general");
+        graphics.drawString(font, genTitle, panelX, y, THEME.accent, false);
         DrawUtils.drawAccentSeparator(graphics, panelX, y + 12, panelW, THEME);
 
         if (npcEntityId == -1) {
-            String msg = "Ouvrez les param\u00e8tres depuis un PNJ pour configurer ses options.";
+            Component msg = Component.translatable("ecocraft_ah.settings.npc_hint");
             int msgW = font.width(msg);
             int msgX = panelX + (panelW - msgW) / 2;
             int msgY = guiTop + guiHeight / 2 - font.lineHeight / 2;
@@ -420,9 +424,9 @@ public class AHSettingsScreen extends EcoScreen {
         }
 
         y = guiTop + 30;
-        graphics.drawString(font, "Pseudo du skin:", panelX, y, THEME.textGrey, false);
+        graphics.drawString(font, Component.translatable("ecocraft_ah.settings.skin_label"), panelX, y, THEME.textGrey, false);
         y += 40;
-        graphics.drawString(font, "H\u00f4tel des ventes:", panelX, y, THEME.textGrey, false);
+        graphics.drawString(font, Component.translatable("ecocraft_ah.settings.ah_label"), panelX, y, THEME.textGrey, false);
     }
 
     private void renderAHLabels(GuiGraphics graphics, Font font, int panelX, int panelW,
@@ -434,27 +438,27 @@ public class AHSettingsScreen extends EcoScreen {
         DrawUtils.drawAccentSeparator(graphics, panelX, y + 12, panelW, THEME);
 
         y = guiTop + 30;
-        graphics.drawString(font, "Nom de l'AH:", panelX, y, THEME.textGrey, false);
+        graphics.drawString(font, Component.translatable("ecocraft_ah.settings.ah_name_label"), panelX, y, THEME.textGrey, false);
 
         y += 44;
-        graphics.drawString(font, "Taxe sur les ventes:", panelX, y, THEME.textGrey, false);
+        graphics.drawString(font, Component.translatable("ecocraft_ah.settings.sale_tax_label"), panelX, y, THEME.textGrey, false);
 
         y += 44;
-        graphics.drawString(font, "D\u00e9p\u00f4t:", panelX, y, THEME.textGrey, false);
+        graphics.drawString(font, Component.translatable("ecocraft_ah.settings.deposit_label"), panelX, y, THEME.textGrey, false);
 
         y += 50;
-        graphics.drawString(font, "Dur\u00e9es (heures):", panelX, y, THEME.textGrey, false);
+        graphics.drawString(font, Component.translatable("ecocraft_ah.settings.durations_label"), panelX, y, THEME.textGrey, false);
     }
 
     // --- Actions ---
 
     private void onCreateAH() {
-        String newName = "Nouvel AH";
+        String newName = Component.translatable("ecocraft_ah.settings.new_ah_name").getString();
         String newId = UUID.randomUUID().toString();
         AHInstancesPayload.AHInstanceData newData = new AHInstancesPayload.AHInstanceData(
                 newId, AHInstance.slugify(newName), newName,
                 AHInstance.DEFAULT_SALE_RATE, AHInstance.DEFAULT_DEPOSIT_RATE,
-                new ArrayList<>(AHInstance.DEFAULT_DURATIONS));
+                new ArrayList<>(AHInstance.DEFAULT_DURATIONS), true, true);
         ahInstances.add(newData);
         PacketDistributor.sendToServer(new CreateAHPayload(newName));
 
@@ -492,7 +496,8 @@ public class AHSettingsScreen extends EcoScreen {
         for (var entry : editedAHs.entrySet()) {
             var edit = entry.getValue();
             PacketDistributor.sendToServer(new UpdateAHInstancePayload(
-                    entry.getKey(), edit.name, edit.saleRate, edit.depositRate, edit.durations));
+                    entry.getKey(), edit.name, edit.saleRate, edit.depositRate, edit.durations,
+                    edit.allowBuyout, edit.allowAuction));
         }
         if (npcEntityId != -1) {
             PacketDistributor.sendToServer(new UpdateNPCSkinPayload(npcEntityId, skinPlayerName, linkedAhId));

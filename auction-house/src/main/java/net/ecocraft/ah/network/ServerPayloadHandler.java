@@ -7,6 +7,7 @@ import net.ecocraft.ah.network.payload.*;
 import net.ecocraft.ah.service.AuctionService;
 import net.ecocraft.ah.storage.AuctionStorageProvider;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.network.PacketDistributor;
@@ -179,7 +180,7 @@ public final class ServerPayloadHandler {
                 }
 
                 if (itemToSell.isEmpty()) {
-                    context.reply(new AHActionResultPayload(false, "Aucun objet s\u00e9lectionn\u00e9!"));
+                    context.reply(new AHActionResultPayload(false, Component.translatable("ecocraft_ah.message.no_item_selected").getString()));
                     return;
                 }
 
@@ -225,13 +226,13 @@ public final class ServerPayloadHandler {
                     player.getMainHandItem().setCount(0);
                 }
 
-                context.reply(new AHActionResultPayload(true, "Annonce créée avec succès."));
+                context.reply(new AHActionResultPayload(true, Component.translatable("ecocraft_ah.message.listing_created").getString()));
                 sendBalanceUpdate(player);
             } catch (AuctionService.AuctionException e) {
                 context.reply(new AHActionResultPayload(false, e.getMessage()));
             } catch (Exception e) {
                 LOGGER.error("Error handling CreateListing", e);
-                context.reply(new AHActionResultPayload(false, "Erreur interne lors de la création de l'annonce."));
+                context.reply(new AHActionResultPayload(false, Component.translatable("ecocraft_ah.message.internal_error_create").getString()));
             }
         });
     }
@@ -243,13 +244,13 @@ public final class ServerPayloadHandler {
                 ServerPlayer player = (ServerPlayer) context.player();
 
                 service.buyListing(player.getUUID(), player.getName().getString(), payload.listingId(), payload.quantity());
-                context.reply(new AHActionResultPayload(true, "Achat réussi ! Récupérez votre objet dans les colis."));
+                context.reply(new AHActionResultPayload(true, Component.translatable("ecocraft_ah.message.purchase_success").getString()));
                 sendBalanceUpdate(player);
             } catch (AuctionService.AuctionException e) {
                 context.reply(new AHActionResultPayload(false, e.getMessage()));
             } catch (Exception e) {
                 LOGGER.error("Error handling BuyListing", e);
-                context.reply(new AHActionResultPayload(false, "Erreur interne lors de l'achat."));
+                context.reply(new AHActionResultPayload(false, Component.translatable("ecocraft_ah.message.internal_error_buy").getString()));
             }
         });
     }
@@ -262,13 +263,13 @@ public final class ServerPayloadHandler {
 
                 BigDecimal amount = BigDecimal.valueOf(payload.amount());
                 service.placeBid(player.getUUID(), player.getName().getString(), payload.listingId(), amount);
-                context.reply(new AHActionResultPayload(true, "Enchère placée avec succès."));
+                context.reply(new AHActionResultPayload(true, Component.translatable("ecocraft_ah.message.bid_success").getString()));
                 sendBalanceUpdate(player);
             } catch (AuctionService.AuctionException e) {
                 context.reply(new AHActionResultPayload(false, e.getMessage()));
             } catch (Exception e) {
                 LOGGER.error("Error handling PlaceBid", e);
-                context.reply(new AHActionResultPayload(false, "Erreur interne lors de l'enchère."));
+                context.reply(new AHActionResultPayload(false, Component.translatable("ecocraft_ah.message.internal_error_bid").getString()));
             }
         });
     }
@@ -280,12 +281,12 @@ public final class ServerPayloadHandler {
                 ServerPlayer player = (ServerPlayer) context.player();
 
                 service.cancelListing(player.getUUID(), payload.listingId());
-                context.reply(new AHActionResultPayload(true, "Annonce annulée."));
+                context.reply(new AHActionResultPayload(true, Component.translatable("ecocraft_ah.message.listing_cancelled").getString()));
             } catch (AuctionService.AuctionException e) {
                 context.reply(new AHActionResultPayload(false, e.getMessage()));
             } catch (Exception e) {
                 LOGGER.error("Error handling CancelListing", e);
-                context.reply(new AHActionResultPayload(false, "Erreur interne lors de l'annulation."));
+                context.reply(new AHActionResultPayload(false, Component.translatable("ecocraft_ah.message.internal_error_cancel").getString()));
             }
         });
     }
@@ -329,13 +330,13 @@ public final class ServerPayloadHandler {
                 }
 
                 String msg = parcels.isEmpty()
-                        ? "Aucun colis à récupérer."
-                        : parcels.size() + " colis récupéré(s).";
+                        ? Component.translatable("ecocraft_ah.message.no_parcels").getString()
+                        : Component.translatable("ecocraft_ah.message.parcels_collected", parcels.size()).getString();
                 context.reply(new AHActionResultPayload(true, msg));
                 sendBalanceUpdate(player);
             } catch (Exception e) {
                 LOGGER.error("Error handling CollectParcels", e);
-                context.reply(new AHActionResultPayload(false, "Erreur interne lors de la récupération des colis."));
+                context.reply(new AHActionResultPayload(false, Component.translatable("ecocraft_ah.message.internal_error_collect").getString()));
             }
         });
     }
@@ -497,7 +498,8 @@ public final class ServerPayloadHandler {
         List<AHInstancesPayload.AHInstanceData> data = new ArrayList<>();
         for (var ah : instances) {
             data.add(new AHInstancesPayload.AHInstanceData(
-                    ah.id(), ah.slug(), ah.name(), ah.saleRate(), ah.depositRate(), new ArrayList<>(ah.durations())));
+                    ah.id(), ah.slug(), ah.name(), ah.saleRate(), ah.depositRate(), new ArrayList<>(ah.durations()),
+                    ah.allowBuyout(), ah.allowAuction()));
         }
         PacketDistributor.sendToPlayer(player, new AHInstancesPayload(data));
     }
@@ -506,17 +508,17 @@ public final class ServerPayloadHandler {
         context.enqueueWork(() -> {
             ServerPlayer player = (ServerPlayer) context.player();
             if (!player.hasPermissions(2)) {
-                context.reply(new AHActionResultPayload(false, "Permission refusée."));
+                context.reply(new AHActionResultPayload(false, Component.translatable("ecocraft_ah.message.permission_denied").getString()));
                 return;
             }
             AuctionStorageProvider storage = AHServerEvents.getStorage();
             if (storage == null) {
-                context.reply(new AHActionResultPayload(false, "Storage non disponible."));
+                context.reply(new AHActionResultPayload(false, Component.translatable("ecocraft_ah.message.storage_unavailable").getString()));
                 return;
             }
             AHInstance ah = AHInstance.create(payload.name());
             storage.createAHInstance(ah);
-            context.reply(new AHActionResultPayload(true, "HDV créé : " + ah.name()));
+            context.reply(new AHActionResultPayload(true, Component.translatable("ecocraft_ah.message.ah_created", ah.name()).getString()));
             sendAHInstances(player);
         });
     }
@@ -525,21 +527,21 @@ public final class ServerPayloadHandler {
         context.enqueueWork(() -> {
             ServerPlayer player = (ServerPlayer) context.player();
             if (!player.hasPermissions(2)) {
-                context.reply(new AHActionResultPayload(false, "Permission refusée."));
+                context.reply(new AHActionResultPayload(false, Component.translatable("ecocraft_ah.message.permission_denied").getString()));
                 return;
             }
             AuctionStorageProvider storage = AHServerEvents.getStorage();
             if (storage == null) {
-                context.reply(new AHActionResultPayload(false, "Storage non disponible."));
+                context.reply(new AHActionResultPayload(false, Component.translatable("ecocraft_ah.message.storage_unavailable").getString()));
                 return;
             }
             AHInstance ah = storage.getAHInstance(payload.ahId());
             if (ah == null) {
-                context.reply(new AHActionResultPayload(false, "HDV introuvable."));
+                context.reply(new AHActionResultPayload(false, Component.translatable("ecocraft_ah.message.ah_not_found").getString()));
                 return;
             }
             if (AHInstance.DEFAULT_ID.equals(ah.id())) {
-                context.reply(new AHActionResultPayload(false, "Impossible de supprimer l'HDV par défaut."));
+                context.reply(new AHActionResultPayload(false, Component.translatable("ecocraft_ah.message.cannot_delete_default").getString()));
                 return;
             }
 
@@ -560,7 +562,7 @@ public final class ServerPayloadHandler {
                 }
             }
             storage.deleteAHInstance(payload.ahId());
-            context.reply(new AHActionResultPayload(true, "HDV supprimé : " + ah.name()));
+            context.reply(new AHActionResultPayload(true, Component.translatable("ecocraft_ah.message.ah_deleted", ah.name()).getString()));
             sendAHInstances(player);
         });
     }
@@ -569,22 +571,23 @@ public final class ServerPayloadHandler {
         context.enqueueWork(() -> {
             ServerPlayer player = (ServerPlayer) context.player();
             if (!player.hasPermissions(2)) {
-                context.reply(new AHActionResultPayload(false, "Permission refusée."));
+                context.reply(new AHActionResultPayload(false, Component.translatable("ecocraft_ah.message.permission_denied").getString()));
                 return;
             }
             AuctionStorageProvider storage = AHServerEvents.getStorage();
             if (storage == null) {
-                context.reply(new AHActionResultPayload(false, "Storage non disponible."));
+                context.reply(new AHActionResultPayload(false, Component.translatable("ecocraft_ah.message.storage_unavailable").getString()));
                 return;
             }
             AHInstance existing = storage.getAHInstance(payload.ahId());
             if (existing == null) {
-                context.reply(new AHActionResultPayload(false, "HDV introuvable."));
+                context.reply(new AHActionResultPayload(false, Component.translatable("ecocraft_ah.message.ah_not_found").getString()));
                 return;
             }
-            AHInstance updated = existing.withConfig(payload.name(), payload.saleRate(), payload.depositRate(), payload.durations());
+            AHInstance updated = existing.withConfig(payload.name(), payload.saleRate(), payload.depositRate(), payload.durations(),
+                    payload.allowBuyout(), payload.allowAuction());
             storage.updateAHInstance(updated);
-            context.reply(new AHActionResultPayload(true, "HDV mis à jour : " + updated.name()));
+            context.reply(new AHActionResultPayload(true, Component.translatable("ecocraft_ah.message.ah_updated", updated.name()).getString()));
             sendAHInstances(player);
         });
     }
@@ -624,7 +627,7 @@ public final class ServerPayloadHandler {
         context.enqueueWork(() -> {
             ServerPlayer player = (ServerPlayer) context.player();
             if (!player.hasPermissions(2)) {
-                context.reply(new AHActionResultPayload(false, "Permission refusée."));
+                context.reply(new AHActionResultPayload(false, Component.translatable("ecocraft_ah.message.permission_denied").getString()));
                 return;
             }
             try {
@@ -637,12 +640,12 @@ public final class ServerPayloadHandler {
                     config.durations.set(validDurations);
                 }
                 net.ecocraft.ah.config.AHConfig.CONFIG_SPEC.save();
-                context.reply(new AHActionResultPayload(true, "Paramètres sauvegardés."));
+                context.reply(new AHActionResultPayload(true, Component.translatable("ecocraft_ah.message.settings_saved").getString()));
                 // Re-send settings so client updates its cached values
                 sendAHSettings(player);
             } catch (Exception e) {
                 LOGGER.error("Error updating AH settings", e);
-                context.reply(new AHActionResultPayload(false, "Erreur lors de la sauvegarde."));
+                context.reply(new AHActionResultPayload(false, Component.translatable("ecocraft_ah.message.settings_save_error").getString()));
             }
         });
     }
@@ -671,13 +674,13 @@ public final class ServerPayloadHandler {
         context.enqueueWork(() -> {
             ServerPlayer player = (ServerPlayer) context.player();
             if (!player.hasPermissions(2)) {
-                context.reply(new AHActionResultPayload(false, "Permission refusée."));
+                context.reply(new AHActionResultPayload(false, Component.translatable("ecocraft_ah.message.permission_denied").getString()));
                 return;
             }
 
             var entity = player.level().getEntity(payload.entityId());
             if (!(entity instanceof net.ecocraft.ah.entity.AuctioneerEntity npc)) {
-                context.reply(new AHActionResultPayload(false, "PNJ introuvable."));
+                context.reply(new AHActionResultPayload(false, Component.translatable("ecocraft_ah.message.npc_not_found").getString()));
                 return;
             }
 
@@ -687,14 +690,14 @@ public final class ServerPayloadHandler {
 
             if (skinName.isEmpty()) {
                 npc.setSkinProfile(null);
-                context.reply(new AHActionResultPayload(true, "Skin réinitialisé."));
+                context.reply(new AHActionResultPayload(true, Component.translatable("ecocraft_ah.message.skin_reset").getString()));
                 return;
             }
 
             // Resolve GameProfile asynchronously
             var server = player.getServer();
             if (server == null) {
-                context.reply(new AHActionResultPayload(false, "Serveur non disponible."));
+                context.reply(new AHActionResultPayload(false, Component.translatable("ecocraft_ah.message.server_unavailable").getString()));
                 return;
             }
 
@@ -702,12 +705,12 @@ public final class ServerPayloadHandler {
                 try {
                     var profileCache = server.getProfileCache();
                     if (profileCache == null) {
-                        server.execute(() -> context.reply(new AHActionResultPayload(false, "Cache de profils non disponible.")));
+                        server.execute(() -> context.reply(new AHActionResultPayload(false, Component.translatable("ecocraft_ah.message.profile_cache_unavailable").getString())));
                         return;
                     }
                     var optProfile = profileCache.get(skinName);
                     if (optProfile.isEmpty()) {
-                        server.execute(() -> context.reply(new AHActionResultPayload(false, "Joueur introuvable: " + skinName)));
+                        server.execute(() -> context.reply(new AHActionResultPayload(false, Component.translatable("ecocraft_ah.message.player_not_found", skinName).getString())));
                         return;
                     }
 
@@ -715,18 +718,18 @@ public final class ServerPayloadHandler {
                     // Fetch full profile with skin textures from Mojang API
                     var profileResult = server.getSessionService().fetchProfile(profile.getId(), true);
                     if (profileResult == null) {
-                        server.execute(() -> context.reply(new AHActionResultPayload(false, "Impossible de résoudre le profil: " + skinName)));
+                        server.execute(() -> context.reply(new AHActionResultPayload(false, Component.translatable("ecocraft_ah.message.profile_resolve_error", skinName).getString())));
                         return;
                     }
                     var filledProfile = profileResult.profile();
 
                     server.execute(() -> {
                         npc.setSkinProfile(filledProfile);
-                        context.reply(new AHActionResultPayload(true, "Skin mis à jour: " + skinName));
+                        context.reply(new AHActionResultPayload(true, Component.translatable("ecocraft_ah.message.skin_updated", skinName).getString()));
                     });
                 } catch (Exception e) {
                     LOGGER.error("Error resolving skin for " + skinName, e);
-                    server.execute(() -> context.reply(new AHActionResultPayload(false, "Erreur lors de la résolution du skin.")));
+                    server.execute(() -> context.reply(new AHActionResultPayload(false, Component.translatable("ecocraft_ah.message.skin_resolve_error").getString())));
                 }
             });
         });

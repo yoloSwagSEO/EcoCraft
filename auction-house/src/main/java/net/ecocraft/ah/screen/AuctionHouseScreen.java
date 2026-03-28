@@ -68,7 +68,7 @@ public class AuctionHouseScreen extends EcoScreen {
     private LedgerTab ledgerTab;
 
     public AuctionHouseScreen() {
-        super(Component.literal("Auction House"));
+        super(Component.translatable("ecocraft_ah.screen.title"));
     }
 
     public String getCurrentAhId() { return currentAhId; }
@@ -128,10 +128,10 @@ public class AuctionHouseScreen extends EcoScreen {
         guiTop = (height - guiHeight) / 2;
 
         List<Component> tabLabels = List.of(
-                Component.literal("\uD83D\uDED2 Acheter"),
-                Component.literal("\uD83D\uDCB0 Vendre"),
-                Component.literal("\uD83D\uDCCB Mes ench\u00e8res"),
-                Component.literal("\uD83D\uDCD2 Livre de compte")
+                Component.translatable("ecocraft_ah.tab.buy"),
+                Component.translatable("ecocraft_ah.tab.sell"),
+                Component.translatable("ecocraft_ah.tab.my_auctions"),
+                Component.translatable("ecocraft_ah.tab.ledger")
         );
 
         tabBar = new EcoTabBar(guiLeft + 4, guiTop + 4, tabLabels, this::onTabChanged);

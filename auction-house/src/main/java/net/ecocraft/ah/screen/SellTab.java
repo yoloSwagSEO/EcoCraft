@@ -98,17 +98,17 @@ public class SellTab extends BaseWidget {
 
         // 2. Type toggle: Achat immediat / Enchere
         if (isBuyout) {
-            buyoutBtn = EcoButton.success(THEME, Component.literal("Achat imm\u00e9diat"), () -> { isBuyout = true; buildWidgets(); });
+            buyoutBtn = EcoButton.success(THEME, Component.translatable("ecocraft_ah.type.buyout"), () -> { isBuyout = true; buildWidgets(); });
         } else {
-            buyoutBtn = EcoButton.ghost(THEME, Component.literal("Achat imm\u00e9diat"), () -> { isBuyout = true; buildWidgets(); });
+            buyoutBtn = EcoButton.ghost(THEME, Component.translatable("ecocraft_ah.type.buyout"), () -> { isBuyout = true; buildWidgets(); });
         }
         buyoutBtn.setPosition(leftCenterX - 82, currentY);
         buyoutBtn.setSize(80, 16);
 
         if (!isBuyout) {
-            auctionBtn = EcoButton.warning(THEME, Component.literal("Ench\u00e8re"), () -> { isBuyout = false; buildWidgets(); });
+            auctionBtn = EcoButton.warning(THEME, Component.translatable("ecocraft_ah.type.auction"), () -> { isBuyout = false; buildWidgets(); });
         } else {
-            auctionBtn = EcoButton.ghost(THEME, Component.literal("Ench\u00e8re"), () -> { isBuyout = false; buildWidgets(); });
+            auctionBtn = EcoButton.ghost(THEME, Component.translatable("ecocraft_ah.type.auction"), () -> { isBuyout = false; buildWidgets(); });
         }
         auctionBtn.setPosition(leftCenterX + 2, currentY);
         auctionBtn.setSize(80, 16);
@@ -158,7 +158,7 @@ public class SellTab extends BaseWidget {
         currentY += 4;
 
         // 7. "Mettre en vente" button
-        sellButton = EcoButton.success(THEME, Component.literal("Mettre en vente"), this::onSellClicked);
+        sellButton = EcoButton.success(THEME, Component.translatable("ecocraft_ah.button.sell"), this::onSellClicked);
         sellButton.setPosition(leftCenterX - 60, currentY);
         sellButton.setSize(120, 18);
         addChild(sellButton);
@@ -202,7 +202,7 @@ public class SellTab extends BaseWidget {
         int nameY = tabY + 40;
         ItemStack selected = getSelectedItem();
         if (selected.isEmpty()) {
-            String msg = "S\u00e9lectionnez un objet";
+            Component msg = Component.translatable("ecocraft_ah.sell.select_item");
             int msgW = font.width(msg);
             graphics.drawString(font, msg, leftCenterX - msgW / 2, nameY, THEME.textGrey, false);
         } else {
@@ -216,13 +216,14 @@ public class SellTab extends BaseWidget {
         // "Prix unitaire:" label left of the price input
         if (priceInput != null) {
             int priceInputY = priceInput.getY();
-            graphics.drawString(font, "Prix unitaire:", priceInput.getX() - font.width("Prix unitaire: ") - 2, priceInputY + 3, THEME.textGrey, false);
+            Component unitPriceLabel = Component.translatable("ecocraft_ah.sell.unit_price_label");
+            graphics.drawString(font, unitPriceLabel, priceInput.getX() - font.width(unitPriceLabel) - 4, priceInputY + 3, THEME.textGrey, false);
         }
 
         // Quantity info below duration
         int quantityY = (durationTags != null) ? durationTags.getY() + 22 : tabY + 130;
         int quantity = selected.isEmpty() ? 0 : selected.getCount();
-        String qtyText = "Quantit\u00e9: " + quantity;
+        Component qtyText = Component.translatable("ecocraft_ah.sell.quantity_label", quantity);
         int qtyW = font.width(qtyText);
         graphics.drawString(font, qtyText, leftCenterX - qtyW / 2, quantityY, THEME.textLight, false);
 
@@ -244,15 +245,15 @@ public class SellTab extends BaseWidget {
             int labelX = panelX + 8;
             int valueX = panelX + panelW - 8;
 
-            drawSummaryLine(graphics, font, "Prix unitaire:", BuyTab.formatPrice(unitPrice), labelX, valueX, panelY + 4, THEME.textGrey, THEME.textLight);
-            drawSummaryLine(graphics, font, "Prix total:", BuyTab.formatPrice(totalPrice), labelX, valueX, panelY + 16, THEME.textLight, THEME.accent);
-            drawSummaryLine(graphics, font, "Taxe (" + Math.round(activeTaxRate * 100) + "%):", "-" + BuyTab.formatPrice(tax), labelX, valueX, panelY + 28, THEME.textGrey, THEME.danger);
-            drawSummaryLine(graphics, font, "D\u00e9p\u00f4t (" + Math.round(activeDepositRate * 100) + "%):", "-" + BuyTab.formatPrice(deposit), labelX, valueX, panelY + 40, THEME.textGrey, THEME.warning);
+            drawSummaryLine(graphics, font, Component.translatable("ecocraft_ah.sell.unit_price_label").getString(), BuyTab.formatPrice(unitPrice), labelX, valueX, panelY + 4, THEME.textGrey, THEME.textLight);
+            drawSummaryLine(graphics, font, Component.translatable("ecocraft_ah.sell.total_price_label").getString(), BuyTab.formatPrice(totalPrice), labelX, valueX, panelY + 16, THEME.textLight, THEME.accent);
+            drawSummaryLine(graphics, font, Component.translatable("ecocraft_ah.sell.tax_label", Math.round(activeTaxRate * 100)).getString(), "-" + BuyTab.formatPrice(tax), labelX, valueX, panelY + 28, THEME.textGrey, THEME.danger);
+            drawSummaryLine(graphics, font, Component.translatable("ecocraft_ah.sell.deposit_label", Math.round(activeDepositRate * 100)).getString(), "-" + BuyTab.formatPrice(deposit), labelX, valueX, panelY + 40, THEME.textGrey, THEME.warning);
             DrawUtils.drawAccentSeparator(graphics, panelX + 4, panelY + 51, panelW - 8, THEME);
-            drawSummaryLine(graphics, font, "Net:", BuyTab.formatPrice(net), labelX, valueX, panelY + 56, THEME.textLight, THEME.success);
+            drawSummaryLine(graphics, font, Component.translatable("ecocraft_ah.sell.net_label").getString(), BuyTab.formatPrice(net), labelX, valueX, panelY + 56, THEME.textLight, THEME.success);
         } else {
             DrawUtils.drawPanel(graphics, panelX, panelY, panelW, panelH, THEME);
-            String placeholder = "Entrez un prix pour voir le r\u00e9sum\u00e9";
+            Component placeholder = Component.translatable("ecocraft_ah.sell.enter_price_summary");
             int phW = font.width(placeholder);
             graphics.drawString(font, placeholder, panelX + (panelW - phW) / 2, panelY + 28, THEME.textDim, false);
         }
@@ -323,12 +324,12 @@ public class SellTab extends BaseWidget {
     private void onSellClicked() {
         ItemStack selected = getSelectedItem();
         if (selected.isEmpty()) {
-            lastMessage = "Aucun objet s\u00e9lectionn\u00e9 !";
+            lastMessage = Component.translatable("ecocraft_ah.sell.no_item_selected").getString();
             lastSuccess = false;
             return;
         }
         if (priceValue <= 0) {
-            lastMessage = "Entrez un prix valide !";
+            lastMessage = Component.translatable("ecocraft_ah.sell.enter_valid_price").getString();
             lastSuccess = false;
             return;
         }
@@ -338,25 +339,12 @@ public class SellTab extends BaseWidget {
         int slotToSend = selectedInventorySlot >= 0 ? selectedInventorySlot : -1;
         com.mojang.logging.LogUtils.getLogger().info("[AH Client] SellTab.createListing ahId={} price={}", getAhId(), priceValue);
         PacketDistributor.sendToServer(new CreateListingPayload(getAhId(), listingType, priceValue, hours, slotToSend));
-        lastMessage = "Envoi en cours...";
+        lastMessage = Component.translatable("ecocraft_ah.sell.sending").getString();
         lastSuccess = true;
     }
 
     public void onActionResult(AHActionResultPayload payload) {
         String msg = payload.message();
-        if ("Listing created successfully.".equals(msg)) {
-            msg = "Objet mis en vente !";
-        } else if ("You must hold an item to sell.".equals(msg)) {
-            msg = "Aucun objet s\u00e9lectionn\u00e9 !";
-        } else if ("Price must be positive.".equals(msg)) {
-            msg = "Le prix doit \u00eatre positif !";
-        } else if ("Invalid item.".equals(msg)) {
-            msg = "Objet invalide !";
-        } else if ("Not enough funds.".equals(msg)) {
-            msg = "Fonds insuffisants !";
-        } else if ("Listing not found.".equals(msg)) {
-            msg = "Annonce introuvable !";
-        }
         lastMessage = msg;
         lastSuccess = payload.success();
 
