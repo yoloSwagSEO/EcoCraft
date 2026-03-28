@@ -16,6 +16,11 @@ public interface DatabaseProvider {
     BigDecimal getVirtualBalance(UUID player, String currencyId);
     void setVirtualBalance(UUID player, String currencyId, BigDecimal amount);
 
+    /** Returns all balances for a currency, sorted by amount descending. */
+    List<BalanceEntry> getAllBalances(String currencyId);
+
+    record BalanceEntry(UUID playerUuid, String currencyId, BigDecimal amount) {}
+
     // Transactions
     void logTransaction(UUID txId, @Nullable UUID from, @Nullable UUID to,
                         BigDecimal amount, String currencyId, String type, Instant timestamp);

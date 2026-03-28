@@ -2,26 +2,25 @@
   "block.ecocraft_core.vault_block": "Bóveda",
   "container.ecocraft_core.vault": "Bóveda",
   "itemGroup.ecocraft_core": "EcoCraft Economía",
-
   "ecocraft_core.command.player_only": "Este comando debe ser ejecutado por un jugador",
   "ecocraft_core.command.balance.self": "Saldo: %s %s",
   "ecocraft_core.command.balance.no_permission": "No tienes permiso para ver el saldo de otros jugadores",
   "ecocraft_core.command.balance.other": "Saldo de %s: %s %s",
-
   "ecocraft_core.command.pay.no_permission": "No tienes permiso para pagar",
   "ecocraft_core.command.pay.self": "No puedes pagarte a ti mismo",
   "ecocraft_core.command.pay.sent": "Pagado %s %s a %s",
   "ecocraft_core.command.pay.received": "Recibido %s %s de %s",
-
   "ecocraft_core.command.eco.give": "Dado %s %s a %s",
   "ecocraft_core.command.eco.take": "Retirado %s %s a %s",
   "ecocraft_core.command.eco.set": "Saldo de %s establecido a %s %s",
-
   "ecocraft_core.command.currency.none": "No hay divisas registradas",
   "ecocraft_core.command.currency.header": "§6=== Divisas ===",
   "ecocraft_core.command.currency.entry": "§f%s %s §7(%s)%s",
   "ecocraft_core.command.currency.default_marker": " §a(predeterminada)",
   "ecocraft_core.command.currency.exchange_no_permission": "No tienes permiso para cambiar divisas",
   "ecocraft_core.command.currency.unknown": "Divisa desconocida",
-  "ecocraft_core.command.currency.converted": "Convertido %s %s a %s"
+  "ecocraft_core.command.currency.converted": "Convertido %s %s a %s",
+  "ecocraft_core.command.balance.list_header": "=== Todos los saldos ===",
+  "ecocraft_core.command.balance.list_empty": "No se encontraron saldos.",
+  "ecocraft_core.command.balance.player_not_found": "Jugador no encontrado: %s"
 }

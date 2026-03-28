@@ -88,6 +88,25 @@ public class SqliteDatabaseProvider implements DatabaseProvider {
     }
 
     @Override
+    public List<BalanceEntry> getAllBalances(String currencyId) {
+        List<BalanceEntry> results = new java.util.ArrayList<>();
+        try (PreparedStatement ps = connection.prepareStatement(
+                "SELECT player_uuid, currency_id, amount FROM balances WHERE currency_id = ? ORDER BY amount DESC")) {
+            ps.setString(1, currencyId);
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                results.add(new BalanceEntry(
+                        UUID.fromString(rs.getString("player_uuid")),
+                        rs.getString("currency_id"),
+                        new BigDecimal(rs.getString("amount"))));
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to get all balances", e);
+        }
+        return results;
+    }
+
+    @Override
     public void setVirtualBalance(UUID player, String currencyId, BigDecimal amount) {
         try (PreparedStatement ps = connection.prepareStatement("""
                 INSERT INTO balances (player_uuid, currency_id, amount) VALUES (?, ?, ?)

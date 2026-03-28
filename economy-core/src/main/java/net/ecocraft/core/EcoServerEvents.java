@@ -99,6 +99,7 @@ public class EcoServerEvents {
     public static EconomyProvider getEconomy() { return economyProvider; }
     public static CurrencyRegistry getCurrencyRegistry() { return currencyRegistry; }
     public static ExchangeService getExchangeService() { return exchangeService; }
+    public static StorageManager getStorage() { return storage; }
     public static TransactionLog getTransactionLog() { return transactionLog; }
     public static PermissionChecker getPermissions() { return permissions; }
 }

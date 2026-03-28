@@ -2,26 +2,25 @@
   "block.ecocraft_core.vault_block": "Coffre-fort",
   "container.ecocraft_core.vault": "Coffre-fort",
   "itemGroup.ecocraft_core": "EcoCraft Économie",
-
   "ecocraft_core.command.player_only": "Cette commande doit être exécutée par un joueur",
   "ecocraft_core.command.balance.self": "Solde : %s %s",
   "ecocraft_core.command.balance.no_permission": "Vous n'avez pas la permission de voir le solde d'autres joueurs",
   "ecocraft_core.command.balance.other": "Solde de %s : %s %s",
-
   "ecocraft_core.command.pay.no_permission": "Vous n'avez pas la permission de payer",
   "ecocraft_core.command.pay.self": "Vous ne pouvez pas vous payer vous-même",
   "ecocraft_core.command.pay.sent": "Payé %s %s à %s",
   "ecocraft_core.command.pay.received": "Reçu %s %s de %s",
-
   "ecocraft_core.command.eco.give": "Donné %s %s à %s",
   "ecocraft_core.command.eco.take": "Retiré %s %s à %s",
   "ecocraft_core.command.eco.set": "Solde de %s défini à %s %s",
-
   "ecocraft_core.command.currency.none": "Aucune devise enregistrée",
   "ecocraft_core.command.currency.header": "§6=== Devises ===",
   "ecocraft_core.command.currency.entry": "§f%s %s §7(%s)%s",
   "ecocraft_core.command.currency.default_marker": " §a(par défaut)",
   "ecocraft_core.command.currency.exchange_no_permission": "Vous n'avez pas la permission d'échanger des devises",
   "ecocraft_core.command.currency.unknown": "Devise inconnue",
-  "ecocraft_core.command.currency.converted": "Converti %s %s en %s"
+  "ecocraft_core.command.currency.converted": "Converti %s %s en %s",
+  "ecocraft_core.command.balance.list_header": "=== Tous les soldes ===",
+  "ecocraft_core.command.balance.list_empty": "Aucun solde trouvé.",
+  "ecocraft_core.command.balance.player_not_found": "Joueur introuvable : %s"
 }

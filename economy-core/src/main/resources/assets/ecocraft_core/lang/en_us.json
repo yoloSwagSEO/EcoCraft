@@ -2,26 +2,25 @@
   "block.ecocraft_core.vault_block": "Vault",
   "container.ecocraft_core.vault": "Vault",
   "itemGroup.ecocraft_core": "EcoCraft Economy",
-
   "ecocraft_core.command.player_only": "This command must be run by a player",
   "ecocraft_core.command.balance.self": "Balance: %s %s",
   "ecocraft_core.command.balance.no_permission": "You don't have permission to check other players' balance",
   "ecocraft_core.command.balance.other": "%s's balance: %s %s",
-
   "ecocraft_core.command.pay.no_permission": "You don't have permission to pay",
   "ecocraft_core.command.pay.self": "You can't pay yourself",
   "ecocraft_core.command.pay.sent": "Paid %s %s to %s",
   "ecocraft_core.command.pay.received": "Received %s %s from %s",
-
   "ecocraft_core.command.eco.give": "Gave %s %s to %s",
   "ecocraft_core.command.eco.take": "Took %s %s from %s",
   "ecocraft_core.command.eco.set": "Set %s's balance to %s %s",
-
   "ecocraft_core.command.currency.none": "No currencies registered",
   "ecocraft_core.command.currency.header": "§6=== Currencies ===",
   "ecocraft_core.command.currency.entry": "§f%s %s §7(%s)%s",
   "ecocraft_core.command.currency.default_marker": " §a(default)",
   "ecocraft_core.command.currency.exchange_no_permission": "You don't have permission to exchange currencies",
   "ecocraft_core.command.currency.unknown": "Unknown currency",
-  "ecocraft_core.command.currency.converted": "Converted %s %s to %s"
+  "ecocraft_core.command.currency.converted": "Converted %s %s to %s",
+  "ecocraft_core.command.balance.list_header": "=== All Balances ===",
+  "ecocraft_core.command.balance.list_empty": "No balances found.",
+  "ecocraft_core.command.balance.player_not_found": "Player not found: %s"
 }
