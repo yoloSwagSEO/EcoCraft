@@ -31,7 +31,7 @@ public class EcoNumberInput extends BaseWidget {
     private long currentValue;
     private boolean showButtons;
     private @Nullable Consumer<Long> responder;
-    private boolean enabled = true;
+
 
     public EcoNumberInput(Font font, int x, int y, int width, int height, Theme theme) {
         super(x, y, width, height);
@@ -78,11 +78,11 @@ public class EcoNumberInput extends BaseWidget {
     }
 
     public void setEnabled(boolean enabled) {
-        this.enabled = enabled;
+        super.setEnabled(enabled);
     }
 
     public boolean isEnabled() {
-        return enabled;
+        return super.isEnabled();
     }
 
     /** The inner EcoEditBox is the focusable widget, not this container. */
@@ -127,12 +127,12 @@ public class EcoNumberInput extends BaseWidget {
     // increment/decrement call setValue() which updates editBox text,
     // which fires onTextChanged -> responder. NO double-fire.
     private void increment() {
-        if (!enabled) return;
+        if (!isEnabled()) return;
         setValue(currentValue + step);
     }
 
     private void decrement() {
-        if (!enabled) return;
+        if (!isEnabled()) return;
         setValue(currentValue - step);
     }
 
@@ -141,7 +141,7 @@ public class EcoNumberInput extends BaseWidget {
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         int bg, border;
-        if (!enabled) {
+        if (!isEnabled()) {
             bg = theme.disabledBg;
             border = theme.disabledBorder;
         } else {
@@ -156,12 +156,12 @@ public class EcoNumberInput extends BaseWidget {
 
         // +/- buttons
         if (showButtons) {
-            int btnBg = enabled ? theme.bgMedium : theme.disabledBg;
-            int btnText = enabled ? theme.textLight : theme.disabledText;
+            int btnBg = isEnabled() ? theme.bgMedium : theme.disabledBg;
+            int btnText = isEnabled() ? theme.textLight : theme.disabledText;
 
             // Minus button (left)
             int minusBtnX = getX();
-            boolean minusHovered = enabled && mouseX >= minusBtnX && mouseX < minusBtnX + BUTTON_WIDTH
+            boolean minusHovered = isEnabled() && mouseX >= minusBtnX && mouseX < minusBtnX + BUTTON_WIDTH
                     && mouseY >= getY() && mouseY < getY() + getHeight();
             int minusBg = minusHovered ? theme.bgLight : btnBg;
             graphics.fill(minusBtnX, getY() + 1, minusBtnX + BUTTON_WIDTH, getY() + getHeight() - 1, minusBg);
@@ -172,7 +172,7 @@ public class EcoNumberInput extends BaseWidget {
 
             // Plus button (right)
             int plusBtnX = getX() + getWidth() - BUTTON_WIDTH;
-            boolean plusHovered = enabled && mouseX >= plusBtnX && mouseX < plusBtnX + BUTTON_WIDTH
+            boolean plusHovered = isEnabled() && mouseX >= plusBtnX && mouseX < plusBtnX + BUTTON_WIDTH
                     && mouseY >= getY() && mouseY < getY() + getHeight();
             int plusBg = plusHovered ? theme.bgLight : btnBg;
             graphics.fill(plusBtnX, getY() + 1, plusBtnX + BUTTON_WIDTH, getY() + getHeight() - 1, plusBg);
@@ -188,7 +188,7 @@ public class EcoNumberInput extends BaseWidget {
 
     @Override
     public boolean onMouseClicked(double mouseX, double mouseY, int button) {
-        if (button != 0 || !enabled) return false;
+        if (button != 0 || !isEnabled()) return false;
 
         // Check minus button
         if (showButtons && mouseX >= getX() && mouseX < getX() + BUTTON_WIDTH

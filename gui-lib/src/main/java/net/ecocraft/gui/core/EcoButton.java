@@ -24,7 +24,7 @@ public class EcoButton extends BaseWidget {
     private final int hoverBg;
     private final Theme theme;
     private final Runnable onPress;
-    private boolean enabled = true;
+
 
     /** Update the button label text. */
     public void setLabel(Component label) { this.label = label; }
@@ -82,15 +82,7 @@ public class EcoButton extends BaseWidget {
                 .textColor(theme.textGrey).hoverBg(theme.bgLight).build();
     }
 
-    // --- Enabled state ---
-
-    public void setEnabled(boolean enabled) {
-        this.enabled = enabled;
-    }
-
-    public boolean isEnabled() {
-        return enabled;
-    }
+    // setEnabled/isEnabled inherited from BaseWidget
 
     // --- Rendering ---
 
@@ -101,7 +93,7 @@ public class EcoButton extends BaseWidget {
 
         int bg, border, text;
 
-        if (!enabled && theme != null) {
+        if (!isEnabled() && theme != null) {
             bg = theme.disabledBg;
             border = theme.disabledBorder;
             text = theme.disabledText;
@@ -125,7 +117,7 @@ public class EcoButton extends BaseWidget {
 
     @Override
     public boolean onMouseClicked(double mouseX, double mouseY, int button) {
-        if (enabled && containsPoint(mouseX, mouseY)) {
+        if (isEnabled() && containsPoint(mouseX, mouseY)) {
             onPress.run();
             return true;
         }

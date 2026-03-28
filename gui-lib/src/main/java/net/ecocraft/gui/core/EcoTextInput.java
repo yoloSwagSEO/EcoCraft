@@ -19,7 +19,7 @@ public class EcoTextInput extends BaseWidget {
 
     private final Theme theme;
     private final EcoEditBox editBox;
-    private boolean enabled = true;
+
 
     public EcoTextInput(Font font, int x, int y, int width, int height, Component placeholder, Theme theme) {
         super(x, y, width, height);
@@ -43,11 +43,11 @@ public class EcoTextInput extends BaseWidget {
     public EcoTextInput responder(Consumer<String> responder) { editBox.setResponder(responder); return this; }
 
     public void setEnabled(boolean enabled) {
-        this.enabled = enabled;
+        super.setEnabled(enabled);
     }
 
     public boolean isEnabled() {
-        return enabled;
+        return super.isEnabled();
     }
 
     /** The inner EcoEditBox is the focusable widget, not this container. */

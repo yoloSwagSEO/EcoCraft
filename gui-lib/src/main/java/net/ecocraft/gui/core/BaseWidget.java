@@ -20,6 +20,7 @@ public abstract class BaseWidget implements WidgetNode {
     private final List<WidgetNode> children = new ArrayList<>();
     private int x, y, width, height;
     private boolean visible = true;
+    private boolean enabled = true;
     private boolean clipChildren = false;
     private boolean modal = false;
     private @Nullable String id;
@@ -108,6 +109,10 @@ public abstract class BaseWidget implements WidgetNode {
 
     @Override public boolean isVisible() { return visible; }
     @Override public void setVisible(boolean visible) { this.visible = visible; }
+
+    /** Whether this widget is enabled (accepts input). Disabled widgets render with dimmed colors. */
+    public boolean isEnabled() { return enabled; }
+    public void setEnabled(boolean enabled) { this.enabled = enabled; }
 
     // --- ID ---
 

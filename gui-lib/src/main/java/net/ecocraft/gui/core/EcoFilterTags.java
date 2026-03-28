@@ -34,7 +34,7 @@ public class EcoFilterTags extends BaseWidget {
 
     private List<Component> tags;
     private final Theme theme;
-    private boolean enabled = true;
+
 
     // Cached per-tag widths (text width + 2 * padding)
     private int[] tagWidths;
@@ -148,11 +148,11 @@ public class EcoFilterTags extends BaseWidget {
     }
 
     public void setEnabled(boolean enabled) {
-        this.enabled = enabled;
+        super.setEnabled(enabled);
     }
 
     public boolean isEnabled() {
-        return enabled;
+        return super.isEnabled();
     }
 
     // --- Focus ---
@@ -176,12 +176,12 @@ public class EcoFilterTags extends BaseWidget {
             Component label = tags.get(i);
             int tagWidth = tagWidths[i];
             boolean isActive = multiSelect ? selectedTags.contains(i) : (i == activeTag);
-            boolean isHovered = enabled
+            boolean isHovered = isEnabled()
                     && mouseX >= currentX && mouseX < currentX + tagWidth
                     && mouseY >= getY() && mouseY < getY() + TAG_HEIGHT;
 
             int bg, border, textColor;
-            if (!enabled) {
+            if (!isEnabled()) {
                 bg = theme.disabledBg;
                 border = theme.disabledBorder;
                 textColor = theme.disabledText;
@@ -205,7 +205,7 @@ public class EcoFilterTags extends BaseWidget {
 
     @Override
     public boolean onMouseClicked(double mouseX, double mouseY, int button) {
-        if (!enabled || button != 0 || !containsPoint(mouseX, mouseY)) return false;
+        if (!isEnabled() || button != 0 || !containsPoint(mouseX, mouseY)) return false;
 
         int currentX = getX();
 
