@@ -59,6 +59,7 @@ public class AHServerEvents {
 
         reindexEnchantments(server);
         backfillFingerprints(server);
+        registerFakeProfiles(server);
 
         LOGGER.info("Auction House initialized with database at {}", dbPath);
     }
@@ -165,6 +166,17 @@ public class AHServerEvents {
 
         if (count > 0) {
             System.out.println("[EcoCraft AH] Backfilled fingerprints for " + count + " existing listings.");
+        }
+    }
+
+    private static void registerFakeProfiles(MinecraftServer server) {
+        var profileCache = server.getProfileCache();
+        if (profileCache == null) return;
+        String[] fakeNames = {"Grimald", "Thoria", "Keldorn", "Sylvanas", "Brakk",
+                "Elyndra", "Morgrim", "Vaelith", "Drogan", "Isildra"};
+        for (String name : fakeNames) {
+            java.util.UUID uuid = java.util.UUID.nameUUIDFromBytes(("ecocraft_fake:" + name).getBytes());
+            profileCache.add(new com.mojang.authlib.GameProfile(uuid, name));
         }
     }
 
