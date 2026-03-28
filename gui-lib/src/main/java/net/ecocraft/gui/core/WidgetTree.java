@@ -34,6 +34,22 @@ public class WidgetTree {
         cleanupPortalsFor(child);
     }
 
+    /** Find a widget by its id (depth-first search). Returns null if not found. */
+    @Nullable
+    public BaseWidget findById(String id) {
+        return findByIdIn(root, id);
+    }
+
+    @Nullable
+    private BaseWidget findByIdIn(WidgetNode node, String id) {
+        if (node instanceof BaseWidget bw && id.equals(bw.getId())) return bw;
+        for (WidgetNode child : node.getChildren()) {
+            BaseWidget found = findByIdIn(child, id);
+            if (found != null) return found;
+        }
+        return null;
+    }
+
     public void clear() {
         for (WidgetNode child : new ArrayList<>(root.getChildren())) {
             root.removeChild(child);

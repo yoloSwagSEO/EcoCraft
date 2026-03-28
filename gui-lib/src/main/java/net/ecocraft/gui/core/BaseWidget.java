@@ -5,7 +5,9 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Convenience base class for widgets in the tree.
@@ -20,6 +22,8 @@ public abstract class BaseWidget implements WidgetNode {
     private boolean visible = true;
     private boolean clipChildren = false;
     private boolean modal = false;
+    private @Nullable String id;
+    private @Nullable Map<String, Object> userData;
 
     public BaseWidget(int x, int y, int width, int height) {
         this.x = x;
@@ -104,4 +108,48 @@ public abstract class BaseWidget implements WidgetNode {
 
     @Override public boolean isVisible() { return visible; }
     @Override public void setVisible(boolean visible) { this.visible = visible; }
+
+    // --- ID ---
+
+    /** Optional identifier for finding this widget in the tree. */
+    public @Nullable String getId() { return id; }
+    public void setId(String id) { this.id = id; }
+
+    /** Find a descendant widget by id (depth-first). */
+    @SuppressWarnings("unchecked")
+    public <T extends BaseWidget> @Nullable T findById(String id) {
+        for (WidgetNode child : children) {
+            if (child instanceof BaseWidget bw) {
+                if (id.equals(bw.getId())) return (T) bw;
+                T found = bw.findById(id);
+                if (found != null) return found;
+            }
+        }
+        return null;
+    }
+
+    // --- User Data (data attributes) ---
+
+    /** Set an arbitrary data attribute on this widget. */
+    public void setData(String key, Object value) {
+        if (userData == null) userData = new HashMap<>();
+        userData.put(key, value);
+    }
+
+    /** Get a data attribute, or null if not set. */
+    @SuppressWarnings("unchecked")
+    public <T> @Nullable T getData(String key) {
+        if (userData == null) return null;
+        return (T) userData.get(key);
+    }
+
+    /** Check if a data attribute exists. */
+    public boolean hasData(String key) {
+        return userData != null && userData.containsKey(key);
+    }
+
+    /** Remove a data attribute. */
+    public void removeData(String key) {
+        if (userData != null) userData.remove(key);
+    }
 }

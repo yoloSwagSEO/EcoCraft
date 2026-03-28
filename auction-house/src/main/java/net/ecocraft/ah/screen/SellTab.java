@@ -98,17 +98,17 @@ public class SellTab extends BaseWidget {
 
         // 2. Type toggle: Achat immediat / Enchere
         if (isBuyout) {
-            buyoutBtn = EcoButton.success(THEME, Component.literal("Achat imm\u00e9diat"), () -> { isBuyout = true; parent.rebuildCurrentTab(); });
+            buyoutBtn = EcoButton.success(THEME, Component.literal("Achat imm\u00e9diat"), () -> { isBuyout = true; buildWidgets(); });
         } else {
-            buyoutBtn = EcoButton.ghost(THEME, Component.literal("Achat imm\u00e9diat"), () -> { isBuyout = true; parent.rebuildCurrentTab(); });
+            buyoutBtn = EcoButton.ghost(THEME, Component.literal("Achat imm\u00e9diat"), () -> { isBuyout = true; buildWidgets(); });
         }
         buyoutBtn.setPosition(leftCenterX - 82, currentY);
         buyoutBtn.setSize(80, 16);
 
         if (!isBuyout) {
-            auctionBtn = EcoButton.warning(THEME, Component.literal("Ench\u00e8re"), () -> { isBuyout = false; parent.rebuildCurrentTab(); });
+            auctionBtn = EcoButton.warning(THEME, Component.literal("Ench\u00e8re"), () -> { isBuyout = false; buildWidgets(); });
         } else {
-            auctionBtn = EcoButton.ghost(THEME, Component.literal("Ench\u00e8re"), () -> { isBuyout = false; parent.rebuildCurrentTab(); });
+            auctionBtn = EcoButton.ghost(THEME, Component.literal("Ench\u00e8re"), () -> { isBuyout = false; buildWidgets(); });
         }
         auctionBtn.setPosition(leftCenterX + 2, currentY);
         auctionBtn.setSize(80, 16);
@@ -302,7 +302,7 @@ public class SellTab extends BaseWidget {
             }
         }
         updateSelectedItem();
-        parent.rebuildCurrentTab();
+        buildWidgets();
     }
 
     public void onReceiveBestPrice(net.ecocraft.ah.network.payload.BestPriceResponsePayload payload) {
@@ -368,7 +368,7 @@ public class SellTab extends BaseWidget {
                 inventoryGrid.setSelectedSlot(-1);
                 inventoryGrid.refresh();
             }
-            parent.rebuildCurrentTab();
+            buildWidgets();
         }
     }
 

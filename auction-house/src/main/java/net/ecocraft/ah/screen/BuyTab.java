@@ -160,8 +160,14 @@ public class BuyTab extends BaseWidget {
                 .build(contentX, tableY, contentW, tableH);
         addChild(browseTable);
 
-        // Pagination buttons
+        // Pagination: label FIRST (so buttons are on top in hit test)
         int paginationY = tabY + tabH - 16;
+        String pageInfo = "Page " + (currentPage + 1) + "/" + Math.max(1, totalPages);
+        pageLabel = new Label(font, contentX + 44, paginationY + 3, contentW - 88, Component.literal(pageInfo), THEME);
+        pageLabel.setColor(THEME.textGrey).setAlignment(Label.Align.CENTER);
+        addChild(pageLabel);
+
+        // Pagination buttons AFTER label (on top in hit test)
         prevPageBtn = EcoButton.builder(Component.literal("< Pr\u00e9c"), this::onPrevPage)
                 .theme(THEME).bounds(contentX, paginationY, 40, 14)
                 .bgColor(THEME.accentBg).borderColor(THEME.borderAccent)
@@ -172,12 +178,6 @@ public class BuyTab extends BaseWidget {
                 .textColor(THEME.accent).hoverBg(THEME.accentBgDim).build();
         addChild(prevPageBtn);
         addChild(nextPageBtn);
-
-        // Page label
-        String pageInfo = "Page " + (currentPage + 1) + "/" + Math.max(1, totalPages);
-        pageLabel = new Label(font, contentX, paginationY + 3, contentW, Component.literal(pageInfo), THEME);
-        pageLabel.setColor(THEME.textGrey).setAlignment(Label.Align.CENTER);
-        addChild(pageLabel);
 
         // Populate table with current data
         updateBrowseTable();
@@ -421,7 +421,7 @@ public class BuyTab extends BaseWidget {
         String[] cats = {"", "WEAPONS", "ARMOR", "TOOLS", "POTIONS", "BLOCKS", "FOOD", "ENCHANTMENTS", "MISC"};
         selectedCategory = cats[catIndex];
         currentPage = 0;
-        parent.rebuildCurrentTab();
+        buildWidgets();
     }
 
     private int getCategoryIndex() {
@@ -435,6 +435,7 @@ public class BuyTab extends BaseWidget {
     }
 
     private void onPrevPage() {
+        com.mojang.logging.LogUtils.getLogger().info("[AH] onPrevPage called, currentPage={}", currentPage);
         if (currentPage > 0) {
             currentPage--;
             requestListings();
@@ -442,6 +443,7 @@ public class BuyTab extends BaseWidget {
     }
 
     private void onNextPage() {
+        com.mojang.logging.LogUtils.getLogger().info("[AH] onNextPage called, currentPage={} totalPages={}", currentPage, totalPages);
         if (currentPage < totalPages - 1) {
             currentPage++;
             requestListings();
@@ -451,7 +453,7 @@ public class BuyTab extends BaseWidget {
     private void onRowClicked(String itemId) {
         detailItemId = itemId;
         mode = Mode.DETAIL;
-        parent.rebuildCurrentTab();
+        buildWidgets();
         PacketDistributor.sendToServer(new RequestListingDetailPayload(getAhId(), itemId));
     }
 
@@ -462,7 +464,7 @@ public class BuyTab extends BaseWidget {
         availableEnchantments = new ArrayList<>();
         showDurabilityFilter = false;
         detailStacks = new ArrayList<>();
-        parent.rebuildCurrentTab();
+        buildWidgets();
     }
 
     private void onPanelAction() {
@@ -527,7 +529,7 @@ public class BuyTab extends BaseWidget {
         parseDurabilityFilter();
 
         if (mode == Mode.DETAIL) {
-            parent.rebuildCurrentTab();
+            buildWidgets();
         }
     }
 

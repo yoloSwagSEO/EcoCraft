@@ -223,7 +223,7 @@ public class LedgerTab extends BaseWidget {
 
         if (this.multiAH != wasMultiAH) {
             activeAHFilter = 0;
-            parent.rebuildCurrentTab();
+            buildWidgets();
         } else {
             updateTable();
             updateStats();

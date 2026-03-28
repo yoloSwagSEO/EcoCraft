@@ -187,7 +187,7 @@ public class MyAuctionsTab extends BaseWidget {
         activeStatusFilter = 0;
         activeAHFilter = 0;
         requestData();
-        parent.rebuildCurrentTab();
+        buildWidgets();
     }
 
     private void onStatusFilterChanged(int idx) {
@@ -250,7 +250,7 @@ public class MyAuctionsTab extends BaseWidget {
 
         if (this.multiAH != wasMultiAH) {
             activeAHFilter = 0;
-            parent.rebuildCurrentTab();
+            buildWidgets();
         } else {
             updateTable();
             updateStats();
