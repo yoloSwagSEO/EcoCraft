@@ -14,7 +14,7 @@ import java.util.List;
  */
 public record AHInstancesPayload(List<AHInstanceData> instances) implements CustomPacketPayload {
 
-    public record AHInstanceData(String id, String slug, String name, int saleRate, int depositRate, List<Integer> durations, boolean allowBuyout, boolean allowAuction) {}
+    public record AHInstanceData(String id, String slug, String name, int saleRate, int depositRate, List<Integer> durations, boolean allowBuyout, boolean allowAuction, String taxRecipient) {}
 
     public static final Type<AHInstancesPayload> TYPE =
             new Type<>(ResourceLocation.fromNamespaceAndPath("ecocraft_ah", "ah_instances"));
@@ -35,7 +35,8 @@ public record AHInstancesPayload(List<AHInstanceData> instances) implements Cust
                 for (int j = 0; j < durCount; j++) durations.add(ByteBufCodecs.VAR_INT.decode(buf));
                 boolean allowBuyout = ByteBufCodecs.BOOL.decode(buf);
                 boolean allowAuction = ByteBufCodecs.BOOL.decode(buf);
-                list.add(new AHInstanceData(id, slug, name, saleRate, depositRate, durations, allowBuyout, allowAuction));
+                String taxRecipient = ByteBufCodecs.STRING_UTF8.decode(buf);
+                list.add(new AHInstanceData(id, slug, name, saleRate, depositRate, durations, allowBuyout, allowAuction, taxRecipient));
             }
             return new AHInstancesPayload(list);
         }
@@ -53,6 +54,7 @@ public record AHInstancesPayload(List<AHInstanceData> instances) implements Cust
                 for (int d : inst.durations()) ByteBufCodecs.VAR_INT.encode(buf, d);
                 ByteBufCodecs.BOOL.encode(buf, inst.allowBuyout());
                 ByteBufCodecs.BOOL.encode(buf, inst.allowAuction());
+                ByteBufCodecs.STRING_UTF8.encode(buf, inst.taxRecipient() != null ? inst.taxRecipient() : "");
             }
         }
     };

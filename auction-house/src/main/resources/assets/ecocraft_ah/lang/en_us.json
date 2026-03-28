@@ -194,5 +194,7 @@
   "ecocraft_ah.command.collect_fail": "Collection failed: %s",
   "ecocraft_ah.login.parcels_pending": "[AH] You have %d pending parcel(s). Use /ah collect or visit the auction house.",
   "ecocraft_ah.settings.allow_buyout": "Instant buy",
-  "ecocraft_ah.settings.allow_auction": "Auctions"
+  "ecocraft_ah.settings.allow_auction": "Auctions",
+  "ecocraft_ah.settings.tax_recipient_label": "Tax recipient:",
+  "ecocraft_ah.settings.tax_recipient_placeholder": "Player name (empty = taxes destroyed)"
 }

@@ -194,5 +194,7 @@
   "ecocraft_ah.command.collect_fail": "Error en la recogida: %s",
   "ecocraft_ah.login.parcels_pending": "[CS] Tienes %d paquete(s) pendiente(s). Usa /ah collect o visita la casa de subastas.",
   "ecocraft_ah.settings.allow_buyout": "Compra inmediata",
-  "ecocraft_ah.settings.allow_auction": "Subastas"
+  "ecocraft_ah.settings.allow_auction": "Subastas",
+  "ecocraft_ah.settings.tax_recipient_label": "Beneficiario de impuestos:",
+  "ecocraft_ah.settings.tax_recipient_placeholder": "Nombre del jugador (vacío = impuestos destruidos)"
 }

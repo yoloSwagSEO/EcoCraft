@@ -47,6 +47,29 @@ public class AuctionService {
         return DEFAULT_DEPOSIT_RATE;
     }
 
+    /** Credits tax amount to the AH's designated tax recipient, if configured. */
+    private void creditTaxRecipient(String ahId, long taxAmount, Currency currency) {
+        if (taxAmount <= 0) return;
+        try {
+            AHInstance ah = storage.getAHInstance(ahId);
+            if (ah == null || ah.taxRecipient() == null || ah.taxRecipient().isEmpty()) return;
+
+            // Resolve recipient UUID from name via profile cache
+            var server = net.neoforged.neoforge.server.ServerLifecycleHooks.getCurrentServer();
+            if (server == null) return;
+            var cache = server.getProfileCache();
+            if (cache == null) return;
+            var profile = cache.get(ah.taxRecipient());
+            if (profile.isEmpty()) return;
+
+            BigDecimal amount = fromSmallestUnit(taxAmount, currency);
+            economy.deposit(profile.get().getId(), amount, currency);
+            System.out.println("[AH] Tax credited to " + ah.taxRecipient() + ": " + amount + " " + currency.symbol());
+        } catch (Exception e) {
+            System.err.println("[AH] Failed to credit tax recipient: " + e.getMessage());
+        }
+    }
+
     private final AuctionStorageProvider storage;
     private final EconomyProvider economy;
     private final CurrencyRegistry currencies;
@@ -127,6 +150,9 @@ public class AuctionService {
                 throw new AuctionException("Fonds insuffisants pour le dépôt de l'annonce : " + result.errorMessage());
             }
             System.out.println("[AH] Deposit withdrawn: " + depositBD + " " + currency.symbol() + " from " + sellerName);
+
+            // Send deposit to tax recipient if configured
+            creditTaxRecipient(effectiveAhId, depositUnits, currency);
         }
 
         // --- Build listing ---
@@ -226,6 +252,9 @@ public class AuctionService {
             economy.deposit(listing.sellerUuid(), sellerAmountBD, currency);
         }
         System.out.println("[AH] Seller credited: " + sellerAmountBD + " " + currency.symbol() + " (tax: " + proportionalTax + " " + currency.symbol() + ")");
+
+        // Send sale tax to tax recipient if configured
+        creditTaxRecipient(effectiveAhId, proportionalTax, currency);
 
         // Create parcels
         long now = System.currentTimeMillis();

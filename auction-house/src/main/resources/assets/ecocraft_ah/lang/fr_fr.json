@@ -194,5 +194,7 @@
   "ecocraft_ah.command.collect_fail": "Échec de la récupération : %s",
   "ecocraft_ah.login.parcels_pending": "[HDV] Vous avez %d colis en attente. Utilisez /ah collect ou visitez l'hôtel des ventes.",
   "ecocraft_ah.settings.allow_buyout": "Achat immédiat",
-  "ecocraft_ah.settings.allow_auction": "Enchères"
+  "ecocraft_ah.settings.allow_auction": "Enchères",
+  "ecocraft_ah.settings.tax_recipient_label": "Bénéficiaire des taxes :",
+  "ecocraft_ah.settings.tax_recipient_placeholder": "Pseudo joueur (vide = taxes détruites)"
 }

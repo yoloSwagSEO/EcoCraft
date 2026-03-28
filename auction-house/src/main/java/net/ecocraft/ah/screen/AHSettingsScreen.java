@@ -66,6 +66,7 @@ public class AHSettingsScreen extends EcoScreen {
         List<Integer> durations;
         boolean allowBuyout;
         boolean allowAuction;
+        String taxRecipient;
 
         EditedAH(AHInstancesPayload.AHInstanceData data) {
             this.name = data.name();
@@ -74,6 +75,7 @@ public class AHSettingsScreen extends EcoScreen {
             this.durations = new ArrayList<>(data.durations());
             this.allowBuyout = data.allowBuyout();
             this.allowAuction = data.allowAuction();
+            this.taxRecipient = data.taxRecipient() != null ? data.taxRecipient() : "";
         }
     }
 
@@ -304,6 +306,15 @@ public class AHSettingsScreen extends EcoScreen {
         getTree().addChild(auctionToggle);
         y += 24;
 
+        // Tax recipient input
+        y += 14;
+        EcoTextInput taxRecipientInput = new EcoTextInput(font, panelX, y, panelW, 16,
+                Component.translatable("ecocraft_ah.settings.tax_recipient_placeholder"), THEME);
+        taxRecipientInput.setValue(edited.taxRecipient);
+        taxRecipientInput.responder(val -> edited.taxRecipient = val);
+        getTree().addChild(taxRecipientInput);
+        y += 24;
+
         // Sale rate slider
         y += 14;
         EcoSlider saleSlider = new EcoSlider(font, panelX, y, panelW, 16, THEME);
@@ -462,6 +473,9 @@ public class AHSettingsScreen extends EcoScreen {
         y += 20;
         graphics.drawString(font, Component.translatable("ecocraft_ah.settings.allow_auction"), panelX, y + 3, THEME.textGrey, false);
 
+        y += 24;
+        graphics.drawString(font, Component.translatable("ecocraft_ah.settings.tax_recipient_label"), panelX, y + 3, THEME.textGrey, false);
+
         y += 38;
         graphics.drawString(font, Component.translatable("ecocraft_ah.settings.sale_tax_label"), panelX, y, THEME.textGrey, false);
 
@@ -480,7 +494,7 @@ public class AHSettingsScreen extends EcoScreen {
         AHInstancesPayload.AHInstanceData newData = new AHInstancesPayload.AHInstanceData(
                 newId, AHInstance.slugify(newName), newName,
                 AHInstance.DEFAULT_SALE_RATE, AHInstance.DEFAULT_DEPOSIT_RATE,
-                new ArrayList<>(AHInstance.DEFAULT_DURATIONS), true, true);
+                new ArrayList<>(AHInstance.DEFAULT_DURATIONS), true, true, "");
         ahInstances.add(newData);
         PacketDistributor.sendToServer(new CreateAHPayload(newName));
 
@@ -519,7 +533,7 @@ public class AHSettingsScreen extends EcoScreen {
             var edit = entry.getValue();
             PacketDistributor.sendToServer(new UpdateAHInstancePayload(
                     entry.getKey(), edit.name, edit.saleRate, edit.depositRate, edit.durations,
-                    edit.allowBuyout, edit.allowAuction));
+                    edit.allowBuyout, edit.allowAuction, edit.taxRecipient));
         }
         if (npcEntityId != -1) {
             PacketDistributor.sendToServer(new UpdateNPCSkinPayload(npcEntityId, skinPlayerName, linkedAhId));
