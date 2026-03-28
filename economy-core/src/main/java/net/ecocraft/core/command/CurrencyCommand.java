@@ -48,16 +48,18 @@ public class CurrencyCommand {
     private static int listCurrencies(CommandSourceStack source, CurrencyRegistry currencies) {
         var all = currencies.listAll();
         if (all.isEmpty()) {
-            source.sendFailure(Component.literal("No currencies registered"));
+            source.sendFailure(Component.translatable("ecocraft_core.command.currency.none"));
             return 0;
         }
 
         Currency def = currencies.getDefault();
-        source.sendSuccess(() -> Component.literal("§6=== Currencies ==="), false);
+        source.sendSuccess(() -> Component.translatable("ecocraft_core.command.currency.header"), false);
         for (Currency c : all) {
-            String marker = c.id().equals(def.id()) ? " §a(default)" : "";
-            source.sendSuccess(() -> Component.literal(
-                "§f" + c.symbol() + " " + c.name() + " §7(" + c.id() + ")" + marker
+            String marker = c.id().equals(def.id())
+                ? Component.translatable("ecocraft_core.command.currency.default_marker").getString()
+                : "";
+            source.sendSuccess(() -> Component.translatable(
+                "ecocraft_core.command.currency.entry", c.symbol(), c.name(), c.id(), marker
             ), false);
         }
         return Command.SINGLE_SUCCESS;
@@ -68,21 +70,21 @@ public class CurrencyCommand {
                                CurrencyRegistry currencies, ExchangeService exchange,
                                PermissionChecker permissions) {
         if (!permissions.hasPermission(player, "economy.exchange")) {
-            source.sendFailure(Component.literal("You don't have permission to exchange currencies"));
+            source.sendFailure(Component.translatable("ecocraft_core.command.currency.exchange_no_permission"));
             return 0;
         }
 
         Currency from = currencies.getById(fromId);
         Currency to = currencies.getById(toId);
         if (from == null || to == null) {
-            source.sendFailure(Component.literal("Unknown currency"));
+            source.sendFailure(Component.translatable("ecocraft_core.command.currency.unknown"));
             return 0;
         }
 
         var result = exchange.convert(player.getUUID(), BigDecimal.valueOf(amount), from, to);
         if (result.successful()) {
-            source.sendSuccess(() -> Component.literal(
-                "Converted " + amount + " " + from.symbol() + " to " + to.symbol()
+            source.sendSuccess(() -> Component.translatable(
+                "ecocraft_core.command.currency.converted", amount, from.symbol(), to.symbol()
             ), false);
             return Command.SINGLE_SUCCESS;
         } else {

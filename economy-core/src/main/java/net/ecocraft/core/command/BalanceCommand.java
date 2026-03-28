@@ -40,14 +40,14 @@ public class BalanceCommand {
                                        CurrencyRegistry currencies) {
         ServerPlayer player = source.getPlayer();
         if (player == null) {
-            source.sendFailure(Component.literal("This command must be run by a player"));
+            source.sendFailure(Component.translatable("ecocraft_core.command.player_only"));
             return 0;
         }
 
         Currency currency = currencies.getDefault();
         var balance = economy.getBalance(player.getUUID(), currency);
-        source.sendSuccess(() -> Component.literal(
-            "Balance: " + balance.toPlainString() + " " + currency.symbol()
+        source.sendSuccess(() -> Component.translatable(
+            "ecocraft_core.command.balance.self", balance.toPlainString(), currency.symbol()
         ), false);
         return Command.SINGLE_SUCCESS;
     }
@@ -57,14 +57,14 @@ public class BalanceCommand {
                                           PermissionChecker permissions) {
         ServerPlayer sender = source.getPlayer();
         if (sender != null && !permissions.hasPermission(sender, "economy.balance.others")) {
-            source.sendFailure(Component.literal("You don't have permission to check other players' balance"));
+            source.sendFailure(Component.translatable("ecocraft_core.command.balance.no_permission"));
             return 0;
         }
 
         Currency currency = currencies.getDefault();
         var balance = economy.getBalance(target.getUUID(), currency);
-        source.sendSuccess(() -> Component.literal(
-            target.getName().getString() + "'s balance: " + balance.toPlainString() + " " + currency.symbol()
+        source.sendSuccess(() -> Component.translatable(
+            "ecocraft_core.command.balance.other", target.getName().getString(), balance.toPlainString(), currency.symbol()
         ), false);
         return Command.SINGLE_SUCCESS;
     }

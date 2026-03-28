@@ -40,12 +40,12 @@ public class PayCommand {
                            double amount, EconomyProvider economy, CurrencyRegistry currencies,
                            PermissionChecker permissions) {
         if (!permissions.hasPermission(sender, "economy.pay")) {
-            source.sendFailure(Component.literal("You don't have permission to pay"));
+            source.sendFailure(Component.translatable("ecocraft_core.command.pay.no_permission"));
             return 0;
         }
 
         if (sender.getUUID().equals(target.getUUID())) {
-            source.sendFailure(Component.literal("You can't pay yourself"));
+            source.sendFailure(Component.translatable("ecocraft_core.command.pay.self"));
             return 0;
         }
 
@@ -54,11 +54,11 @@ public class PayCommand {
             BigDecimal.valueOf(amount), currency);
 
         if (result.successful()) {
-            source.sendSuccess(() -> Component.literal(
-                "Paid " + amount + " " + currency.symbol() + " to " + target.getName().getString()
+            source.sendSuccess(() -> Component.translatable(
+                "ecocraft_core.command.pay.sent", amount, currency.symbol(), target.getName().getString()
             ), false);
-            target.sendSystemMessage(Component.literal(
-                "Received " + amount + " " + currency.symbol() + " from " + sender.getName().getString()
+            target.sendSystemMessage(Component.translatable(
+                "ecocraft_core.command.pay.received", amount, currency.symbol(), sender.getName().getString()
             ));
             return Command.SINGLE_SUCCESS;
         } else {

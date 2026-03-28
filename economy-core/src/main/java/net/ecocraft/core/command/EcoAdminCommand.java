@@ -64,8 +64,8 @@ public class EcoAdminCommand {
                             EconomyProvider economy, CurrencyRegistry currencies) {
         Currency currency = currencies.getDefault();
         economy.deposit(target.getUUID(), BigDecimal.valueOf(amount), currency);
-        source.sendSuccess(() -> Component.literal(
-            "Gave " + amount + " " + currency.symbol() + " to " + target.getName().getString()
+        source.sendSuccess(() -> Component.translatable(
+            "ecocraft_core.command.eco.give", amount, currency.symbol(), target.getName().getString()
         ), true);
         return Command.SINGLE_SUCCESS;
     }
@@ -75,8 +75,8 @@ public class EcoAdminCommand {
         Currency currency = currencies.getDefault();
         var result = economy.withdraw(target.getUUID(), BigDecimal.valueOf(amount), currency);
         if (result.successful()) {
-            source.sendSuccess(() -> Component.literal(
-                "Took " + amount + " " + currency.symbol() + " from " + target.getName().getString()
+            source.sendSuccess(() -> Component.translatable(
+                "ecocraft_core.command.eco.take", amount, currency.symbol(), target.getName().getString()
             ), true);
             return Command.SINGLE_SUCCESS;
         } else {
@@ -96,8 +96,8 @@ public class EcoAdminCommand {
         if (BigDecimal.valueOf(amount).signum() > 0) {
             economy.deposit(target.getUUID(), BigDecimal.valueOf(amount), currency);
         }
-        source.sendSuccess(() -> Component.literal(
-            "Set " + target.getName().getString() + "'s balance to " + amount + " " + currency.symbol()
+        source.sendSuccess(() -> Component.translatable(
+            "ecocraft_core.command.eco.set", target.getName().getString(), amount, currency.symbol()
         ), true);
         return Command.SINGLE_SUCCESS;
     }
