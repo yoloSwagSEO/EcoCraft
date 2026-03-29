@@ -3,6 +3,7 @@ package net.ecocraft.mail;
 import net.ecocraft.mail.config.MailConfig;
 import net.ecocraft.mail.entity.PostmanEntity;
 import net.ecocraft.mail.entity.PostmanRenderer;
+import net.ecocraft.mail.network.MailNetworkHandler;
 import net.ecocraft.mail.registry.MailRegistries;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.neoforged.bus.api.IEventBus;
@@ -19,6 +20,7 @@ public class MailMod {
     public MailMod(IEventBus modBus, ModContainer container) {
         MailRegistries.register(modBus);
         container.registerConfig(ModConfig.Type.SERVER, MailConfig.CONFIG_SPEC);
+        modBus.register(MailNetworkHandler.class);
         modBus.addListener(this::registerRenderers);
         modBus.addListener(this::registerAttributes);
     }

@@ -1,6 +1,7 @@
 package net.ecocraft.mail.block;
 
 import com.mojang.serialization.MapCodec;
+import net.ecocraft.mail.network.payload.OpenMailboxPayload;
 import net.ecocraft.mail.permission.MailPermissions;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
@@ -14,6 +15,7 @@ import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
+import net.neoforged.neoforge.network.PacketDistributor;
 import net.neoforged.neoforge.server.permission.PermissionAPI;
 import org.jetbrains.annotations.Nullable;
 
@@ -47,8 +49,7 @@ public class MailboxBlock extends BaseEntityBlock {
                 serverPlayer.sendSystemMessage(Component.literal("\u00a7cVous n'avez pas la permission d'ouvrir la bo\u00eete aux lettres."));
                 return InteractionResult.FAIL;
             }
-            // TODO Task 6: send OpenMailboxPayload instead of chat message
-            serverPlayer.sendSystemMessage(Component.literal("\u00a7eBo\u00eete aux lettres ouverte"));
+            PacketDistributor.sendToPlayer(serverPlayer, new OpenMailboxPayload());
         }
         return InteractionResult.sidedSuccess(level.isClientSide);
     }

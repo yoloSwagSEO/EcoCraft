@@ -4,11 +4,18 @@ import com.mojang.logging.LogUtils;
 import net.ecocraft.core.EcoServerEvents;
 import net.ecocraft.mail.command.MailCommand;
 import net.ecocraft.mail.config.MailConfig;
+import net.ecocraft.mail.data.MailItemAttachment;
 import net.ecocraft.mail.permission.MailPermissions;
 import net.ecocraft.mail.service.MailService;
 import net.ecocraft.mail.storage.MailStorageProvider;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtOps;
+import net.minecraft.nbt.TagParser;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.storage.LevelResource;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -34,11 +41,13 @@ public class MailServerEvents {
 
     private static MailStorageProvider storageProvider;
     private static MailService mailService;
+    private static MinecraftServer serverInstance;
     private static int tickCounter = 0;
 
     @SubscribeEvent
     public static void onServerStarting(ServerStartingEvent event) {
         var server = event.getServer();
+        serverInstance = server;
         Path worldDir = server.getWorldPath(LevelResource.ROOT);
         Path dbPath = worldDir.resolve("ecocraft_mail.db");
 
@@ -50,6 +59,40 @@ public class MailServerEvents {
                 EcoServerEvents.getEconomy(),
                 EcoServerEvents.getCurrencyRegistry()
         );
+
+        // Wire item deliverer so collected mails deliver items to player inventory
+        mailService.setItemDeliverer((playerUuid, items) -> {
+            ServerPlayer player = server.getPlayerList().getPlayer(playerUuid);
+            if (player == null) {
+                LOGGER.warn("Cannot deliver mail items: player {} is offline", playerUuid);
+                return;
+            }
+            for (MailItemAttachment item : items) {
+                try {
+                    ItemStack stack;
+                    if (item.itemNbt() != null && !item.itemNbt().isEmpty()) {
+                        CompoundTag tag = TagParser.parseTag(item.itemNbt());
+                        stack = ItemStack.OPTIONAL_CODEC.parse(
+                                player.registryAccess().createSerializationContext(NbtOps.INSTANCE), tag
+                        ).getOrThrow();
+                        if (stack.isEmpty()) {
+                            var itemRL = net.minecraft.resources.ResourceLocation.parse(item.itemId());
+                            var itemObj = BuiltInRegistries.ITEM.get(itemRL);
+                            stack = new ItemStack(itemObj, item.quantity());
+                        }
+                    } else {
+                        var itemRL = net.minecraft.resources.ResourceLocation.parse(item.itemId());
+                        var itemObj = BuiltInRegistries.ITEM.get(itemRL);
+                        stack = new ItemStack(itemObj, item.quantity());
+                    }
+                    if (!player.getInventory().add(stack)) {
+                        player.drop(stack, false);
+                    }
+                } catch (Exception e) {
+                    LOGGER.error("Failed to deliver mail item {} to player {}", item.itemId(), playerUuid, e);
+                }
+            }
+        });
 
         // Apply config to service
         applyConfig();
@@ -64,6 +107,7 @@ public class MailServerEvents {
             storageProvider = null;
         }
         mailService = null;
+        serverInstance = null;
         tickCounter = 0;
         LOGGER.info("EcoCraft Mail shutdown complete.");
     }
