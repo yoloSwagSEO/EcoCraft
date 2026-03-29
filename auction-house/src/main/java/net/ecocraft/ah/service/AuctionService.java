@@ -1,10 +1,14 @@
 package net.ecocraft.ah.service;
 
 import net.ecocraft.ah.data.*;
+import net.ecocraft.ah.network.payload.AHNotificationPayload;
 import net.ecocraft.ah.storage.AuctionStorageProvider;
 import net.ecocraft.api.EconomyProvider;
 import net.ecocraft.api.currency.Currency;
 import net.ecocraft.api.currency.CurrencyRegistry;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerPlayer;
+import net.neoforged.neoforge.network.PacketDistributor;
 import org.jetbrains.annotations.Nullable;
 
 import java.math.BigDecimal;
@@ -74,6 +78,10 @@ public class AuctionService {
     private final EconomyProvider economy;
     private final CurrencyRegistry currencies;
 
+    /** Minecraft server reference, set from AHServerEvents.onServerStarting. */
+    @Nullable
+    private MinecraftServer server;
+
     /** System UUID used as a "from" identity for tax/deposit withdrawals. */
     private static final UUID SYSTEM_UUID = new UUID(0, 0);
 
@@ -83,6 +91,24 @@ public class AuctionService {
         this.storage = storage;
         this.economy = economy;
         this.currencies = currencies;
+    }
+
+    /** Sets the server reference so notifications can be sent to online players. */
+    public void setServer(@Nullable MinecraftServer server) {
+        this.server = server;
+    }
+
+    /**
+     * Sends an {@link AHNotificationPayload} to a player if they are currently online.
+     * Silently does nothing if the player is offline.
+     */
+    private void sendNotification(UUID playerUuid, String eventType, String itemName,
+                                   String otherPlayerName, long amount, String currencyId) {
+        if (server == null) return;
+        ServerPlayer player = server.getPlayerList().getPlayer(playerUuid);
+        if (player == null) return; // Offline — notification lost
+        PacketDistributor.sendToPlayer(player,
+                new AHNotificationPayload(eventType, itemName, otherPlayerName, amount, currencyId));
     }
 
     // -------------------------------------------------------------------------
@@ -366,6 +392,9 @@ public class AuctionService {
                     true, // auto-collected since we credited directly
                     listing.ahId()
             ));
+            // Notify outbid player
+            sendNotification(listing.currentBidderUuid(), "outbid",
+                    listing.itemName(), bidderName, amountUnits, listing.currencyId());
         }
 
         // Record bid and update listing
@@ -460,6 +489,9 @@ public class AuctionService {
                         false,
                         listing.ahId()
                 ));
+                // Notify seller that their listing expired with no bids
+                sendNotification(listing.sellerUuid(), "listing_expired",
+                        listing.itemName(), "", 0L, listing.currencyId());
             }
         }
     }
@@ -502,6 +534,27 @@ public class AuctionService {
         );
 
         storage.completeSale(listing.id());
+
+        // Resolve winner name from highest bid record (the currentBidderUuid is set on the listing)
+        AuctionBid highestBid = storage.getHighestBid(listing.id());
+        String winnerName = highestBid != null ? highestBid.bidderName() : "";
+
+        // Notify winner
+        sendNotification(listing.currentBidderUuid(), "auction_won",
+                listing.itemName(), listing.sellerName(), listing.currentBid(), listing.currencyId());
+
+        // Notify seller
+        sendNotification(listing.sellerUuid(), "sale_completed",
+                listing.itemName(), winnerName, listing.currentBid(), listing.currencyId());
+
+        // Notify losing bidders
+        List<AuctionBid> allBids = storage.getBidsForListing(listing.id());
+        for (AuctionBid bid : allBids) {
+            if (!bid.bidderUuid().equals(listing.currentBidderUuid())) {
+                sendNotification(bid.bidderUuid(), "auction_lost",
+                        listing.itemName(), "", bid.amount(), listing.currencyId());
+            }
+        }
     }
 
     // -------------------------------------------------------------------------

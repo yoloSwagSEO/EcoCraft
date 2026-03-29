@@ -56,6 +56,7 @@ public class AHServerEvents {
                 EcoServerEvents.getEconomy(),
                 EcoServerEvents.getCurrencyRegistry()
         );
+        auctionService.setServer(server);
 
         reindexEnchantments(server);
         backfillFingerprints(server);
@@ -69,6 +70,9 @@ public class AHServerEvents {
         if (storageProvider != null) {
             storageProvider.shutdown();
             storageProvider = null;
+        }
+        if (auctionService != null) {
+            auctionService.setServer(null);
         }
         auctionService = null;
         tickCounter = 0;
