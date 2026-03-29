@@ -8,6 +8,7 @@ import net.ecocraft.ah.data.AHInstance;
 import net.ecocraft.ah.data.ItemCategory;
 import net.ecocraft.ah.data.ListingType;
 import net.ecocraft.ah.network.ServerPayloadHandler;
+import net.ecocraft.ah.network.payload.AHNotificationPayload;
 import net.ecocraft.ah.network.payload.OpenAHPayload;
 import net.ecocraft.ah.service.AuctionService;
 import net.ecocraft.ah.storage.AuctionStorageProvider;
@@ -20,6 +21,7 @@ import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.network.PacketDistributor;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.function.Supplier;
 
 /**
@@ -154,6 +156,47 @@ public final class AHCommand {
                                         )
                                 )
                         )
+                )
+
+                // /ah testnotif <type> — sends a fake notification packet to the executing player
+                .then(Commands.literal("testnotif")
+                        .requires(s -> s.hasPermission(2))
+                        .then(Commands.argument("type", StringArgumentType.word())
+                                .suggests((ctx, builder) -> {
+                                    for (String t : List.of("outbid", "auction_won", "auction_lost",
+                                            "sale_completed", "listing_expired")) {
+                                        builder.suggest(t);
+                                    }
+                                    return builder.buildFuture();
+                                })
+                                .executes(ctx -> {
+                                    ServerPlayer player = ctx.getSource().getPlayerOrException();
+                                    String type = StringArgumentType.getString(ctx, "type");
+                                    PacketDistributor.sendToPlayer(player, new AHNotificationPayload(
+                                            type,
+                                            "Épée en diamant",
+                                            "TestPlayer",
+                                            150L,
+                                            "gold"
+                                    ));
+                                    ctx.getSource().sendSuccess(
+                                            () -> Component.literal("Test notification envoyée : " + type), false);
+                                    return 1;
+                                })
+                        )
+                )
+
+                // /ah testtoast — sends a quick outbid toast for rendering validation
+                .then(Commands.literal("testtoast")
+                        .requires(s -> s.hasPermission(2))
+                        .executes(ctx -> {
+                            ServerPlayer player = ctx.getSource().getPlayerOrException();
+                            PacketDistributor.sendToPlayer(player, new AHNotificationPayload(
+                                    "outbid", "Test Item", "TestPlayer", 100L, "gold"));
+                            ctx.getSource().sendSuccess(
+                                    () -> Component.literal("Toast test envoyé !"), false);
+                            return 1;
+                        })
                 )
         );
 

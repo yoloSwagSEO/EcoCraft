@@ -7,6 +7,7 @@ import net.ecocraft.ah.data.EnchantmentEntry;
 import net.ecocraft.ah.data.EnchantmentExtractor;
 import net.ecocraft.ah.data.ItemFingerprint;
 import net.ecocraft.ah.data.ItemStackSerializer;
+import net.ecocraft.ah.network.payload.AHNotificationPayload;
 import net.ecocraft.ah.service.AuctionService;
 import net.ecocraft.ah.storage.AuctionStorageProvider;
 import net.ecocraft.core.EcoServerEvents;
@@ -23,6 +24,7 @@ import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.server.ServerStartingEvent;
 import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
+import net.neoforged.neoforge.network.PacketDistributor;
 import org.slf4j.Logger;
 
 import java.nio.file.Path;
@@ -56,7 +58,21 @@ public class AHServerEvents {
                 EcoServerEvents.getEconomy(),
                 EcoServerEvents.getCurrencyRegistry()
         );
-        auctionService.setServer(server);
+        // Inject notification sender: sends AHNotificationPayload to online players
+        final MinecraftServer finalServer = server;
+        auctionService.setNotificationSender((playerUuid, eventType, itemName, otherPlayerName, amount, currencyId) -> {
+            ServerPlayer player = finalServer.getPlayerList().getPlayer(playerUuid);
+            if (player == null) return; // Offline — notification lost
+            PacketDistributor.sendToPlayer(player,
+                    new AHNotificationPayload(eventType, itemName, otherPlayerName, amount, currencyId));
+        });
+        // Inject profile resolver: resolves player names to UUIDs via game profile cache
+        auctionService.setProfileResolver(playerName -> {
+            var cache = finalServer.getProfileCache();
+            if (cache == null) return null;
+            var profile = cache.get(playerName);
+            return profile.map(com.mojang.authlib.GameProfile::getId).orElse(null);
+        });
 
         reindexEnchantments(server);
         backfillFingerprints(server);
@@ -72,7 +88,8 @@ public class AHServerEvents {
             storageProvider = null;
         }
         if (auctionService != null) {
-            auctionService.setServer(null);
+            auctionService.setNotificationSender(null);
+            auctionService.setProfileResolver(null);
         }
         auctionService = null;
         tickCounter = 0;

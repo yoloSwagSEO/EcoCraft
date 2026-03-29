@@ -1,14 +1,10 @@
 package net.ecocraft.ah.service;
 
 import net.ecocraft.ah.data.*;
-import net.ecocraft.ah.network.payload.AHNotificationPayload;
 import net.ecocraft.ah.storage.AuctionStorageProvider;
 import net.ecocraft.api.EconomyProvider;
 import net.ecocraft.api.currency.Currency;
 import net.ecocraft.api.currency.CurrencyRegistry;
-import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.neoforge.network.PacketDistributor;
 import org.jetbrains.annotations.Nullable;
 
 import java.math.BigDecimal;
@@ -58,16 +54,13 @@ public class AuctionService {
             AHInstance ah = storage.getAHInstance(ahId);
             if (ah == null || ah.taxRecipient() == null || ah.taxRecipient().isEmpty()) return;
 
-            // Resolve recipient UUID from name via profile cache
-            var server = net.neoforged.neoforge.server.ServerLifecycleHooks.getCurrentServer();
-            if (server == null) return;
-            var cache = server.getProfileCache();
-            if (cache == null) return;
-            var profile = cache.get(ah.taxRecipient());
-            if (profile.isEmpty()) return;
+            // Resolve recipient UUID from name via injected profile resolver
+            if (profileResolver == null) return;
+            UUID recipientUuid = profileResolver.resolve(ah.taxRecipient());
+            if (recipientUuid == null) return;
 
             BigDecimal amount = fromSmallestUnit(taxAmount, currency);
-            economy.deposit(profile.get().getId(), amount, currency);
+            economy.deposit(recipientUuid, amount, currency);
             System.out.println("[AH] Tax credited to " + ah.taxRecipient() + ": " + amount + " " + currency.symbol());
         } catch (Exception e) {
             System.err.println("[AH] Failed to credit tax recipient: " + e.getMessage());
@@ -78,9 +71,36 @@ public class AuctionService {
     private final EconomyProvider economy;
     private final CurrencyRegistry currencies;
 
-    /** Minecraft server reference, set from AHServerEvents.onServerStarting. */
+    /**
+     * Callback interface for sending notifications to online players.
+     * Decoupled from Minecraft classes so {@link AuctionService} stays unit-testable.
+     */
+    @FunctionalInterface
+    public interface NotificationSender {
+        /**
+         * Sends a notification to the player with the given UUID.
+         * Implementations should silently no-op if the player is offline.
+         */
+        void send(UUID playerUuid, String eventType, String itemName,
+                  String otherPlayerName, long amount, String currencyId);
+    }
+
+    /**
+     * Resolves a player name to their UUID via the server's profile cache.
+     * Returns null if the player is unknown.
+     */
+    @FunctionalInterface
+    public interface ProfileResolver {
+        @Nullable UUID resolve(String playerName);
+    }
+
+    /** Notification sender injected from AHServerEvents; null means no notifications. */
     @Nullable
-    private MinecraftServer server;
+    private NotificationSender notificationSender;
+
+    /** Profile resolver injected from AHServerEvents; null means tax recipient lookup is skipped. */
+    @Nullable
+    private ProfileResolver profileResolver;
 
     /** System UUID used as a "from" identity for tax/deposit withdrawals. */
     private static final UUID SYSTEM_UUID = new UUID(0, 0);
@@ -93,22 +113,24 @@ public class AuctionService {
         this.currencies = currencies;
     }
 
-    /** Sets the server reference so notifications can be sent to online players. */
-    public void setServer(@Nullable MinecraftServer server) {
-        this.server = server;
+    /** Sets the notification sender (called from AHServerEvents when server starts/stops). */
+    public void setNotificationSender(@Nullable NotificationSender sender) {
+        this.notificationSender = sender;
+    }
+
+    /** Sets the profile resolver (called from AHServerEvents when server starts/stops). */
+    public void setProfileResolver(@Nullable ProfileResolver resolver) {
+        this.profileResolver = resolver;
     }
 
     /**
-     * Sends an {@link AHNotificationPayload} to a player if they are currently online.
-     * Silently does nothing if the player is offline.
+     * Sends a notification to a player if a sender is configured.
+     * Silently does nothing if no sender is set.
      */
     private void sendNotification(UUID playerUuid, String eventType, String itemName,
                                    String otherPlayerName, long amount, String currencyId) {
-        if (server == null) return;
-        ServerPlayer player = server.getPlayerList().getPlayer(playerUuid);
-        if (player == null) return; // Offline — notification lost
-        PacketDistributor.sendToPlayer(player,
-                new AHNotificationPayload(eventType, itemName, otherPlayerName, amount, currencyId));
+        if (notificationSender == null) return;
+        notificationSender.send(playerUuid, eventType, itemName, otherPlayerName, amount, currencyId);
     }
 
     // -------------------------------------------------------------------------
