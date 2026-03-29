@@ -6,7 +6,7 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 import net.ecocraft.api.EconomyProvider;
 import net.ecocraft.api.currency.Currency;
 import net.ecocraft.api.currency.CurrencyRegistry;
-import net.ecocraft.core.permission.PermissionChecker;
+import net.ecocraft.core.permission.EcoPermissions;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
@@ -21,21 +21,20 @@ public class BalanceCommand {
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher,
                                 Supplier<EconomyProvider> economy,
-                                Supplier<CurrencyRegistry> currencies,
-                                Supplier<PermissionChecker> permissions) {
+                                Supplier<CurrencyRegistry> currencies) {
         dispatcher.register(Commands.literal("balance")
             // /balance — own balance
             .executes(ctx -> showOwnBalance(ctx.getSource(), economy.get(), currencies.get()))
 
             // /balance list — all balances (admin)
             .then(Commands.literal("list")
-                .requires(src -> src.hasPermission(2))
+                .requires(src -> EcoPermissions.check(src, EcoPermissions.BALANCE_LIST))
                 .executes(ctx -> showAllBalances(ctx.getSource(), economy.get(), currencies.get()))
             )
 
             // /balance of <name> — any player (online or offline)
             .then(Commands.literal("of")
-                .requires(src -> src.hasPermission(1))
+                .requires(src -> EcoPermissions.check(src, EcoPermissions.BALANCE_OTHERS))
                 .then(Commands.argument("name", StringArgumentType.word())
                     .executes(ctx -> {
                         String name = StringArgumentType.getString(ctx, "name");

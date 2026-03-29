@@ -7,7 +7,7 @@ import net.ecocraft.api.EconomyProvider;
 import net.ecocraft.api.currency.Currency;
 import net.ecocraft.api.currency.CurrencyRegistry;
 import net.ecocraft.core.impl.EconomyProviderImpl;
-import net.ecocraft.core.permission.PermissionChecker;
+import net.ecocraft.core.permission.EcoPermissions;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.EntityArgument;
@@ -21,11 +21,10 @@ public class EcoAdminCommand {
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher,
                                 Supplier<EconomyProvider> economy,
-                                Supplier<CurrencyRegistry> currencies,
-                                Supplier<PermissionChecker> permissions) {
+                                Supplier<CurrencyRegistry> currencies) {
         dispatcher.register(Commands.literal("eco")
-            .requires(source -> source.hasPermission(2))
             .then(Commands.literal("give")
+                .requires(src -> EcoPermissions.check(src, EcoPermissions.ADMIN_GIVE))
                 .then(Commands.argument("player", EntityArgument.player())
                     .then(Commands.argument("amount", DoubleArgumentType.doubleArg(0.01))
                         .executes(ctx -> {
@@ -37,6 +36,7 @@ public class EcoAdminCommand {
                 )
             )
             .then(Commands.literal("take")
+                .requires(src -> EcoPermissions.check(src, EcoPermissions.ADMIN_TAKE))
                 .then(Commands.argument("player", EntityArgument.player())
                     .then(Commands.argument("amount", DoubleArgumentType.doubleArg(0.01))
                         .executes(ctx -> {
@@ -48,6 +48,7 @@ public class EcoAdminCommand {
                 )
             )
             .then(Commands.literal("set")
+                .requires(src -> EcoPermissions.check(src, EcoPermissions.ADMIN_SET))
                 .then(Commands.argument("player", EntityArgument.player())
                     .then(Commands.argument("amount", DoubleArgumentType.doubleArg(0))
                         .executes(ctx -> {

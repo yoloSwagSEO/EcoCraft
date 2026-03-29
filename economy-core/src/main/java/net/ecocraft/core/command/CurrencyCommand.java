@@ -7,11 +7,12 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 import net.ecocraft.api.currency.Currency;
 import net.ecocraft.api.currency.CurrencyRegistry;
 import net.ecocraft.api.exchange.ExchangeService;
-import net.ecocraft.core.permission.PermissionChecker;
+import net.ecocraft.core.permission.EcoPermissions;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
+import net.neoforged.neoforge.server.permission.PermissionAPI;
 
 import java.math.BigDecimal;
 import java.util.function.Supplier;
@@ -20,8 +21,7 @@ public class CurrencyCommand {
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher,
                                 Supplier<CurrencyRegistry> currencies,
-                                Supplier<ExchangeService> exchange,
-                                Supplier<PermissionChecker> permissions) {
+                                Supplier<ExchangeService> exchange) {
         dispatcher.register(Commands.literal("currency")
             .then(Commands.literal("list")
                 .executes(ctx -> listCurrencies(ctx.getSource(), currencies.get()))
@@ -36,7 +36,7 @@ public class CurrencyCommand {
                                 String fromId = StringArgumentType.getString(ctx, "from");
                                 String toId = StringArgumentType.getString(ctx, "to");
                                 return convert(ctx.getSource(), player, amount, fromId, toId,
-                                    currencies.get(), exchange.get(), permissions.get());
+                                    currencies.get(), exchange.get());
                             })
                         )
                     )
@@ -67,9 +67,8 @@ public class CurrencyCommand {
 
     private static int convert(CommandSourceStack source, ServerPlayer player, double amount,
                                String fromId, String toId,
-                               CurrencyRegistry currencies, ExchangeService exchange,
-                               PermissionChecker permissions) {
-        if (!permissions.hasPermission(player, "economy.exchange")) {
+                               CurrencyRegistry currencies, ExchangeService exchange) {
+        if (!PermissionAPI.getPermission(player, EcoPermissions.EXCHANGE)) {
             source.sendFailure(Component.translatable("ecocraft_core.command.currency.exchange_no_permission"));
             return 0;
         }

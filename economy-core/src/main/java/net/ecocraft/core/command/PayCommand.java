@@ -6,12 +6,13 @@ import com.mojang.brigadier.arguments.DoubleArgumentType;
 import net.ecocraft.api.EconomyProvider;
 import net.ecocraft.api.currency.Currency;
 import net.ecocraft.api.currency.CurrencyRegistry;
-import net.ecocraft.core.permission.PermissionChecker;
+import net.ecocraft.core.permission.EcoPermissions;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
+import net.neoforged.neoforge.server.permission.PermissionAPI;
 
 import java.math.BigDecimal;
 import java.util.function.Supplier;
@@ -20,8 +21,7 @@ public class PayCommand {
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher,
                                 Supplier<EconomyProvider> economy,
-                                Supplier<CurrencyRegistry> currencies,
-                                Supplier<PermissionChecker> permissions) {
+                                Supplier<CurrencyRegistry> currencies) {
         dispatcher.register(Commands.literal("pay")
             .then(Commands.argument("player", EntityArgument.player())
                 .then(Commands.argument("amount", DoubleArgumentType.doubleArg(0.01))
@@ -29,7 +29,7 @@ public class PayCommand {
                         ServerPlayer sender = ctx.getSource().getPlayerOrException();
                         ServerPlayer target = EntityArgument.getPlayer(ctx, "player");
                         double amount = DoubleArgumentType.getDouble(ctx, "amount");
-                        return pay(ctx.getSource(), sender, target, amount, economy.get(), currencies.get(), permissions.get());
+                        return pay(ctx.getSource(), sender, target, amount, economy.get(), currencies.get());
                     })
                 )
             )
@@ -37,9 +37,8 @@ public class PayCommand {
     }
 
     private static int pay(CommandSourceStack source, ServerPlayer sender, ServerPlayer target,
-                           double amount, EconomyProvider economy, CurrencyRegistry currencies,
-                           PermissionChecker permissions) {
-        if (!permissions.hasPermission(sender, "economy.pay")) {
+                           double amount, EconomyProvider economy, CurrencyRegistry currencies) {
+        if (!PermissionAPI.getPermission(sender, EcoPermissions.PAY)) {
             source.sendFailure(Component.translatable("ecocraft_core.command.pay.no_permission"));
             return 0;
         }

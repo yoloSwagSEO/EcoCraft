@@ -11,8 +11,7 @@ import net.ecocraft.core.impl.CurrencyRegistryImpl;
 import net.ecocraft.core.impl.EconomyProviderImpl;
 import net.ecocraft.core.impl.ExchangeServiceImpl;
 import net.ecocraft.core.impl.TransactionLogImpl;
-import net.ecocraft.core.permission.DefaultPermissionChecker;
-import net.ecocraft.core.permission.PermissionChecker;
+import net.ecocraft.core.permission.EcoPermissions;
 import net.ecocraft.core.storage.StorageManager;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -20,6 +19,7 @@ import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.server.ServerStartingEvent;
 import net.neoforged.neoforge.event.server.ServerStoppedEvent;
+import net.neoforged.neoforge.server.permission.events.PermissionGatherEvent;
 
 import org.slf4j.Logger;
 import com.mojang.logging.LogUtils;
@@ -58,10 +58,8 @@ public class EcoServerEvents {
         var economyProvider = new EconomyProviderImpl(storage.getProvider(), currencyRegistry);
         var exchangeService = new ExchangeServiceImpl(economyProvider);
         var transactionLog = new TransactionLogImpl(storage.getProvider(), currencyRegistry);
-        var permissions = new DefaultPermissionChecker();
-
         context = new EcoServerContext(storage, currencyRegistry, economyProvider,
-                exchangeService, transactionLog, permissions);
+                exchangeService, transactionLog);
 
         // Wire KubeJS event dispatcher if KubeJS is loaded
         if (net.neoforged.fml.ModList.get().isLoaded("kubejs")) {
@@ -93,8 +91,7 @@ public class EcoServerEvents {
         EcoCommands.register(event.getDispatcher(),
                 () -> context != null ? context.getEconomyProvider() : null,
                 () -> context != null ? context.getCurrencyRegistry() : null,
-                () -> context != null ? context.getExchangeService() : null,
-                () -> context != null ? context.getPermissions() : null);
+                () -> context != null ? context.getExchangeService() : null);
         LOGGER.info("EcoCraft Economy commands registered.");
     }
 
@@ -115,11 +112,25 @@ public class EcoServerEvents {
         }
     }
 
+    @SubscribeEvent
+    public static void onPermissionGather(PermissionGatherEvent.Nodes event) {
+        event.addNodes(
+            EcoPermissions.BALANCE,
+            EcoPermissions.BALANCE_OTHERS,
+            EcoPermissions.BALANCE_LIST,
+            EcoPermissions.PAY,
+            EcoPermissions.EXCHANGE,
+            EcoPermissions.ADMIN_GIVE,
+            EcoPermissions.ADMIN_TAKE,
+            EcoPermissions.ADMIN_SET
+        );
+        LOGGER.info("EcoCraft Economy permission nodes registered.");
+    }
+
     // Accessors for other modules — delegate to context
     public static EconomyProvider getEconomy() { return context != null ? context.getEconomyProvider() : null; }
     public static CurrencyRegistry getCurrencyRegistry() { return context != null ? context.getCurrencyRegistry() : null; }
     public static ExchangeService getExchangeService() { return context != null ? context.getExchangeService() : null; }
     public static StorageManager getStorage() { return context != null ? context.getStorage() : null; }
     public static TransactionLog getTransactionLog() { return context != null ? context.getTransactionLog() : null; }
-    public static PermissionChecker getPermissions() { return context != null ? context.getPermissions() : null; }
 }
