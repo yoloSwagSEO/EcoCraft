@@ -71,6 +71,14 @@ public abstract class BaseWidget implements WidgetNode {
         }
     }
 
+    /** Move this widget to the end of its parent's children list (rendered/hit-tested last = on top). */
+    public void bringToFront() {
+        if (parent instanceof BaseWidget bw) {
+            bw.children.remove(this);
+            bw.children.add(this);
+        }
+    }
+
     /** Walk up the tree to find a parent of a specific type. */
     @SuppressWarnings("unchecked")
     public <T extends WidgetNode> @Nullable T findParent(Class<T> type) {

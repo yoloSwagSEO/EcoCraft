@@ -79,6 +79,16 @@ public class EcoDropdown extends BaseWidget {
         return false;
     }
 
+    /** Close all other open dropdowns among siblings. */
+    private static void closeAllDropdownsIn(WidgetNode parent) {
+        if (parent == null) return;
+        for (WidgetNode child : parent.getChildren()) {
+            if (child instanceof EcoDropdown dd && dd.open) {
+                dd.open = false;
+            }
+        }
+    }
+
     // --- Geometry helpers ---
 
     private int itemHeight() {
@@ -229,7 +239,9 @@ public class EcoDropdown extends BaseWidget {
             // Click on main widget -> open
             if (mouseX >= getX() && mouseX < getX() + getWidth()
                     && mouseY >= getY() && mouseY < getY() + getHeight()) {
+                closeAllDropdownsIn(getParent());
                 open = true;
+                bringToFront();
                 return true;
             }
         }
