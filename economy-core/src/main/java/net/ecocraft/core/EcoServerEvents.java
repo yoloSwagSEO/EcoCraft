@@ -84,10 +84,10 @@ public class EcoServerEvents {
         if (economyProvider == null) return;
         var player = event.getEntity();
         var currency = currencyRegistry.getDefault();
-        var balance = economyProvider.getBalance(player.getUUID(), currency);
+        var db = storage.getProvider();
 
-        // Give starting balance to new players
-        if (balance.compareTo(BigDecimal.ZERO) == 0) {
+        // Give starting balance to new players (only if they have no account row at all)
+        if (!db.hasAccount(player.getUUID(), currency.id())) {
             double startingBalance = EcoConfig.CONFIG.startingBalance.get();
             if (startingBalance > 0) {
                 economyProvider.deposit(player.getUUID(), BigDecimal.valueOf(startingBalance), currency);

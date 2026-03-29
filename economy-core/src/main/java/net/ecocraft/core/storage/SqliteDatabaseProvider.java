@@ -91,7 +91,7 @@ public class SqliteDatabaseProvider implements DatabaseProvider {
     public List<BalanceEntry> getAllBalances(String currencyId) {
         List<BalanceEntry> results = new java.util.ArrayList<>();
         try (PreparedStatement ps = connection.prepareStatement(
-                "SELECT player_uuid, currency_id, amount FROM balances WHERE currency_id = ? ORDER BY amount DESC")) {
+                "SELECT player_uuid, currency_id, amount FROM balances WHERE currency_id = ? ORDER BY CAST(amount AS REAL) DESC")) {
             ps.setString(1, currencyId);
             ResultSet rs = ps.executeQuery();
             while (rs.next()) {
@@ -104,6 +104,19 @@ public class SqliteDatabaseProvider implements DatabaseProvider {
             throw new RuntimeException("Failed to get all balances", e);
         }
         return results;
+    }
+
+    @Override
+    public boolean hasAccount(UUID player, String currencyId) {
+        try (PreparedStatement ps = connection.prepareStatement(
+                "SELECT COUNT(*) FROM balances WHERE player_uuid = ? AND currency_id = ?")) {
+            ps.setString(1, player.toString());
+            ps.setString(2, currencyId);
+            ResultSet rs = ps.executeQuery();
+            return rs.next() && rs.getInt(1) > 0;
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to check account existence", e);
+        }
     }
 
     @Override

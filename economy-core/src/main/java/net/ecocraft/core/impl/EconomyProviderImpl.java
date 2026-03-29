@@ -46,52 +46,58 @@ public class EconomyProviderImpl implements EconomyProvider {
 
     @Override
     public TransactionResult withdraw(UUID player, BigDecimal amount, Currency currency) {
-        BigDecimal current = db.getVirtualBalance(player, currency.id());
-        if (current.compareTo(amount) < 0) {
-            return TransactionResult.failure("Insufficient funds");
+        synchronized (db) {
+            BigDecimal current = db.getVirtualBalance(player, currency.id());
+            if (current.compareTo(amount) < 0) {
+                return TransactionResult.failure("Insufficient funds");
+            }
+            BigDecimal newBalance = current.subtract(amount);
+            db.setVirtualBalance(player, currency.id(), newBalance);
+
+            var tx = new Transaction(UUID.randomUUID(), player, null, amount, currency,
+                TransactionType.WITHDRAWAL, Instant.now());
+            db.logTransaction(tx.id(), tx.from(), tx.to(), tx.amount(),
+                currency.id(), tx.type().name(), tx.timestamp());
+
+            return TransactionResult.success(tx);
         }
-        BigDecimal newBalance = current.subtract(amount);
-        db.setVirtualBalance(player, currency.id(), newBalance);
-
-        var tx = new Transaction(UUID.randomUUID(), player, null, amount, currency,
-            TransactionType.WITHDRAWAL, Instant.now());
-        db.logTransaction(tx.id(), tx.from(), tx.to(), tx.amount(),
-            currency.id(), tx.type().name(), tx.timestamp());
-
-        return TransactionResult.success(tx);
     }
 
     @Override
     public TransactionResult deposit(UUID player, BigDecimal amount, Currency currency) {
-        BigDecimal current = db.getVirtualBalance(player, currency.id());
-        BigDecimal newBalance = current.add(amount);
-        db.setVirtualBalance(player, currency.id(), newBalance);
+        synchronized (db) {
+            BigDecimal current = db.getVirtualBalance(player, currency.id());
+            BigDecimal newBalance = current.add(amount);
+            db.setVirtualBalance(player, currency.id(), newBalance);
 
-        var tx = new Transaction(UUID.randomUUID(), null, player, amount, currency,
-            TransactionType.DEPOSIT, Instant.now());
-        db.logTransaction(tx.id(), tx.from(), tx.to(), tx.amount(),
-            currency.id(), tx.type().name(), tx.timestamp());
+            var tx = new Transaction(UUID.randomUUID(), null, player, amount, currency,
+                TransactionType.DEPOSIT, Instant.now());
+            db.logTransaction(tx.id(), tx.from(), tx.to(), tx.amount(),
+                currency.id(), tx.type().name(), tx.timestamp());
 
-        return TransactionResult.success(tx);
+            return TransactionResult.success(tx);
+        }
     }
 
     @Override
     public TransactionResult transfer(UUID from, UUID to, BigDecimal amount, Currency currency) {
-        BigDecimal senderBalance = db.getVirtualBalance(from, currency.id());
-        if (senderBalance.compareTo(amount) < 0) {
-            return TransactionResult.failure("Insufficient funds");
+        synchronized (db) {
+            BigDecimal senderBalance = db.getVirtualBalance(from, currency.id());
+            if (senderBalance.compareTo(amount) < 0) {
+                return TransactionResult.failure("Insufficient funds");
+            }
+
+            db.setVirtualBalance(from, currency.id(), senderBalance.subtract(amount));
+            BigDecimal receiverBalance = db.getVirtualBalance(to, currency.id());
+            db.setVirtualBalance(to, currency.id(), receiverBalance.add(amount));
+
+            var tx = new Transaction(UUID.randomUUID(), from, to, amount, currency,
+                TransactionType.PAYMENT, Instant.now());
+            db.logTransaction(tx.id(), tx.from(), tx.to(), tx.amount(),
+                currency.id(), tx.type().name(), tx.timestamp());
+
+            return TransactionResult.success(tx);
         }
-
-        db.setVirtualBalance(from, currency.id(), senderBalance.subtract(amount));
-        BigDecimal receiverBalance = db.getVirtualBalance(to, currency.id());
-        db.setVirtualBalance(to, currency.id(), receiverBalance.add(amount));
-
-        var tx = new Transaction(UUID.randomUUID(), from, to, amount, currency,
-            TransactionType.PAYMENT, Instant.now());
-        db.logTransaction(tx.id(), tx.from(), tx.to(), tx.amount(),
-            currency.id(), tx.type().name(), tx.timestamp());
-
-        return TransactionResult.success(tx);
     }
 
     @Override

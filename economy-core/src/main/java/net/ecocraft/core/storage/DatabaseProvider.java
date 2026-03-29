@@ -21,6 +21,9 @@ public interface DatabaseProvider {
 
     record BalanceEntry(UUID playerUuid, String currencyId, BigDecimal amount) {}
 
+    /** Checks whether a player has an existing account row for the given currency. */
+    boolean hasAccount(UUID player, String currencyId);
+
     // Transactions
     void logTransaction(UUID txId, @Nullable UUID from, @Nullable UUID to,
                         BigDecimal amount, String currencyId, String type, Instant timestamp);
