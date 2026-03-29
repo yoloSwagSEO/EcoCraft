@@ -36,7 +36,8 @@ public record AHInstance(
     }
 
     public AHInstance withConfig(String name, int saleRate, int depositRate, List<Integer> durations,
-                                 boolean allowBuyout, boolean allowAuction, String taxRecipient) {
+                                 boolean allowBuyout, boolean allowAuction, String taxRecipient,
+                                 boolean overridePermTax) {
         return new AHInstance(id, slugify(name), name, saleRate, depositRate, durations, allowBuyout, allowAuction,
                 taxRecipient != null ? taxRecipient : "", overridePermTax);
     }

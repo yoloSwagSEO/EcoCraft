@@ -13,7 +13,8 @@ import java.util.List;
  * Client -> Server payload to update an AH instance's configuration (admin only).
  */
 public record UpdateAHInstancePayload(String ahId, String name, int saleRate, int depositRate, List<Integer> durations,
-                                       boolean allowBuyout, boolean allowAuction, String taxRecipient)
+                                       boolean allowBuyout, boolean allowAuction, String taxRecipient,
+                                       boolean overridePermTax)
         implements CustomPacketPayload {
 
     public static final Type<UpdateAHInstancePayload> TYPE =
@@ -34,7 +35,8 @@ public record UpdateAHInstancePayload(String ahId, String name, int saleRate, in
             boolean allowBuyout = ByteBufCodecs.BOOL.decode(buf);
             boolean allowAuction = ByteBufCodecs.BOOL.decode(buf);
             String taxRecipient = ByteBufCodecs.STRING_UTF8.decode(buf);
-            return new UpdateAHInstancePayload(ahId, name, saleRate, depositRate, durations, allowBuyout, allowAuction, taxRecipient);
+            boolean overridePermTax = ByteBufCodecs.BOOL.decode(buf);
+            return new UpdateAHInstancePayload(ahId, name, saleRate, depositRate, durations, allowBuyout, allowAuction, taxRecipient, overridePermTax);
         }
 
         @Override
@@ -50,6 +52,7 @@ public record UpdateAHInstancePayload(String ahId, String name, int saleRate, in
             ByteBufCodecs.BOOL.encode(buf, payload.allowBuyout());
             ByteBufCodecs.BOOL.encode(buf, payload.allowAuction());
             ByteBufCodecs.STRING_UTF8.encode(buf, payload.taxRecipient() != null ? payload.taxRecipient() : "");
+            ByteBufCodecs.BOOL.encode(buf, payload.overridePermTax());
         }
     };
 

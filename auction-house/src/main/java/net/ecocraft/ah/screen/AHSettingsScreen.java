@@ -74,6 +74,7 @@ public class AHSettingsScreen extends EcoScreen {
         boolean allowBuyout;
         boolean allowAuction;
         String taxRecipient;
+        boolean overridePermTax;
 
         EditedAH(AHInstancesPayload.AHInstanceData data) {
             this.name = data.name();
@@ -83,6 +84,7 @@ public class AHSettingsScreen extends EcoScreen {
             this.allowBuyout = data.allowBuyout();
             this.allowAuction = data.allowAuction();
             this.taxRecipient = data.taxRecipient() != null ? data.taxRecipient() : "";
+            this.overridePermTax = data.overridePermTax();
         }
     }
 
@@ -326,7 +328,7 @@ public class AHSettingsScreen extends EcoScreen {
 
         int titleBlockH = font.lineHeight + 2 + 6; // title text + separator + titleMarginBottom
         int identityH = PANEL_PADDING * 2 + titleBlockH + font.lineHeight + 4 + 16 + 2;
-        int modesH = PANEL_PADDING * 2 + titleBlockH + 20 * 2 + 4;
+        int modesH = PANEL_PADDING * 2 + titleBlockH + 20 * 3 + 4 * 2;
         int taxesH = PANEL_PADDING * 2 + titleBlockH +
                 (font.lineHeight + 4 + 16 + 10) + // slider row
                 (font.lineHeight + 4 + 16 + 2);   // recipient row
@@ -415,6 +417,18 @@ public class AHSettingsScreen extends EcoScreen {
         auctionToggle.value(edited.allowAuction);
         auctionToggle.responder(val -> edited.allowAuction = val);
         getTree().addChild(auctionToggle);
+
+        cy += 20;
+
+        Label overridePermTaxLabel = new Label(font, cx, cy + 3,
+                Component.translatable("ecocraft_ah.settings.override_perm_tax"), THEME);
+        overridePermTaxLabel.setColor(THEME.textLight);
+        getTree().addChild(overridePermTaxLabel);
+
+        EcoToggle overridePermTaxToggle = new EcoToggle(cx + toggleAreaW - toggleW, cy, toggleW, 14, THEME);
+        overridePermTaxToggle.value(edited.overridePermTax);
+        overridePermTaxToggle.responder(val -> edited.overridePermTax = val);
+        getTree().addChild(overridePermTaxToggle);
 
         // -- Taxes: sliders side-by-side (50/50) + recipient below --
         cx = taxesPanel.getContentX();
@@ -604,7 +618,7 @@ public class AHSettingsScreen extends EcoScreen {
         AHInstancesPayload.AHInstanceData newData = new AHInstancesPayload.AHInstanceData(
                 newId, AHInstance.slugify(newName), newName,
                 AHInstance.DEFAULT_SALE_RATE, AHInstance.DEFAULT_DEPOSIT_RATE,
-                new ArrayList<>(AHInstance.DEFAULT_DURATIONS), true, true, "");
+                new ArrayList<>(AHInstance.DEFAULT_DURATIONS), true, true, "", false);
         ahInstances.add(newData);
         PacketDistributor.sendToServer(new CreateAHPayload(newName));
 
@@ -643,7 +657,7 @@ public class AHSettingsScreen extends EcoScreen {
             var edit = entry.getValue();
             PacketDistributor.sendToServer(new UpdateAHInstancePayload(
                     entry.getKey(), edit.name, edit.saleRate, edit.depositRate, edit.durations,
-                    edit.allowBuyout, edit.allowAuction, edit.taxRecipient));
+                    edit.allowBuyout, edit.allowAuction, edit.taxRecipient, edit.overridePermTax));
         }
         if (npcEntityId != -1) {
             PacketDistributor.sendToServer(new UpdateNPCSkinPayload(npcEntityId, skinPlayerName, linkedAhId));

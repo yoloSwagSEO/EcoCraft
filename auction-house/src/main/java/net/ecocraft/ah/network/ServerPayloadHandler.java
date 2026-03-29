@@ -547,7 +547,7 @@ public final class ServerPayloadHandler {
         for (var ah : instances) {
             data.add(new AHInstancesPayload.AHInstanceData(
                     ah.id(), ah.slug(), ah.name(), ah.saleRate(), ah.depositRate(), new ArrayList<>(ah.durations()),
-                    ah.allowBuyout(), ah.allowAuction(), ah.taxRecipient()));
+                    ah.allowBuyout(), ah.allowAuction(), ah.taxRecipient(), ah.overridePermTax()));
         }
         PacketDistributor.sendToPlayer(player, new AHInstancesPayload(data));
     }
@@ -633,7 +633,7 @@ public final class ServerPayloadHandler {
                 return;
             }
             AHInstance updated = existing.withConfig(payload.name(), payload.saleRate(), payload.depositRate(), payload.durations(),
-                    payload.allowBuyout(), payload.allowAuction(), payload.taxRecipient());
+                    payload.allowBuyout(), payload.allowAuction(), payload.taxRecipient(), payload.overridePermTax());
             storage.updateAHInstance(updated);
             context.reply(new AHActionResultPayload(true, Component.translatable("ecocraft_ah.message.ah_updated", updated.name()).getString()));
             sendAHInstances(player);

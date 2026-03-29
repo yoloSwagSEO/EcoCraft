@@ -221,5 +221,6 @@
   "ecocraft_ah.bid_history.no_bids": "Sin pujas",
   "ecocraft_ah.bid_history.recent": "Pujas recientes",
   "ecocraft_ah.bid_history.see_all": "Ver todo",
-  "ecocraft_ah.bid_history.ago": "hace %s"
+  "ecocraft_ah.bid_history.ago": "hace %s",
+  "ecocraft_ah.settings.override_perm_tax": "Forzar las tasas de esta AH"
 }

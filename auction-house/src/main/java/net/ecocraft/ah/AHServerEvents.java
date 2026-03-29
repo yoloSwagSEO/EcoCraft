@@ -203,7 +203,7 @@ public class AHServerEvents {
                     net.ecocraft.ah.data.AHInstance updated = defaultAh.withConfig(
                             defaultAh.name(), cfgSaleRate, cfgDepositRate,
                             cfgDurations, defaultAh.allowBuyout(), defaultAh.allowAuction(),
-                            defaultAh.taxRecipient());
+                            defaultAh.taxRecipient(), defaultAh.overridePermTax());
                     storageProvider.updateAHInstance(updated);
                     LOGGER.info("Applied NeoForge config defaults to default AH instance");
                 }

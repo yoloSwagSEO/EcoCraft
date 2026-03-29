@@ -221,5 +221,6 @@
   "ecocraft_ah.bid_history.no_bids": "No bids",
   "ecocraft_ah.bid_history.recent": "Recent Bids",
   "ecocraft_ah.bid_history.see_all": "See all",
-  "ecocraft_ah.bid_history.ago": "%s ago"
+  "ecocraft_ah.bid_history.ago": "%s ago",
+  "ecocraft_ah.settings.override_perm_tax": "Force this AH's rates"
 }
