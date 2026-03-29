@@ -67,10 +67,10 @@ public class ScrollPane extends BaseWidget {
         int contentWidth = w - (needsScrollbar() ? SCROLLBAR_WIDTH : 0);
         graphics.enableScissor(x, y, x + contentWidth, y + h);
 
-        // 3. Translate and render children
+        // 3. Translate and render children (adjust mouseY so hover/focus states work)
         graphics.pose().pushPose();
         graphics.pose().translate(0, -scrollOffset, 0);
-        renderChildrenInternal(graphics, mouseX, mouseY, partialTick);
+        renderChildrenInternal(graphics, mouseX, mouseY + scrollOffset, partialTick);
         graphics.pose().popPose();
 
         // 4. Disable scissor
