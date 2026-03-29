@@ -30,12 +30,9 @@ import java.math.BigDecimal;
 public class EcoServerEvents {
 
     private static final Logger LOGGER = LogUtils.getLogger();
-    private static final StorageManager storage = new StorageManager();
-    private static CurrencyRegistryImpl currencyRegistry;
-    private static EconomyProviderImpl economyProvider;
-    private static ExchangeServiceImpl exchangeService;
-    private static TransactionLogImpl transactionLog;
-    private static PermissionChecker permissions;
+    private static volatile EcoServerContext context;
+
+    public static EcoServerContext getContext() { return context; }
 
     @SubscribeEvent
     public static void onServerStarting(ServerStartingEvent event) {
@@ -44,10 +41,11 @@ public class EcoServerEvents {
         var worldDir = server.getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT);
 
         // Initialize storage
+        var storage = new StorageManager();
         storage.initialize(worldDir);
 
         // Initialize currency registry with default currency from config
-        currencyRegistry = new CurrencyRegistryImpl();
+        var currencyRegistry = new CurrencyRegistryImpl();
         var defaultCurrency = Currency.virtual(
             EcoConfig.CONFIG.defaultCurrencyId.get(),
             EcoConfig.CONFIG.defaultCurrencyName.get(),
@@ -57,49 +55,60 @@ public class EcoServerEvents {
         currencyRegistry.register(defaultCurrency);
 
         // Initialize services
-        economyProvider = new EconomyProviderImpl(storage.getProvider(), currencyRegistry);
-        exchangeService = new ExchangeServiceImpl(economyProvider);
-        transactionLog = new TransactionLogImpl(storage.getProvider(), currencyRegistry);
-        permissions = new DefaultPermissionChecker();
+        var economyProvider = new EconomyProviderImpl(storage.getProvider(), currencyRegistry);
+        var exchangeService = new ExchangeServiceImpl(economyProvider);
+        var transactionLog = new TransactionLogImpl(storage.getProvider(), currencyRegistry);
+        var permissions = new DefaultPermissionChecker();
+
+        context = new EcoServerContext(storage, currencyRegistry, economyProvider,
+                exchangeService, transactionLog, permissions);
+
         LOGGER.info("EcoCraft Economy Core initialized with currency: {} ({})",
                 defaultCurrency.name(), defaultCurrency.symbol());
     }
 
     @SubscribeEvent
     public static void onServerStopped(ServerStoppedEvent event) {
-        storage.shutdown();
+        var ctx = context;
+        if (ctx != null) {
+            ctx.getStorage().shutdown();
+            context = null;
+        }
     }
 
     @SubscribeEvent
     public static void onRegisterCommands(RegisterCommandsEvent event) {
         // Commands are registered early (before ServerStartingEvent), so use lazy accessors
         EcoCommands.register(event.getDispatcher(),
-                () -> economyProvider, () -> currencyRegistry,
-                () -> exchangeService, () -> permissions);
+                () -> context != null ? context.getEconomyProvider() : null,
+                () -> context != null ? context.getCurrencyRegistry() : null,
+                () -> context != null ? context.getExchangeService() : null,
+                () -> context != null ? context.getPermissions() : null);
         LOGGER.info("EcoCraft Economy commands registered.");
     }
 
     @SubscribeEvent
     public static void onPlayerJoin(PlayerEvent.PlayerLoggedInEvent event) {
-        if (economyProvider == null) return;
+        var ctx = context;
+        if (ctx == null) return;
         var player = event.getEntity();
-        var currency = currencyRegistry.getDefault();
-        var db = storage.getProvider();
+        var currency = ctx.getCurrencyRegistry().getDefault();
+        var db = ctx.getStorage().getProvider();
 
         // Give starting balance to new players (only if they have no account row at all)
         if (!db.hasAccount(player.getUUID(), currency.id())) {
             double startingBalance = EcoConfig.CONFIG.startingBalance.get();
             if (startingBalance > 0) {
-                economyProvider.deposit(player.getUUID(), BigDecimal.valueOf(startingBalance), currency);
+                ctx.getEconomyProvider().deposit(player.getUUID(), BigDecimal.valueOf(startingBalance), currency);
             }
         }
     }
 
-    // Accessors for other modules
-    public static EconomyProvider getEconomy() { return economyProvider; }
-    public static CurrencyRegistry getCurrencyRegistry() { return currencyRegistry; }
-    public static ExchangeService getExchangeService() { return exchangeService; }
-    public static StorageManager getStorage() { return storage; }
-    public static TransactionLog getTransactionLog() { return transactionLog; }
-    public static PermissionChecker getPermissions() { return permissions; }
+    // Accessors for other modules — delegate to context
+    public static EconomyProvider getEconomy() { return context != null ? context.getEconomyProvider() : null; }
+    public static CurrencyRegistry getCurrencyRegistry() { return context != null ? context.getCurrencyRegistry() : null; }
+    public static ExchangeService getExchangeService() { return context != null ? context.getExchangeService() : null; }
+    public static StorageManager getStorage() { return context != null ? context.getStorage() : null; }
+    public static TransactionLog getTransactionLog() { return context != null ? context.getTransactionLog() : null; }
+    public static PermissionChecker getPermissions() { return context != null ? context.getPermissions() : null; }
 }

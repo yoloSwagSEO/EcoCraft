@@ -1,13 +1,15 @@
 package net.ecocraft.core.storage;
 
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
 public class DatabaseMigrator {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(DatabaseMigrator.class);
 
     @FunctionalInterface
     public interface Migration {
@@ -36,7 +38,7 @@ public class DatabaseMigrator {
 
         for (var m : migrations) {
             if (m.version() > currentVersion) {
-                System.out.println("[" + dbName + "] Running migration v" + m.version() + ": " + m.description());
+                LOGGER.info("[{}] Running migration v{}: {}", dbName, m.version(), m.description());
                 conn.setAutoCommit(false);
                 try {
                     m.migration().execute(conn);
@@ -48,7 +50,7 @@ public class DatabaseMigrator {
                 } finally {
                     conn.setAutoCommit(true);
                 }
-                System.out.println("[" + dbName + "] Migration v" + m.version() + " complete.");
+                LOGGER.info("[{}] Migration v{} complete.", dbName, m.version());
             }
         }
     }
@@ -64,7 +66,11 @@ public class DatabaseMigrator {
             // Insert initial row if empty
             ResultSet rs = stmt.executeQuery("SELECT COUNT(*) FROM schema_version");
             if (rs.next() && rs.getInt(1) == 0) {
-                stmt.execute("INSERT INTO schema_version (version, applied_at) VALUES (0, " + System.currentTimeMillis() + ")");
+                try (PreparedStatement ps = conn.prepareStatement("INSERT INTO schema_version (version, applied_at) VALUES (?, ?)")) {
+                    ps.setInt(1, 0);
+                    ps.setLong(2, System.currentTimeMillis());
+                    ps.executeUpdate();
+                }
             }
         }
     }
@@ -78,8 +84,10 @@ public class DatabaseMigrator {
     }
 
     private void setVersion(Connection conn, int version) throws SQLException {
-        try (Statement stmt = conn.createStatement()) {
-            stmt.execute("INSERT INTO schema_version (version, applied_at) VALUES (" + version + ", " + System.currentTimeMillis() + ")");
+        try (PreparedStatement ps = conn.prepareStatement("INSERT INTO schema_version (version, applied_at) VALUES (?, ?)")) {
+            ps.setInt(1, version);
+            ps.setLong(2, System.currentTimeMillis());
+            ps.executeUpdate();
         }
     }
 }
