@@ -1,5 +1,6 @@
 package net.ecocraft.mail.network;
 
+import net.ecocraft.mail.client.MailNotificationManager;
 import net.ecocraft.mail.network.payload.*;
 import net.ecocraft.mail.screen.MailboxScreen;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
@@ -28,14 +29,10 @@ public final class MailClientPayloadHandler {
     }
 
     public static void handleSendMailResult(SendMailResultPayload payload, IPayloadContext context) {
-        context.enqueueWork(() -> {
-            // Task 8: show send result, close compose view
-        });
+        context.enqueueWork(() -> MailboxScreen.receiveSendResult(payload));
     }
 
     public static void handleNotification(MailNotificationPayload payload, IPayloadContext context) {
-        context.enqueueWork(() -> {
-            // Task 8: dispatch notification to toast/chat
-        });
+        context.enqueueWork(() -> MailNotificationManager.handle(payload));
     }
 }

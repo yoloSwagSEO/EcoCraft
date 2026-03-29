@@ -1,6 +1,7 @@
 package net.ecocraft.mail.screen;
 
 import com.mojang.logging.LogUtils;
+import net.ecocraft.gui.core.EcoButton;
 import net.ecocraft.gui.core.EcoScreen;
 import net.ecocraft.gui.theme.DrawUtils;
 import net.ecocraft.gui.theme.Theme;
@@ -8,6 +9,7 @@ import net.ecocraft.mail.network.payload.CollectMailResultPayload;
 import net.ecocraft.mail.network.payload.MailDetailResponsePayload;
 import net.ecocraft.mail.network.payload.MailListResponsePayload;
 import net.ecocraft.mail.network.payload.RequestMailListPayload;
+import net.ecocraft.mail.network.payload.SendMailResultPayload;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
@@ -30,7 +32,8 @@ public class MailboxScreen extends EcoScreen {
 
     private MailListView listView;
     private MailDetailView detailView;
-    // MailComposeView will be added in Task 8
+    private MailComposeView composeView;
+    private EcoButton settingsButton;
 
     public MailboxScreen() {
         super(Component.literal("Boite aux lettres"));
@@ -52,9 +55,16 @@ public class MailboxScreen extends EcoScreen {
 
         listView = new MailListView(this, contentX, contentY, contentW, contentH);
         detailView = new MailDetailView(this, contentX, contentY, contentW, contentH);
+        composeView = new MailComposeView(this, contentX, contentY, contentW, contentH);
 
         getTree().addChild(listView);
         getTree().addChild(detailView);
+        getTree().addChild(composeView);
+
+        // Gear button for settings (top-right corner of the panel)
+        settingsButton = EcoButton.ghost(THEME, Component.literal("\u2699"), this::openSettings);
+        settingsButton.setBounds(guiLeft + guiWidth - 22, guiTop + 2, 18, 18);
+        getTree().addChild(settingsButton);
 
         showListView();
     }
@@ -70,6 +80,7 @@ public class MailboxScreen extends EcoScreen {
     public void showListView() {
         listView.setVisible(true);
         detailView.setVisible(false);
+        composeView.setVisible(false);
         // Request fresh mail list from server
         PacketDistributor.sendToServer(new RequestMailListPayload());
     }
@@ -77,12 +88,24 @@ public class MailboxScreen extends EcoScreen {
     public void showDetailView(String mailId) {
         listView.setVisible(false);
         detailView.setVisible(true);
+        composeView.setVisible(false);
         detailView.requestDetail(mailId);
     }
 
     public void showComposeView() {
-        // Task 8: will switch to compose view
-        LOGGER.info("Compose view not yet implemented");
+        listView.setVisible(false);
+        detailView.setVisible(false);
+        composeView.setVisible(true);
+    }
+
+    private void openSettings() {
+        // Determine admin status: check if player has OP level 2
+        boolean isAdmin = false;
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player != null) {
+            isAdmin = mc.player.hasPermissions(2);
+        }
+        mc.setScreen(new MailSettingsScreen(this, isAdmin));
     }
 
     // --- Static payload receivers (called from MailClientPayloadHandler) ---
@@ -107,6 +130,12 @@ public class MailboxScreen extends EcoScreen {
             } else {
                 LOGGER.warn("Collect failed: {}", payload.message());
             }
+        }
+    }
+
+    public static void receiveSendResult(SendMailResultPayload payload) {
+        if (Minecraft.getInstance().screen instanceof MailboxScreen screen) {
+            screen.composeView.onReceiveSendResult(payload);
         }
     }
 
