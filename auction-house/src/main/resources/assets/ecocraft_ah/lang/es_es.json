@@ -222,5 +222,12 @@
   "ecocraft_ah.bid_history.recent": "Pujas recientes",
   "ecocraft_ah.bid_history.see_all": "Ver todo",
   "ecocraft_ah.bid_history.ago": "hace %s",
-  "ecocraft_ah.settings.override_perm_tax": "Forzar las tasas de esta AH"
+  "ecocraft_ah.settings.override_perm_tax": "Forzar las tasas de esta AH",
+  "ecocraft_ah.settings.delivery_mode": "Modo de entrega",
+  "ecocraft_ah.settings.delivery_mode.direct": "Directo (inventario)",
+  "ecocraft_ah.settings.delivery_mode.mailbox": "Buzón de correo",
+  "ecocraft_ah.settings.delivery_mode.both": "Ambos",
+  "ecocraft_ah.settings.delivery_delay_purchase": "Retraso compra (minutos)",
+  "ecocraft_ah.settings.delivery_delay_expired": "Retraso expiración (minutos)",
+  "ecocraft_ah.my_auctions.mailbox_notice": "Recoge tus compras en tu buzón de correo"
 }

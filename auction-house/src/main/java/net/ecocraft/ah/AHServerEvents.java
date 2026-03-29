@@ -85,6 +85,34 @@ public class AHServerEvents {
             return profile.map(com.mojang.authlib.GameProfile::getId).orElse(null);
         });
 
+        // Wire mail sender if mail module is loaded (via reflection to avoid compile-time dependency)
+        if (net.neoforged.fml.ModList.get().isLoaded("ecocraft_mail")) {
+            try {
+                Class<?> mailEventsClass = Class.forName("net.ecocraft.mail.MailServerEvents");
+                Object mailService = mailEventsClass.getMethod("getService").invoke(null);
+                if (mailService != null) {
+                    Class<?> attachmentClass = Class.forName("net.ecocraft.mail.data.MailItemAttachment");
+                    var attachmentCtor = attachmentClass.getConstructor(String.class, String.class, String.class, int.class);
+                    var sendMethod = mailService.getClass().getMethod("sendSystemMail",
+                            String.class, java.util.UUID.class, String.class, String.class,
+                            java.util.List.class, long.class, String.class, boolean.class, long.class);
+
+                    auctionService.setMailSender((recipientUuid, subject, body, itemId, itemName, itemNbt, qty, currencyAmount, currencyId2, availableAt) -> {
+                        try {
+                            Object attachment = attachmentCtor.newInstance(itemId, itemName, itemNbt, qty);
+                            sendMethod.invoke(mailService, "Hôtel des Ventes", recipientUuid, subject, body,
+                                    java.util.List.of(attachment), currencyAmount, currencyId2, false, availableAt);
+                        } catch (Exception ex) {
+                            LOGGER.error("Failed to send mail via AH integration: {}", ex.getMessage());
+                        }
+                    });
+                    LOGGER.info("Mail integration enabled for EcoCraft Auction House");
+                }
+            } catch (Exception e) {
+                LOGGER.warn("Mail integration not available: {}", e.getMessage());
+            }
+        }
+
         // Wire KubeJS event dispatcher if KubeJS is loaded
         if (net.neoforged.fml.ModList.get().isLoaded("kubejs")) {
             try {
@@ -114,6 +142,7 @@ public class AHServerEvents {
             auctionService.setNotificationSender(null);
             auctionService.setProfileResolver(null);
             auctionService.setAHEventDispatcher(null);
+            auctionService.setMailSender(null);
         }
         auctionService = null;
         tickCounter = 0;
@@ -189,7 +218,10 @@ public class AHServerEvents {
                         net.ecocraft.ah.data.AHInstance.DEFAULT_NAME,
                         config.saleRate.get(), config.depositRate.get(),
                         new java.util.ArrayList<>(config.durations.get()),
-                        true, true, "", false);
+                        true, true, "", false,
+                        net.ecocraft.ah.data.AHInstance.DEFAULT_DELIVERY_MODE,
+                        net.ecocraft.ah.data.AHInstance.DEFAULT_DELIVERY_DELAY_PURCHASE,
+                        net.ecocraft.ah.data.AHInstance.DEFAULT_DELIVERY_DELAY_EXPIRED);
                 storageProvider.createAHInstance(newDefault);
             } else if (defaultAh.saleRate() == net.ecocraft.ah.data.AHInstance.DEFAULT_SALE_RATE
                     && defaultAh.depositRate() == net.ecocraft.ah.data.AHInstance.DEFAULT_DEPOSIT_RATE
@@ -203,7 +235,9 @@ public class AHServerEvents {
                     net.ecocraft.ah.data.AHInstance updated = defaultAh.withConfig(
                             defaultAh.name(), cfgSaleRate, cfgDepositRate,
                             cfgDurations, defaultAh.allowBuyout(), defaultAh.allowAuction(),
-                            defaultAh.taxRecipient(), defaultAh.overridePermTax());
+                            defaultAh.taxRecipient(), defaultAh.overridePermTax(),
+                            defaultAh.deliveryMode(), defaultAh.deliveryDelayPurchase(),
+                            defaultAh.deliveryDelayExpired());
                     storageProvider.updateAHInstance(updated);
                     LOGGER.info("Applied NeoForge config defaults to default AH instance");
                 }

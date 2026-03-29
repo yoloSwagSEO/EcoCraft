@@ -442,11 +442,20 @@ public final class ServerPayloadHandler {
                 AuctionStorageProvider.PlayerStats stats = service.getPlayerStats(player.getUUID(), sinceMs);
                 int parcelsCount = service.countUncollectedParcels(player.getUUID());
 
+                // Determine effective delivery mode (use default AH instance if multiple)
+                String deliveryMode = "DIRECT";
+                if (storage != null) {
+                    var defaultAh = storage.getDefaultAHInstance();
+                    if (defaultAh != null && defaultAh.deliveryMode() != null) {
+                        deliveryMode = defaultAh.deliveryMode();
+                    }
+                }
+
                 context.reply(new MyListingsResponsePayload(
-                        entries, stats.totalSalesRevenue(), stats.taxesPaid(), parcelsCount));
+                        entries, stats.totalSalesRevenue(), stats.taxesPaid(), parcelsCount, deliveryMode));
             } catch (Exception e) {
                 LOGGER.error("Error handling RequestMyListings", e);
-                context.reply(new MyListingsResponsePayload(List.of(), 0, 0, 0));
+                context.reply(new MyListingsResponsePayload(List.of(), 0, 0, 0, "DIRECT"));
             }
         });
     }
@@ -547,7 +556,8 @@ public final class ServerPayloadHandler {
         for (var ah : instances) {
             data.add(new AHInstancesPayload.AHInstanceData(
                     ah.id(), ah.slug(), ah.name(), ah.saleRate(), ah.depositRate(), new ArrayList<>(ah.durations()),
-                    ah.allowBuyout(), ah.allowAuction(), ah.taxRecipient(), ah.overridePermTax()));
+                    ah.allowBuyout(), ah.allowAuction(), ah.taxRecipient(), ah.overridePermTax(),
+                    ah.deliveryMode(), ah.deliveryDelayPurchase(), ah.deliveryDelayExpired()));
         }
         PacketDistributor.sendToPlayer(player, new AHInstancesPayload(data));
     }
@@ -633,7 +643,8 @@ public final class ServerPayloadHandler {
                 return;
             }
             AHInstance updated = existing.withConfig(payload.name(), payload.saleRate(), payload.depositRate(), payload.durations(),
-                    payload.allowBuyout(), payload.allowAuction(), payload.taxRecipient(), payload.overridePermTax());
+                    payload.allowBuyout(), payload.allowAuction(), payload.taxRecipient(), payload.overridePermTax(),
+                    payload.deliveryMode(), payload.deliveryDelayPurchase(), payload.deliveryDelayExpired());
             storage.updateAHInstance(updated);
             context.reply(new AHActionResultPayload(true, Component.translatable("ecocraft_ah.message.ah_updated", updated.name()).getString()));
             sendAHInstances(player);

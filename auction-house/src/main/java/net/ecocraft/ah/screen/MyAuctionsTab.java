@@ -39,6 +39,7 @@ public class MyAuctionsTab extends BaseWidget {
     private long revenue7d = 0;
     private long taxesPaid7d = 0;
     private int parcelsToCollect = 0;
+    private String deliveryMode = "DIRECT";
 
     // Multi-AH state
     private boolean multiAH = false;
@@ -84,12 +85,21 @@ public class MyAuctionsTab extends BaseWidget {
         subTabTags.setActiveTag(activeSubTab);
         addChild(subTabTags);
 
-        // Collect parcels button
-        collectBtn = EcoButton.success(THEME, Component.translatable("ecocraft_ah.collect_button", parcelsToCollect),
-                this::onCollectClicked);
-        collectBtn.setPosition(tabX + tabW - 80, tabY);
-        collectBtn.setSize(78, 18);
-        addChild(collectBtn);
+        // Collect parcels button — hidden in MAILBOX mode
+        if ("MAILBOX".equals(deliveryMode)) {
+            Label mailboxNotice = new Label(Minecraft.getInstance().font,
+                    tabX + tabW - 200, tabY + 4,
+                    Component.translatable("ecocraft_ah.my_auctions.mailbox_notice"), THEME);
+            mailboxNotice.setColor(THEME.textGrey);
+            addChild(mailboxNotice);
+            collectBtn = null;
+        } else {
+            collectBtn = EcoButton.success(THEME, Component.translatable("ecocraft_ah.collect_button", parcelsToCollect),
+                    this::onCollectClicked);
+            collectBtn.setPosition(tabX + tabW - 80, tabY);
+            collectBtn.setSize(78, 18);
+            addChild(collectBtn);
+        }
 
         // Footer stat cards
         int cardH = 38;
@@ -228,6 +238,8 @@ public class MyAuctionsTab extends BaseWidget {
         this.revenue7d = payload.revenue7d();
         this.taxesPaid7d = payload.taxesPaid7d();
         this.parcelsToCollect = payload.parcelsToCollect();
+        String oldDeliveryMode = this.deliveryMode;
+        this.deliveryMode = payload.deliveryMode() != null ? payload.deliveryMode() : "DIRECT";
 
         // Detect multi-AH
         boolean wasMultiAH = this.multiAH;

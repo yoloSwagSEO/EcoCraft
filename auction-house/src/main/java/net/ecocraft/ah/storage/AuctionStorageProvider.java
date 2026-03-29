@@ -227,6 +227,14 @@ public class AuctionStorageProvider {
                 }
             });
 
+            migrator.addMigration(9, "Add delivery config columns to ah_instances", conn -> {
+                try (Statement stmt = conn.createStatement()) {
+                    stmt.execute("ALTER TABLE ah_instances ADD COLUMN delivery_mode TEXT NOT NULL DEFAULT 'DIRECT'");
+                    stmt.execute("ALTER TABLE ah_instances ADD COLUMN delivery_delay_purchase INTEGER NOT NULL DEFAULT 0");
+                    stmt.execute("ALTER TABLE ah_instances ADD COLUMN delivery_delay_expired INTEGER NOT NULL DEFAULT 60");
+                }
+            });
+
             migrator.migrate(connection);
         } catch (SQLException e) {
             throw new RuntimeException("Failed to initialize auction-house database", e);
@@ -288,7 +296,7 @@ public class AuctionStorageProvider {
 
     public void createAHInstance(AHInstance ah) {
         try (PreparedStatement ps = connection.prepareStatement(
-                "INSERT INTO ah_instances (id, slug, name, sale_rate, deposit_rate, durations, allow_buyout, allow_auction, tax_recipient, override_perm_tax) VALUES (?,?,?,?,?,?,?,?,?,?)")) {
+                "INSERT INTO ah_instances (id, slug, name, sale_rate, deposit_rate, durations, allow_buyout, allow_auction, tax_recipient, override_perm_tax, delivery_mode, delivery_delay_purchase, delivery_delay_expired) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)")) {
             ps.setString(1, ah.id());
             ps.setString(2, ah.slug());
             ps.setString(3, ah.name());
@@ -299,6 +307,9 @@ public class AuctionStorageProvider {
             ps.setInt(8, ah.allowAuction() ? 1 : 0);
             ps.setString(9, ah.taxRecipient() != null ? ah.taxRecipient() : "");
             ps.setInt(10, ah.overridePermTax() ? 1 : 0);
+            ps.setString(11, ah.deliveryMode() != null ? ah.deliveryMode() : "DIRECT");
+            ps.setInt(12, ah.deliveryDelayPurchase());
+            ps.setInt(13, ah.deliveryDelayExpired());
             ps.executeUpdate();
         } catch (SQLException e) {
             throw new RuntimeException("Failed to create AH instance", e);
@@ -307,7 +318,7 @@ public class AuctionStorageProvider {
 
     public void updateAHInstance(AHInstance ah) {
         try (PreparedStatement ps = connection.prepareStatement(
-                "UPDATE ah_instances SET slug = ?, name = ?, sale_rate = ?, deposit_rate = ?, durations = ?, allow_buyout = ?, allow_auction = ?, tax_recipient = ?, override_perm_tax = ? WHERE id = ?")) {
+                "UPDATE ah_instances SET slug = ?, name = ?, sale_rate = ?, deposit_rate = ?, durations = ?, allow_buyout = ?, allow_auction = ?, tax_recipient = ?, override_perm_tax = ?, delivery_mode = ?, delivery_delay_purchase = ?, delivery_delay_expired = ? WHERE id = ?")) {
             ps.setString(1, ah.slug());
             ps.setString(2, ah.name());
             ps.setInt(3, ah.saleRate());
@@ -317,7 +328,10 @@ public class AuctionStorageProvider {
             ps.setInt(7, ah.allowAuction() ? 1 : 0);
             ps.setString(8, ah.taxRecipient() != null ? ah.taxRecipient() : "");
             ps.setInt(9, ah.overridePermTax() ? 1 : 0);
-            ps.setString(10, ah.id());
+            ps.setString(10, ah.deliveryMode() != null ? ah.deliveryMode() : "DIRECT");
+            ps.setInt(11, ah.deliveryDelayPurchase());
+            ps.setInt(12, ah.deliveryDelayExpired());
+            ps.setString(13, ah.id());
             ps.executeUpdate();
         } catch (SQLException e) {
             throw new RuntimeException("Failed to update AH instance", e);
@@ -389,11 +403,18 @@ public class AuctionStorageProvider {
         try { taxRecipient = rs.getString("tax_recipient"); if (taxRecipient == null) taxRecipient = ""; } catch (SQLException ignored) {}
         boolean overridePermTax = false;
         try { overridePermTax = rs.getInt("override_perm_tax") != 0; } catch (SQLException ignored) {}
+        String deliveryMode = AHInstance.DEFAULT_DELIVERY_MODE;
+        try { String dm = rs.getString("delivery_mode"); if (dm != null && !dm.isEmpty()) deliveryMode = dm; } catch (SQLException ignored) {}
+        int deliveryDelayPurchase = AHInstance.DEFAULT_DELIVERY_DELAY_PURCHASE;
+        try { deliveryDelayPurchase = rs.getInt("delivery_delay_purchase"); } catch (SQLException ignored) {}
+        int deliveryDelayExpired = AHInstance.DEFAULT_DELIVERY_DELAY_EXPIRED;
+        try { deliveryDelayExpired = rs.getInt("delivery_delay_expired"); } catch (SQLException ignored) {}
         return new AHInstance(
                 rs.getString("id"), rs.getString("slug"), rs.getString("name"),
                 rs.getInt("sale_rate"), rs.getInt("deposit_rate"),
                 parseDurationsJson(rs.getString("durations")),
-                allowBuyout, allowAuction, taxRecipient, overridePermTax);
+                allowBuyout, allowAuction, taxRecipient, overridePermTax,
+                deliveryMode, deliveryDelayPurchase, deliveryDelayExpired);
     }
 
     private String durationsToJson(List<Integer> durations) {

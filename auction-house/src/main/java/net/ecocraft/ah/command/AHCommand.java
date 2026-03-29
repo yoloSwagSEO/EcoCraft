@@ -410,7 +410,7 @@ public final class AHCommand {
             source.sendFailure(Component.translatable("ecocraft_ah.command.ah_not_found", slug));
             return 0;
         }
-        AHInstance updated = ah.withConfig(newName, ah.saleRate(), ah.depositRate(), ah.durations(), ah.allowBuyout(), ah.allowAuction(), ah.taxRecipient(), ah.overridePermTax());
+        AHInstance updated = ah.withConfig(newName, ah.saleRate(), ah.depositRate(), ah.durations(), ah.allowBuyout(), ah.allowAuction(), ah.taxRecipient(), ah.overridePermTax(), ah.deliveryMode(), ah.deliveryDelayPurchase(), ah.deliveryDelayExpired());
         storage.updateAHInstance(updated);
         source.sendSuccess(() -> Component.translatable("ecocraft_ah.command.ah_renamed", updated.name(), updated.slug()), true);
         return 1;

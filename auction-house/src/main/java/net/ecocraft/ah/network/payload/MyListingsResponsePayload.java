@@ -12,7 +12,8 @@ public record MyListingsResponsePayload(
         List<MyListingEntry> entries,
         long revenue7d,
         long taxesPaid7d,
-        int parcelsToCollect
+        int parcelsToCollect,
+        String deliveryMode
 ) implements CustomPacketPayload {
 
     public record MyListingEntry(
@@ -80,7 +81,8 @@ public record MyListingsResponsePayload(
             long revenue7d = ByteBufCodecs.VAR_LONG.decode(buf);
             long taxesPaid7d = ByteBufCodecs.VAR_LONG.decode(buf);
             int parcelsToCollect = ByteBufCodecs.VAR_INT.decode(buf);
-            return new MyListingsResponsePayload(entries, revenue7d, taxesPaid7d, parcelsToCollect);
+            String deliveryMode = ByteBufCodecs.STRING_UTF8.decode(buf);
+            return new MyListingsResponsePayload(entries, revenue7d, taxesPaid7d, parcelsToCollect, deliveryMode);
         }
 
         @Override
@@ -89,6 +91,7 @@ public record MyListingsResponsePayload(
             ByteBufCodecs.VAR_LONG.encode(buf, payload.revenue7d());
             ByteBufCodecs.VAR_LONG.encode(buf, payload.taxesPaid7d());
             ByteBufCodecs.VAR_INT.encode(buf, payload.parcelsToCollect());
+            ByteBufCodecs.STRING_UTF8.encode(buf, payload.deliveryMode() != null ? payload.deliveryMode() : "DIRECT");
         }
     };
 

@@ -131,6 +131,21 @@ public class AuctionService {
         void fireListingExpired(AuctionListing listing, boolean hadBids);
     }
 
+    /**
+     * Callback interface for sending items via the mail system.
+     * Decoupled from Minecraft classes so {@link AuctionService} stays unit-testable.
+     */
+    @FunctionalInterface
+    public interface MailSender {
+        void sendItemMail(java.util.UUID recipientUuid, String subject, String body,
+                          String itemId, String itemName, String itemNbt, int quantity,
+                          long currencyAmount, String currencyId, long availableAt);
+    }
+
+    /** Mail sender for MAILBOX/BOTH delivery modes; null means mail is unavailable. */
+    @Nullable
+    private MailSender mailSender;
+
     /** Notification sender injected from AHServerEvents; null means no notifications. */
     @Nullable
     private NotificationSender notificationSender;
@@ -152,6 +167,11 @@ public class AuctionService {
         this.storage = storage;
         this.economy = economy;
         this.currencies = currencies;
+    }
+
+    /** Sets the mail sender for MAILBOX/BOTH delivery modes. */
+    public void setMailSender(@Nullable MailSender sender) {
+        this.mailSender = sender;
     }
 
     /** Sets the notification sender (called from AHServerEvents when server starts/stops). */
@@ -177,6 +197,44 @@ public class AuctionService {
                                    String otherPlayerName, long amount, String currencyId) {
         if (notificationSender == null) return;
         notificationSender.send(playerUuid, eventType, itemName, otherPlayerName, amount, currencyId);
+    }
+
+    /** Returns the delivery mode for the given AH instance ("DIRECT", "MAILBOX", or "BOTH"). */
+    private String getDeliveryMode(String ahId) {
+        try {
+            AHInstance ah = storage.getAHInstance(ahId);
+            if (ah != null && ah.deliveryMode() != null) return ah.deliveryMode();
+        } catch (Exception ignored) {}
+        return "DIRECT";
+    }
+
+    /** Returns the delivery delay in minutes for the given type ("purchase" or "expired"). */
+    private int getDeliveryDelay(String ahId, String type) {
+        try {
+            AHInstance ah = storage.getAHInstance(ahId);
+            if (ah != null) {
+                return "purchase".equals(type) ? ah.deliveryDelayPurchase() : ah.deliveryDelayExpired();
+            }
+        } catch (Exception ignored) {}
+        return "purchase".equals(type) ? AHInstance.DEFAULT_DELIVERY_DELAY_PURCHASE : AHInstance.DEFAULT_DELIVERY_DELAY_EXPIRED;
+    }
+
+    /**
+     * Sends an item via mail if MAILBOX/BOTH mode is active and mail is available.
+     * Returns true if the item was sent via mail, false if direct delivery should be used.
+     */
+    private boolean trySendViaMail(String ahId, UUID recipientUuid, String subject, String body,
+                                    String itemId, String itemName, String itemNbt, int quantity,
+                                    String delayType) {
+        String deliveryMode = getDeliveryMode(ahId);
+        if (("MAILBOX".equals(deliveryMode) || "BOTH".equals(deliveryMode)) && mailSender != null) {
+            long delayMs = getDeliveryDelay(ahId, delayType) * 60_000L;
+            long availableAt = System.currentTimeMillis() + delayMs;
+            mailSender.sendItemMail(recipientUuid, subject, body, itemId, itemName, itemNbt, quantity,
+                    0L, null, availableAt);
+            return true;
+        }
+        return false;
     }
 
     // -------------------------------------------------------------------------
@@ -373,7 +431,12 @@ public class AuctionService {
         // Create parcels
         long now = System.currentTimeMillis();
 
-        // Item parcel for buyer (only the purchased quantity, with price paid)
+        // Item parcel for buyer — via mail if MAILBOX/BOTH, otherwise via direct parcel
+        boolean sentViaMail = trySendViaMail(effectiveAhId, buyerUuid,
+                "Achat : " + listing.itemName(),
+                buyQuantity + "x " + listing.itemName(),
+                listing.itemId(), listing.itemName(), listing.itemNbt(), buyQuantity, "purchase");
+
         storage.createParcel(new AuctionParcel(
                 UUID.randomUUID().toString(),
                 buyerUuid,
@@ -385,10 +448,10 @@ public class AuctionService {
                 listing.currencyId(),
                 ParcelSource.HDV_PURCHASE,
                 now,
-                false,
+                sentViaMail, // if sent via mail, mark as collected for ledger only
                 listing.ahId()
         ));
-        LOGGER.info("Parcel created: {}x {} for buyer {}", buyQuantity, listing.itemName(), buyerName);
+        LOGGER.info("Parcel created: {}x {} for buyer {} (mail={})", buyQuantity, listing.itemName(), buyerName, sentViaMail);
 
         // Sale parcel for seller (revenue entry in ledger)
         storage.createParcel(new AuctionParcel(
@@ -541,8 +604,14 @@ public class AuctionService {
             throw new AuctionException("Annulation bloquée par un script");
         }
 
-        // Return item to seller via parcel
+        // Return item to seller — via mail if MAILBOX/BOTH
         long now = System.currentTimeMillis();
+        String cancelAhId = listing.ahId() != null ? listing.ahId() : AHInstance.DEFAULT_ID;
+        boolean cancelMailSent = trySendViaMail(cancelAhId, playerUuid,
+                "Annulation : " + listing.itemName(),
+                listing.quantity() + "x " + listing.itemName() + " — annonce annulée",
+                listing.itemId(), listing.itemName(), listing.itemNbt(), listing.quantity(), "expired");
+
         storage.createParcel(new AuctionParcel(
                 UUID.randomUUID().toString(),
                 playerUuid,
@@ -554,7 +623,7 @@ public class AuctionService {
                 null,
                 ParcelSource.HDV_EXPIRED,
                 now,
-                false,
+                cancelMailSent,
                 listing.ahId()
         ));
 
@@ -590,7 +659,13 @@ public class AuctionService {
                 // Complete auction sale
                 completedAuctionSale(listing, now);
             } else {
-                // Return item to seller
+                // Return item to seller — via mail if MAILBOX/BOTH
+                String expiredAhId = listing.ahId() != null ? listing.ahId() : AHInstance.DEFAULT_ID;
+                boolean expiredMailSent = trySendViaMail(expiredAhId, listing.sellerUuid(),
+                        "Annonce expirée : " + listing.itemName(),
+                        listing.quantity() + "x " + listing.itemName() + " — votre annonce a expiré",
+                        listing.itemId(), listing.itemName(), listing.itemNbt(), listing.quantity(), "expired");
+
                 storage.createParcel(new AuctionParcel(
                         UUID.randomUUID().toString(),
                         listing.sellerUuid(),
@@ -602,7 +677,7 @@ public class AuctionService {
                         null,
                         ParcelSource.HDV_EXPIRED,
                         now,
-                        false,
+                        expiredMailSent,
                         listing.ahId()
                 ));
                 // Notify seller that their listing expired with no bids
@@ -633,7 +708,12 @@ public class AuctionService {
         // Send sale tax to tax recipient if configured
         creditTaxRecipient(effectiveAhId, proportionalTax, currency);
 
-        // Item parcel for winner
+        // Item parcel for winner — via mail if MAILBOX/BOTH
+        boolean winnerMailSent = trySendViaMail(effectiveAhId, listing.currentBidderUuid(),
+                "Enchère remportée : " + listing.itemName(),
+                listing.quantity() + "x " + listing.itemName(),
+                listing.itemId(), listing.itemName(), listing.itemNbt(), listing.quantity(), "purchase");
+
         storage.createParcel(new AuctionParcel(
                 UUID.randomUUID().toString(),
                 listing.currentBidderUuid(),
@@ -645,7 +725,7 @@ public class AuctionService {
                 null,
                 ParcelSource.HDV_PURCHASE,
                 now,
-                false,
+                winnerMailSent,
                 listing.ahId()
         ));
 

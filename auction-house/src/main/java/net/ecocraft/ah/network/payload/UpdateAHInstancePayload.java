@@ -14,7 +14,8 @@ import java.util.List;
  */
 public record UpdateAHInstancePayload(String ahId, String name, int saleRate, int depositRate, List<Integer> durations,
                                        boolean allowBuyout, boolean allowAuction, String taxRecipient,
-                                       boolean overridePermTax)
+                                       boolean overridePermTax, String deliveryMode,
+                                       int deliveryDelayPurchase, int deliveryDelayExpired)
         implements CustomPacketPayload {
 
     public static final Type<UpdateAHInstancePayload> TYPE =
@@ -36,7 +37,11 @@ public record UpdateAHInstancePayload(String ahId, String name, int saleRate, in
             boolean allowAuction = ByteBufCodecs.BOOL.decode(buf);
             String taxRecipient = ByteBufCodecs.STRING_UTF8.decode(buf);
             boolean overridePermTax = ByteBufCodecs.BOOL.decode(buf);
-            return new UpdateAHInstancePayload(ahId, name, saleRate, depositRate, durations, allowBuyout, allowAuction, taxRecipient, overridePermTax);
+            String deliveryMode = ByteBufCodecs.STRING_UTF8.decode(buf);
+            int deliveryDelayPurchase = ByteBufCodecs.VAR_INT.decode(buf);
+            int deliveryDelayExpired = ByteBufCodecs.VAR_INT.decode(buf);
+            return new UpdateAHInstancePayload(ahId, name, saleRate, depositRate, durations, allowBuyout, allowAuction,
+                    taxRecipient, overridePermTax, deliveryMode, deliveryDelayPurchase, deliveryDelayExpired);
         }
 
         @Override
@@ -53,6 +58,9 @@ public record UpdateAHInstancePayload(String ahId, String name, int saleRate, in
             ByteBufCodecs.BOOL.encode(buf, payload.allowAuction());
             ByteBufCodecs.STRING_UTF8.encode(buf, payload.taxRecipient() != null ? payload.taxRecipient() : "");
             ByteBufCodecs.BOOL.encode(buf, payload.overridePermTax());
+            ByteBufCodecs.STRING_UTF8.encode(buf, payload.deliveryMode() != null ? payload.deliveryMode() : "DIRECT");
+            ByteBufCodecs.VAR_INT.encode(buf, payload.deliveryDelayPurchase());
+            ByteBufCodecs.VAR_INT.encode(buf, payload.deliveryDelayExpired());
         }
     };
 
