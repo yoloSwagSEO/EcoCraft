@@ -167,7 +167,7 @@ public class EcoNumberInput extends BaseWidget {
             graphics.fill(minusBtnX, getY() + 1, minusBtnX + BUTTON_WIDTH, getY() + getHeight() - 1, minusBg);
             graphics.fill(minusBtnX + BUTTON_WIDTH - 1, getY() + 1, minusBtnX + BUTTON_WIDTH, getY() + getHeight() - 1, border);
             int minusTextX = minusBtnX + (BUTTON_WIDTH - font.width("-")) / 2;
-            int textY = getY() + (getHeight() - font.lineHeight) / 2;
+            int textY = getY() + (getHeight() - font.lineHeight + 1) / 2;
             graphics.drawString(font, "-", minusTextX, textY, btnText, false);
 
             // Plus button (right)

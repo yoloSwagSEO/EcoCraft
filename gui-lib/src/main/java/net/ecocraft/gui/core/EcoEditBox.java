@@ -128,7 +128,8 @@ public class EcoEditBox extends BaseWidget {
         int clipH = h - 2;
         graphics.enableScissor(clipX, clipY, clipX + clipW, clipY + clipH);
 
-        int textY = y + (h - font.lineHeight) / 2;
+        // Center text vertically, rounding down to push text 1px lower for visual balance
+        int textY = y + (h - font.lineHeight + 1) / 2;
 
         // 3. Hint text when empty and not focused
         if (value.isEmpty() && !focused) {

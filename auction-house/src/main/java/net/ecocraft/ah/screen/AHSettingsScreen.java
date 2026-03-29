@@ -19,12 +19,14 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Settings screen with a left sidebar (tab buttons) and right panel.
+ * Settings screen with a left sidebar (tab buttons) and right panel using EcoGrid.
  * Tab 0 = "General" (NPC config), Tab 1+ = per-AH instance settings.
  */
 public class AHSettingsScreen extends EcoScreen {
 
     private static final Theme THEME = Theme.dark();
+    private static final int SECTION_GAP = 6;
+    private static final int PANEL_PADDING = 8;
 
     private int guiWidth, guiHeight, guiLeft, guiTop;
     private int sidebarWidth;
@@ -118,19 +120,17 @@ public class AHSettingsScreen extends EcoScreen {
     // --- Sidebar ---
 
     private void initSidebar() {
-        Font font = Minecraft.getInstance().font;
         int btnX = guiLeft + 4;
         int btnW = sidebarWidth - 8;
         int btnH = 18;
         int y = guiTop + 8;
 
         // Tab 0: "General"
-        EcoButton generalBtn = createSidebarButton(Component.translatable("ecocraft_ah.settings.general").getString(), 0, btnX, y, btnW, btnH);
+        EcoButton generalBtn = createSidebarButton(
+                Component.translatable("ecocraft_ah.settings.general").getString(), 0, btnX, y, btnW, btnH);
         getTree().addChild(generalBtn);
         sidebarButtons.add(generalBtn);
         y += btnH + 4;
-
-        // Separator
         y += 4;
 
         // One button per AH instance
@@ -145,7 +145,8 @@ public class AHSettingsScreen extends EcoScreen {
 
         // "+ Creer un AH" button at bottom
         int createY = guiTop + guiHeight - 30 - 30;
-        EcoButton createBtn = EcoButton.builder(Component.translatable("ecocraft_ah.settings.create_ah"), this::onCreateAH)
+        EcoButton createBtn = EcoButton.builder(
+                Component.translatable("ecocraft_ah.settings.create_ah"), this::onCreateAH)
                 .theme(THEME).bounds(btnX, createY, btnW, btnH)
                 .bgColor(THEME.successBg).borderColor(THEME.success)
                 .textColor(THEME.success).hoverBg(0xFF2A4A2A).build();
@@ -195,7 +196,8 @@ public class AHSettingsScreen extends EcoScreen {
         int y = guiTop + 60;
         int btnW = panelW - 20;
 
-        EcoButton transferBtn = EcoButton.builder(Component.translatable("ecocraft_ah.settings.delete_transfer"),
+        EcoButton transferBtn = EcoButton.builder(
+                Component.translatable("ecocraft_ah.settings.delete_transfer"),
                 () -> executeDeleteAH("TRANSFER_TO_DEFAULT"))
                 .theme(THEME).bounds(panelX + 10, y, btnW, 22)
                 .bgColor(THEME.warningBg).borderColor(THEME.warning)
@@ -203,7 +205,8 @@ public class AHSettingsScreen extends EcoScreen {
         getTree().addChild(transferBtn);
         y += 30;
 
-        EcoButton deleteListingsBtn = EcoButton.builder(Component.translatable("ecocraft_ah.settings.delete_all"),
+        EcoButton deleteListingsBtn = EcoButton.builder(
+                Component.translatable("ecocraft_ah.settings.delete_all"),
                 () -> executeDeleteAH("DELETE_LISTINGS"))
                 .theme(THEME).bounds(panelX + 10, y, btnW, 22)
                 .bgColor(THEME.dangerBg).borderColor(THEME.danger)
@@ -211,7 +214,8 @@ public class AHSettingsScreen extends EcoScreen {
         getTree().addChild(deleteListingsBtn);
         y += 30;
 
-        EcoButton returnItemsBtn = EcoButton.builder(Component.translatable("ecocraft_ah.settings.delete_return"),
+        EcoButton returnItemsBtn = EcoButton.builder(
+                Component.translatable("ecocraft_ah.settings.delete_return"),
                 () -> executeDeleteAH("RETURN_ITEMS"))
                 .theme(THEME).bounds(panelX + 10, y, btnW, 22)
                 .bgColor(THEME.successBg).borderColor(THEME.success)
@@ -219,7 +223,8 @@ public class AHSettingsScreen extends EcoScreen {
         getTree().addChild(returnItemsBtn);
         y += 40;
 
-        EcoButton cancelBtn = EcoButton.ghost(THEME, Component.translatable("ecocraft_ah.button.cancel"), this::cancelDelete);
+        EcoButton cancelBtn = EcoButton.ghost(THEME,
+                Component.translatable("ecocraft_ah.button.cancel"), this::cancelDelete);
         cancelBtn.setPosition(panelX + 10, y);
         cancelBtn.setSize(btnW, 20);
         getTree().addChild(cancelBtn);
@@ -231,15 +236,20 @@ public class AHSettingsScreen extends EcoScreen {
         Font font = Minecraft.getInstance().font;
         int panelX = guiLeft + sidebarWidth + 10;
         int panelW = guiWidth - sidebarWidth - 20;
-        int y = guiTop + 30;
 
         if (npcEntityId == -1) {
             return;
         }
 
+        int y = guiTop + 30;
+
         // Skin pseudo input
-        y += 14;
-        EcoTextInput skinInput = new EcoTextInput(font, panelX, y, panelW, 16,
+        Label skinLabel = new Label(font, panelX, y, Component.translatable("ecocraft_ah.settings.skin_label"), THEME);
+        skinLabel.setColor(THEME.textGrey);
+        getTree().addChild(skinLabel);
+        y += font.lineHeight + 4;
+
+        EcoTextInput skinInput = new EcoTextInput(font, panelX, y, panelW / 2, 16,
                 Component.translatable("ecocraft_ah.settings.skin_placeholder"), THEME);
         skinInput.setValue(skinPlayerName);
         skinInput.responder(val -> skinPlayerName = val);
@@ -247,7 +257,10 @@ public class AHSettingsScreen extends EcoScreen {
         y += 26;
 
         // AH linking dropdown
-        y += 14;
+        Label ahLabel = new Label(font, panelX, y, Component.translatable("ecocraft_ah.settings.ah_label"), THEME);
+        ahLabel.setColor(THEME.textGrey);
+        getTree().addChild(ahLabel);
+        y += font.lineHeight + 4;
 
         List<String> ahNames = new ArrayList<>();
         int selectedAhIndex = 0;
@@ -258,7 +271,7 @@ public class AHSettingsScreen extends EcoScreen {
             }
         }
 
-        EcoDropdown ahDropdown = new EcoDropdown(panelX, y, panelW, 16, THEME);
+        EcoDropdown ahDropdown = new EcoDropdown(panelX, y, panelW / 2, 16, THEME);
         ahDropdown.options(ahNames).selectedIndex(selectedAhIndex);
         ahDropdown.responder(idx -> {
             if (idx >= 0 && idx < ahInstances.size()) {
@@ -268,19 +281,75 @@ public class AHSettingsScreen extends EcoScreen {
         getTree().addChild(ahDropdown);
     }
 
-    // --- AH instance tab ---
+    // --- AH instance tab (EcoGrid layout) ---
 
     private void initAHPanel(AHInstancesPayload.AHInstanceData data) {
         Font font = Minecraft.getInstance().font;
         int panelX = guiLeft + sidebarWidth + 10;
         int panelW = guiWidth - sidebarWidth - 20;
-        int y = guiTop + 30;
+        int contentTop = guiTop + 28;
+        int availableH = guiHeight - 28 - 40; // minus title and footer
 
         EditedAH edited = getOrCreateEdited(data);
 
-        // AH name input
-        y += 14;
-        EcoTextInput nameInput = new EcoTextInput(font, panelX, y, panelW, 16,
+        // --- Phase 1: Build grid structure with panels ---
+
+        int titleBlockH = font.lineHeight + 2 + 6; // title text + separator + titleMarginBottom
+        int identityH = PANEL_PADDING * 2 + titleBlockH + font.lineHeight + 4 + 16 + 2;
+        int modesH = PANEL_PADDING * 2 + titleBlockH + 20 * 2 + 4;
+        int taxesH = PANEL_PADDING * 2 + titleBlockH +
+                (font.lineHeight + 4 + 16 + 10) + // slider row
+                (font.lineHeight + 4 + 16 + 2);   // recipient row
+        // Durations panel gets all remaining vertical space
+        int usedH = identityH + modesH + taxesH + SECTION_GAP * 4;
+        int durationsH = Math.max(availableH - usedH, PANEL_PADDING * 2 + titleBlockH + 80);
+        int repeaterH = durationsH - PANEL_PADDING * 2 - titleBlockH;
+
+        // Create panels — EcoCol auto-fills width/height, so (0,0,0,0) is fine
+        Panel identityPanel = new Panel(0, 0, 0, 0, THEME);
+        identityPanel.padding(PANEL_PADDING).titleUppercase(true).titleMarginBottom(6)
+                .separatorStyle(Panel.SeparatorStyle.NONE)
+                .title(Component.literal("\u2699 Identité"), font);
+
+        Panel modesPanel = new Panel(0, 0, 0, 0, THEME);
+        modesPanel.padding(PANEL_PADDING).titleUppercase(true).titleMarginBottom(6)
+                .separatorStyle(Panel.SeparatorStyle.NONE)
+                .title(Component.literal("\u2302 Modes de vente"), font);
+
+        Panel taxesPanel = new Panel(0, 0, 0, 0, THEME);
+        taxesPanel.padding(PANEL_PADDING).titleUppercase(true).titleMarginBottom(6)
+                .separatorStyle(Panel.SeparatorStyle.NONE)
+                .title(Component.literal("\u272A Taxes"), font);
+
+        Panel durationsPanel = new Panel(0, 0, 0, 0, THEME);
+        durationsPanel.padding(PANEL_PADDING).titleUppercase(true).titleMarginBottom(6)
+                .separatorStyle(Panel.SeparatorStyle.NONE)
+                .title(Component.literal("\u29D7 Durées de listing"), font);
+
+        EcoGrid grid = new EcoGrid(panelX, contentTop, panelW, availableH, 0);
+        grid.rowGap(SECTION_GAP);
+        getTree().addChild(grid);
+
+        grid.addRow(identityH).addCol(12).addChild(identityPanel);
+        grid.addRow(modesH).addCol(12).addChild(modesPanel);
+        grid.addRow(taxesH).addCol(12).addChild(taxesPanel);
+        grid.addRow(durationsH).addCol(12).addChild(durationsPanel);
+        grid.relayout();
+
+        // --- Phase 2: Position inner widgets using panel content areas ---
+
+        // -- Identité: name input on col-6 (50%) --
+        int cx = identityPanel.getContentX();
+        int cy = identityPanel.getContentY();
+        int cw = identityPanel.getContentWidth();
+        int halfW = cw / 2;
+
+        Label nameLabel = new Label(font, cx, cy,
+                Component.translatable("ecocraft_ah.settings.ah_name_label"), THEME);
+        nameLabel.setColor(THEME.textGrey);
+        getTree().addChild(nameLabel);
+
+        EcoTextInput nameInput = new EcoTextInput(font, cx, cy + font.lineHeight + 2, halfW, 16,
                 Component.translatable("ecocraft_ah.settings.ah_name_placeholder"), THEME);
         nameInput.setValue(edited.name);
         nameInput.responder(val -> {
@@ -288,56 +357,89 @@ public class AHSettingsScreen extends EcoScreen {
             rebuildSidebarLabels();
         });
         getTree().addChild(nameInput);
-        y += 30;
 
-        // Listing type toggles
-        y += 14;
-        // "Achat immédiat" toggle
-        EcoToggle buyoutToggle = new EcoToggle(panelX + panelW - 44, y, 40, 14, THEME);
+        // -- Modes de vente: label left + toggle right-aligned in col-4 area --
+        cx = modesPanel.getContentX();
+        cy = modesPanel.getContentY();
+        int toggleAreaW = modesPanel.getContentWidth() / 3; // col-4 equivalent
+        int toggleW = 40;
+
+        Label buyoutLabel = new Label(font, cx, cy + 3,
+                Component.translatable("ecocraft_ah.settings.allow_buyout"), THEME);
+        buyoutLabel.setColor(THEME.textLight);
+        getTree().addChild(buyoutLabel);
+
+        EcoToggle buyoutToggle = new EcoToggle(cx + toggleAreaW - toggleW, cy, toggleW, 14, THEME);
         buyoutToggle.value(edited.allowBuyout);
         buyoutToggle.responder(val -> edited.allowBuyout = val);
         getTree().addChild(buyoutToggle);
-        y += 20;
 
-        // "Enchères" toggle
-        EcoToggle auctionToggle = new EcoToggle(panelX + panelW - 44, y, 40, 14, THEME);
+        cy += 20;
+
+        Label auctionLabel = new Label(font, cx, cy + 3,
+                Component.translatable("ecocraft_ah.settings.allow_auction"), THEME);
+        auctionLabel.setColor(THEME.textLight);
+        getTree().addChild(auctionLabel);
+
+        EcoToggle auctionToggle = new EcoToggle(cx + toggleAreaW - toggleW, cy, toggleW, 14, THEME);
         auctionToggle.value(edited.allowAuction);
         auctionToggle.responder(val -> edited.allowAuction = val);
         getTree().addChild(auctionToggle);
-        y += 24;
 
-        // Tax recipient input
-        y += 14;
-        EcoTextInput taxRecipientInput = new EcoTextInput(font, panelX, y, panelW, 16,
-                Component.translatable("ecocraft_ah.settings.tax_recipient_placeholder"), THEME);
-        taxRecipientInput.setValue(edited.taxRecipient);
-        taxRecipientInput.responder(val -> edited.taxRecipient = val);
-        getTree().addChild(taxRecipientInput);
-        y += 24;
+        // -- Taxes: sliders side-by-side (50/50) + recipient below --
+        cx = taxesPanel.getContentX();
+        cy = taxesPanel.getContentY();
+        cw = taxesPanel.getContentWidth();
+        halfW = (cw - 8) / 2;
 
-        // Sale rate slider
-        y += 14;
-        EcoSlider saleSlider = new EcoSlider(font, panelX, y, panelW, 16, THEME);
+        // Sale rate slider (left)
+        Label saleLabel = new Label(font, cx, cy,
+                Component.translatable("ecocraft_ah.settings.sale_tax_label"), THEME);
+        saleLabel.setColor(THEME.textGrey);
+        getTree().addChild(saleLabel);
+
+        EcoSlider saleSlider = new EcoSlider(font, cx, cy + font.lineHeight + 4, halfW, 16, THEME);
         saleSlider.min(0).max(100).step(1).value(edited.saleRate).suffix("%")
                 .labelPosition(EcoSlider.LabelPosition.AFTER);
         saleSlider.responder(val -> edited.saleRate = val.intValue());
         getTree().addChild(saleSlider);
-        y += 30;
 
-        // Deposit rate slider
-        y += 14;
-        EcoSlider depositSlider = new EcoSlider(font, panelX, y, panelW, 16, THEME);
+        // Deposit slider (right)
+        int rightX = cx + halfW + 8;
+        Label depositLabel = new Label(font, rightX, cy,
+                Component.translatable("ecocraft_ah.settings.deposit_label"), THEME);
+        depositLabel.setColor(THEME.textGrey);
+        getTree().addChild(depositLabel);
+
+        EcoSlider depositSlider = new EcoSlider(font, rightX, cy + font.lineHeight + 4, halfW, 16, THEME);
         depositSlider.min(0).max(100).step(1).value(edited.depositRate).suffix("%")
                 .labelPosition(EcoSlider.LabelPosition.AFTER);
         depositSlider.responder(val -> edited.depositRate = val.intValue());
         getTree().addChild(depositSlider);
-        y += 36;
 
-        // Durations repeater
-        y += 16;
+        // Tax recipient (below sliders, col-6)
+        cy += font.lineHeight + 4 + 16 + 8;
+        Label recipientLabel = new Label(font, cx, cy,
+                Component.translatable("ecocraft_ah.settings.tax_recipient_label"), THEME);
+        recipientLabel.setColor(THEME.textGrey);
+        getTree().addChild(recipientLabel);
 
-        int repeaterH = Math.min(140, guiTop + guiHeight - y - 70);
-        EcoRepeater<Integer> durationsRepeater = new EcoRepeater<>(panelX, y, panelW, repeaterH, THEME);
+        EcoTextInput taxRecipientInput = new EcoTextInput(font,
+                cx, cy + font.lineHeight + 4, halfW, 16,
+                Component.translatable("ecocraft_ah.settings.tax_recipient_placeholder"), THEME);
+        taxRecipientInput.setValue(edited.taxRecipient);
+        taxRecipientInput.responder(val -> edited.taxRecipient = val);
+        getTree().addChild(taxRecipientInput);
+
+        // -- Durées: repeater centered (col-6 offset-3) --
+        cx = durationsPanel.getContentX();
+        cy = durationsPanel.getContentY();
+        cw = durationsPanel.getContentWidth();
+        int repeaterW = cw / 2;
+        int repeaterX = cx + (cw - repeaterW) / 2;
+
+        EcoRepeater<Integer> durationsRepeater = new EcoRepeater<>(
+                repeaterX, cy, repeaterW, repeaterH, THEME);
         durationsRepeater.itemFactory(() -> 24);
         durationsRepeater.rowHeight(22);
         durationsRepeater.maxItems(10);
@@ -352,29 +454,23 @@ public class AHSettingsScreen extends EcoScreen {
         getTree().addChild(durationsRepeater);
         durationsRepeater.values(edited.durations);
 
-        y += repeaterH + 10;
-
-        // Delete button (hidden for default AH)
+        // --- Delete button (hidden for default AH) ---
         if (!data.id().equals(AHInstance.DEFAULT_ID)) {
-            EcoButton deleteBtn = EcoButton.danger(THEME, Component.translatable("ecocraft_ah.settings.delete_ah"),
+            int deleteY = durationsPanel.getY() + durationsPanel.getHeight() + SECTION_GAP;
+            int deleteW = 120;
+            int deleteX = panelX + (panelW - deleteW) / 2;
+            EcoButton deleteBtn = EcoButton.danger(THEME,
+                    Component.translatable("ecocraft_ah.settings.delete_ah"),
                     () -> onDeleteAH(data.id(), edited.name));
-            deleteBtn.setPosition(panelX, y);
-            deleteBtn.setSize(panelW, 20);
+            deleteBtn.setPosition(deleteX, deleteY);
+            deleteBtn.setSize(deleteW, 20);
             getTree().addChild(deleteBtn);
         }
     }
 
     /** Update sidebar button labels without rebuilding anything. */
     private void rebuildSidebarLabels() {
-        for (int i = 0; i < sidebarButtons.size(); i++) {
-            if (i == 0) continue; // "General" doesn't change
-            int ahIndex = i - 1;
-            if (ahIndex >= 0 && ahIndex < ahInstances.size()) {
-                var data = ahInstances.get(ahIndex);
-                EditedAH edited = editedAHs.get(data.id());
-                // EcoButton doesn't have setMessage, so we rebuild on tab switch
-            }
-        }
+        // EcoButton doesn't have setMessage, so we rebuild on tab switch
     }
 
     // --- Footer ---
@@ -386,12 +482,14 @@ public class AHSettingsScreen extends EcoScreen {
         int totalBtnW = btnW * 2 + gap;
         int btnStartX = guiLeft + (guiWidth - totalBtnW) / 2;
 
-        EcoButton footerCancelBtn = EcoButton.ghost(THEME, Component.translatable("ecocraft_ah.button.cancel"), this::onCancel);
+        EcoButton footerCancelBtn = EcoButton.ghost(THEME,
+                Component.translatable("ecocraft_ah.button.cancel"), this::onCancel);
         footerCancelBtn.setPosition(btnStartX, footerY);
         footerCancelBtn.setSize(btnW, 20);
         getTree().addChild(footerCancelBtn);
 
-        EcoButton saveBtn = EcoButton.success(THEME, Component.translatable("ecocraft_ah.button.save"), this::onSave);
+        EcoButton saveBtn = EcoButton.success(THEME,
+                Component.translatable("ecocraft_ah.button.save"), this::onSave);
         saveBtn.setPosition(btnStartX + btnW + gap, footerY);
         saveBtn.setSize(btnW, 20);
         getTree().addChild(saveBtn);
@@ -420,23 +518,24 @@ public class AHSettingsScreen extends EcoScreen {
         int panelW = guiWidth - sidebarWidth - 20;
 
         if (showDeleteConfirm) {
-            Component deleteTitle = Component.translatable("ecocraft_ah.settings.delete_title", deleteAhName != null ? deleteAhName : "");
+            Component deleteTitle = Component.translatable("ecocraft_ah.settings.delete_title",
+                    deleteAhName != null ? deleteAhName : "");
             graphics.drawString(font, deleteTitle, panelX, guiTop + 10, THEME.danger, false);
             DrawUtils.drawAccentSeparator(graphics, panelX, guiTop + 22, panelW, THEME);
-            graphics.drawString(font, Component.translatable("ecocraft_ah.settings.delete_question"), panelX, guiTop + 36, THEME.textLight, false);
+            graphics.drawString(font, Component.translatable("ecocraft_ah.settings.delete_question"),
+                    panelX, guiTop + 36, THEME.textLight, false);
         } else if (selectedTab == 0) {
-            renderGeneralLabels(graphics, font, panelX, panelW);
+            renderGeneralTitle(graphics, font, panelX, panelW);
         } else {
             int ahIndex = selectedTab - 1;
             if (ahIndex >= 0 && ahIndex < ahInstances.size()) {
-                renderAHLabels(graphics, font, panelX, panelW, ahInstances.get(ahIndex));
+                renderAHTitle(graphics, font, panelX, panelW, ahInstances.get(ahIndex));
             }
         }
     }
 
-    private void renderGeneralLabels(GuiGraphics graphics, Font font, int panelX, int panelW) {
+    private void renderGeneralTitle(GuiGraphics graphics, Font font, int panelX, int panelW) {
         int y = guiTop + 10;
-
         Component genTitle = Component.translatable("ecocraft_ah.settings.general");
         graphics.drawString(font, genTitle, panelX, y, THEME.accent, false);
         DrawUtils.drawAccentSeparator(graphics, panelX, y + 12, panelW, THEME);
@@ -447,43 +546,15 @@ public class AHSettingsScreen extends EcoScreen {
             int msgX = panelX + (panelW - msgW) / 2;
             int msgY = guiTop + guiHeight / 2 - font.lineHeight / 2;
             graphics.drawString(font, msg, msgX, msgY, THEME.textDim, false);
-            return;
         }
-
-        y = guiTop + 30;
-        graphics.drawString(font, Component.translatable("ecocraft_ah.settings.skin_label"), panelX, y, THEME.textGrey, false);
-        y += 40;
-        graphics.drawString(font, Component.translatable("ecocraft_ah.settings.ah_label"), panelX, y, THEME.textGrey, false);
     }
 
-    private void renderAHLabels(GuiGraphics graphics, Font font, int panelX, int panelW,
-                                 AHInstancesPayload.AHInstanceData data) {
+    private void renderAHTitle(GuiGraphics graphics, Font font, int panelX, int panelW,
+                               AHInstancesPayload.AHInstanceData data) {
         int y = guiTop + 10;
-
         String title = getAHDisplayName(data);
         graphics.drawString(font, title, panelX, y, THEME.accent, false);
         DrawUtils.drawAccentSeparator(graphics, panelX, y + 12, panelW, THEME);
-
-        y = guiTop + 30;
-        graphics.drawString(font, Component.translatable("ecocraft_ah.settings.ah_name_label"), panelX, y, THEME.textGrey, false);
-
-        y += 44;
-        graphics.drawString(font, Component.translatable("ecocraft_ah.settings.allow_buyout"), panelX, y + 3, THEME.textGrey, false);
-
-        y += 20;
-        graphics.drawString(font, Component.translatable("ecocraft_ah.settings.allow_auction"), panelX, y + 3, THEME.textGrey, false);
-
-        y += 24;
-        graphics.drawString(font, Component.translatable("ecocraft_ah.settings.tax_recipient_label"), panelX, y + 3, THEME.textGrey, false);
-
-        y += 52;
-        graphics.drawString(font, Component.translatable("ecocraft_ah.settings.sale_tax_label"), panelX, y, THEME.textGrey, false);
-
-        y += 44;
-        graphics.drawString(font, Component.translatable("ecocraft_ah.settings.deposit_label"), panelX, y, THEME.textGrey, false);
-
-        y += 50;
-        graphics.drawString(font, Component.translatable("ecocraft_ah.settings.durations_label"), panelX, y, THEME.textGrey, false);
     }
 
     // --- Actions ---

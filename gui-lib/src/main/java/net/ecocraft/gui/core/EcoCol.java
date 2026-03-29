@@ -49,9 +49,13 @@ public class EcoCol extends BaseWidget {
         // Col is invisible — just a layout container
     }
 
-    /** Recalculate children positions based on alignment and column bounds. */
+    /** Recalculate children positions and sizes based on alignment and column bounds.
+     *  By default, children are stretched to fill the column width and height. */
     void relayout() {
         for (WidgetNode child : getChildren()) {
+            // Auto-fill: stretch child to column dimensions
+            child.setSize(getWidth(), getHeight());
+
             int childW = child.getWidth();
             int childH = child.getHeight();
 
@@ -73,16 +77,5 @@ public class EcoCol extends BaseWidget {
 
             child.setPosition(childX, childY);
         }
-    }
-
-    /**
-     * Set child width to fill the column. Call after relayout if you want
-     * the child to stretch to column width instead of keeping its own width.
-     */
-    public EcoCol fillWidth() {
-        for (WidgetNode child : getChildren()) {
-            child.setSize(getWidth(), child.getHeight());
-        }
-        return this;
     }
 }

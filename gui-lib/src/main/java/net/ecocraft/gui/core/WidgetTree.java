@@ -137,7 +137,9 @@ public class WidgetTree {
                         child.getX() + child.getWidth(), child.getY() + child.getHeight());
             }
 
-            renderNode(child, graphics, mouseX, mouseY, partialTick);
+            // Delegate to child's renderChildren — allows widgets like EcoRepeater
+            // to override and handle their own children rendering (e.g. with scroll translate)
+            child.renderChildren(graphics, mouseX, mouseY, partialTick);
 
             if (child.isClipChildren()) {
                 graphics.disableScissor();

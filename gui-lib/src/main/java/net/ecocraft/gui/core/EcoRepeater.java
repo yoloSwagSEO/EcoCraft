@@ -51,7 +51,8 @@ public class EcoRepeater<T> extends BaseWidget {
         super(x, y, width, height);
         this.theme = theme;
         this.font = Minecraft.getInstance().font;
-        setClipChildren(true);
+        // We handle scissor/clipping ourselves in render() — don't let the tree clip or re-render children
+        setClipChildren(false);
     }
 
     // --- Configuration API (fluent) ---
@@ -86,7 +87,7 @@ public class EcoRepeater<T> extends BaseWidget {
 
         int contentW = getContentWidth();
         for (int i = 0; i < data.size(); i++) {
-            int rowY = getY() + 1 + i * (rowHeight + ROW_GAP);
+            int rowY = getY() + 1 + i * (rowHeight + ROW_GAP) - scrollOffset;
             int rowX = getX() + 2;
             final int index = i;
 
@@ -98,6 +99,16 @@ public class EcoRepeater<T> extends BaseWidget {
         }
 
         clampScroll();
+    }
+
+    /** Reposition children Y based on current scrollOffset (no rebuild). */
+    private void repositionChildren() {
+        int i = 0;
+        for (WidgetNode child : getChildren()) {
+            int rowY = getY() + 1 + i * (rowHeight + ROW_GAP) - scrollOffset;
+            child.setPosition(child.getX(), rowY);
+            i++;
+        }
     }
 
     private int getContentWidth() {
@@ -212,12 +223,11 @@ public class EcoRepeater<T> extends BaseWidget {
             graphics.drawString(font, emptyText, listX + (contentW - tw) / 2,
                     listY + (listH - font.lineHeight) / 2, theme.textDim, false);
         } else {
-            // Translate for scroll
-            graphics.pose().pushPose();
-            graphics.pose().translate(0, -scrollOffset, 0);
+            // Reposition children to account for scroll offset
+            repositionChildren();
 
             for (int i = 0; i < data.size(); i++) {
-                int rowY = listY + i * (rowHeight + ROW_GAP);
+                int rowY = listY + i * (rowHeight + ROW_GAP) - scrollOffset;
 
                 // Row background
                 if (i % 2 == 1) {
@@ -235,10 +245,8 @@ public class EcoRepeater<T> extends BaseWidget {
                         - (needsScrollbar() ? SCROLLBAR_WIDTH : 0);
                 int delY = rowY + (rowHeight - DELETE_BTN_SIZE) / 2;
 
-                // Adjust mouse for scroll offset when checking hover
-                int adjMouseY = mouseY + scrollOffset;
                 boolean delHovered = mouseX >= delX && mouseX < delX + DELETE_BTN_SIZE
-                        && adjMouseY >= delY && adjMouseY < delY + DELETE_BTN_SIZE
+                        && mouseY >= delY && mouseY < delY + DELETE_BTN_SIZE
                         && mouseY >= listY && mouseY < listY + listH;
 
                 DrawUtils.drawPanel(graphics, delX, delY, DELETE_BTN_SIZE, DELETE_BTN_SIZE,
@@ -251,10 +259,8 @@ public class EcoRepeater<T> extends BaseWidget {
                         delHovered ? theme.danger : theme.textDim, false);
             }
 
-            // Render children (row widgets) inside the scroll translate
-            renderChildren(graphics, mouseX, mouseY, partialTick);
-
-            graphics.pose().popPose();
+            // Render children (already positioned with scroll offset)
+            renderChildrenInternal(graphics, mouseX, mouseY, partialTick);
         }
 
         graphics.disableScissor();
@@ -284,7 +290,12 @@ public class EcoRepeater<T> extends BaseWidget {
 
     @Override
     public void renderChildren(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        // Children are rendered inside the scroll translate (called from render)
+        // No-op: children are already rendered inside render() with the scroll translate.
+        // This prevents the WidgetTree from rendering children a second time without translate.
+    }
+
+    /** Internal: render children inside the scroll translate. Called from render(). */
+    private void renderChildrenInternal(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         for (WidgetNode child : getChildren()) {
             if (child.isVisible()) {
                 child.render(graphics, mouseX, mouseY, partialTick);
@@ -348,26 +359,25 @@ public class EcoRepeater<T> extends BaseWidget {
             }
         }
 
-        // Delete buttons (adjust for scroll)
+        // Delete buttons (positions already include scroll offset)
         if (mouseY >= listY && mouseY < listY + listH) {
-            double adjMouseY = mouseY + scrollOffset;
             for (int i = 0; i < data.size(); i++) {
-                int rowY = listY + i * (rowHeight + ROW_GAP);
+                int rowY = listY + i * (rowHeight + ROW_GAP) - scrollOffset;
                 int delX = listX + contentW - DELETE_BTN_SIZE - 4
                         - (needsScrollbar() ? SCROLLBAR_WIDTH : 0);
                 int delY = rowY + (rowHeight - DELETE_BTN_SIZE) / 2;
                 if (mouseX >= delX && mouseX < delX + DELETE_BTN_SIZE
-                        && adjMouseY >= delY && adjMouseY < delY + DELETE_BTN_SIZE) {
+                        && mouseY >= delY && mouseY < delY + DELETE_BTN_SIZE) {
                     removeRow(i);
                     return true;
                 }
             }
 
-            // Forward to children with adjusted Y
+            // Forward to children (already positioned with scroll offset)
             for (int i = getChildren().size() - 1; i >= 0; i--) {
                 WidgetNode child = getChildren().get(i);
-                if (child.isVisible() && child.containsPoint(mouseX, adjMouseY)) {
-                    if (child.onMouseClicked(mouseX, adjMouseY, button)) return true;
+                if (child.isVisible() && child.containsPoint(mouseX, mouseY)) {
+                    if (child.onMouseClicked(mouseX, mouseY, button)) return true;
                 }
             }
         }
@@ -387,12 +397,11 @@ public class EcoRepeater<T> extends BaseWidget {
             return true;
         }
 
-        // Forward to children with adjusted Y
-        double adjMouseY = mouseY + scrollOffset;
+        // Forward to children (already positioned with scroll offset)
         for (int i = getChildren().size() - 1; i >= 0; i--) {
             WidgetNode child = getChildren().get(i);
-            if (child.isVisible() && child.containsPoint(mouseX, adjMouseY)) {
-                if (child.onMouseDragged(mouseX, adjMouseY, button, deltaX, deltaY)) return true;
+            if (child.isVisible() && child.containsPoint(mouseX, mouseY)) {
+                if (child.onMouseDragged(mouseX, mouseY, button, deltaX, deltaY)) return true;
             }
         }
         return false;
@@ -405,12 +414,11 @@ public class EcoRepeater<T> extends BaseWidget {
             return true;
         }
 
-        // Forward to children with adjusted Y
-        double adjMouseY = mouseY + scrollOffset;
+        // Forward to children (already positioned with scroll offset)
         for (int i = getChildren().size() - 1; i >= 0; i--) {
             WidgetNode child = getChildren().get(i);
-            if (child.isVisible() && child.containsPoint(mouseX, adjMouseY)) {
-                if (child.onMouseReleased(mouseX, adjMouseY, button)) return true;
+            if (child.isVisible() && child.containsPoint(mouseX, mouseY)) {
+                if (child.onMouseReleased(mouseX, mouseY, button)) return true;
             }
         }
         return false;
