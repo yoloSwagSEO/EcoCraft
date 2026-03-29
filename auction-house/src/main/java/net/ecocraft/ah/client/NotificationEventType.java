@@ -7,6 +7,7 @@ public enum NotificationEventType {
     AUCTION_WON("auction_won", NotificationChannel.BOTH, ToastLevel.SUCCESS),
     AUCTION_LOST("auction_lost", NotificationChannel.BOTH, ToastLevel.ERROR),
     SALE_COMPLETED("sale_completed", NotificationChannel.BOTH, ToastLevel.SUCCESS),
+    PURCHASE_COMPLETED("purchase_completed", NotificationChannel.BOTH, ToastLevel.SUCCESS),
     LISTING_EXPIRED("listing_expired", NotificationChannel.BOTH, ToastLevel.WARNING);
 
     private final String key;

@@ -90,11 +90,7 @@ public class MyAuctionsTab extends BaseWidget {
         collectBtn = null;
         if (dataReceived) {
             if ("MAILBOX".equals(deliveryMode)) {
-                Label mailboxNotice = new Label(Minecraft.getInstance().font,
-                        tabX + tabW - 200, tabY + 4,
-                        Component.translatable("ecocraft_ah.my_auctions.mailbox_notice"), THEME);
-                mailboxNotice.setColor(THEME.textGrey);
-                addChild(mailboxNotice);
+                // No collect button in MAILBOX mode — items are in the mailbox
             } else {
                 collectBtn = EcoButton.success(THEME, Component.translatable("ecocraft_ah.collect_button", parcelsToCollect),
                         this::onCollectClicked);

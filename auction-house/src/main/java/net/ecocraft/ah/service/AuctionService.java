@@ -488,6 +488,14 @@ public class AuctionService {
             ahEventDispatcher.fireSold(buyerUuid, buyerName, listing, buyQuantity, totalPrice, proportionalTax);
         }
 
+        // Notify buyer (purchase completed)
+        sendNotification(buyerUuid, "purchase_completed",
+                listing.itemName(), listing.sellerName(), totalPrice, listing.currencyId());
+
+        // Notify seller (sale completed)
+        sendNotification(listing.sellerUuid(), "sale_completed",
+                listing.itemName(), buyerName, totalPrice, listing.currencyId());
+
         // Log price history
         storage.logPriceHistory(
                 listing.ahId() != null ? listing.ahId() : AHInstance.DEFAULT_ID,
