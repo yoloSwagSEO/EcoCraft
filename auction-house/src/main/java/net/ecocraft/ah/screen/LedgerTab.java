@@ -266,7 +266,7 @@ public class LedgerTab extends BaseWidget {
             List<TableRow.Cell> cells = new ArrayList<>();
             cells.add(TableRow.Cell.of(Component.literal(entry.itemName()), entry.rarityColor(), entry.itemName()));
             cells.add(TableRow.Cell.of(Component.literal(translateType(entry.type())), typeColor));
-            cells.add(TableRow.Cell.of(Component.literal((isIncome ? "+" : "-") + BuyTab.formatPrice(entry.amount())),
+            cells.add(TableRow.Cell.of(Component.literal((isIncome ? "+" : "-") + BuyTab.formatPrice(entry.amount(), parent.getCurrencySymbol())),
                     isIncome ? THEME.success : THEME.danger, isIncome ? entry.amount() : -entry.amount()));
             cells.add(TableRow.Cell.of(Component.literal(entry.counterparty()), THEME.textLight));
             if (multiAH) {
@@ -299,9 +299,9 @@ public class LedgerTab extends BaseWidget {
 
     // --- Helpers ---
 
-    private static String formatStatPrice(long price) {
-        if (price == 0) return "0 G";
-        return BuyTab.formatPrice(price);
+    private String formatStatPrice(long price) {
+        if (price == 0) return "0 " + parent.getCurrencySymbol();
+        return BuyTab.formatPrice(price, parent.getCurrencySymbol());
     }
 
     private int getTypeColor(String type) {

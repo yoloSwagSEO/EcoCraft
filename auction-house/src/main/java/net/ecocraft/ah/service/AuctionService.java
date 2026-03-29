@@ -6,6 +6,8 @@ import net.ecocraft.api.EconomyProvider;
 import net.ecocraft.api.currency.Currency;
 import net.ecocraft.api.currency.CurrencyRegistry;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -24,6 +26,7 @@ import java.util.UUID;
  */
 public class AuctionService {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(AuctionService.class);
 
     /** Default tax rate applied to completed sales (5%). */
     public static final double DEFAULT_TAX_RATE = 0.05;
@@ -61,9 +64,9 @@ public class AuctionService {
 
             BigDecimal amount = fromSmallestUnit(taxAmount, currency);
             economy.deposit(recipientUuid, amount, currency);
-            System.out.println("[AH] Tax credited to " + ah.taxRecipient() + ": " + amount + " " + currency.symbol());
+            LOGGER.info("Tax credited to {}: {} {}", ah.taxRecipient(), amount, currency.symbol());
         } catch (Exception e) {
-            System.err.println("[AH] Failed to credit tax recipient: " + e.getMessage());
+            LOGGER.error("Failed to credit tax recipient: {}", e.getMessage());
         }
     }
 
@@ -186,18 +189,18 @@ public class AuctionService {
         long depositUnits = Math.max(1, (long) (totalPrice * getDepositRate(effectiveAhId)));
         long taxUnits = Math.max(1, (long) (totalPrice * getTaxRate(effectiveAhId)));
 
-        System.out.println("[AH] CREATE LISTING: seller=" + sellerName + " item=" + itemName + " qty=" + quantity
-                + " unitPrice=" + priceUnits + " totalPrice=" + totalPrice + " deposit=" + depositUnits + " tax=" + taxUnits);
+        LOGGER.info("CREATE LISTING: seller={} item={} qty={} unitPrice={} totalPrice={} deposit={} tax={}",
+                sellerName, itemName, quantity, priceUnits, totalPrice, depositUnits, taxUnits);
 
         // --- Withdraw deposit ---
         BigDecimal depositBD = fromSmallestUnit(depositUnits, currency);
         if (depositBD.compareTo(BigDecimal.ZERO) > 0) {
             var result = economy.withdraw(sellerUuid, depositBD, currency);
             if (!result.successful()) {
-                System.err.println("[AH] CREATE LISTING FAILED: insufficient funds. seller=" + sellerName + " deposit=" + depositBD);
+                LOGGER.error("CREATE LISTING FAILED: insufficient funds. seller={} deposit={}", sellerName, depositBD);
                 throw new AuctionException("Fonds insuffisants pour le dépôt de l'annonce : " + result.errorMessage());
             }
-            System.out.println("[AH] Deposit withdrawn: " + depositBD + " " + currency.symbol() + " from " + sellerName);
+            LOGGER.info("Deposit withdrawn: {} {} from {}", depositBD, currency.symbol(), sellerName);
 
             // Send deposit to tax recipient if configured
             creditTaxRecipient(effectiveAhId, depositUnits, currency);
@@ -280,16 +283,16 @@ public class AuctionService {
         long totalPrice = listing.buyoutPrice() * buyQuantity;
         BigDecimal buyoutBD = fromSmallestUnit(totalPrice, currency);
 
-        System.out.println("[AH] BUY: buyer=" + buyerName + " item=" + listing.itemName() + " buyQty=" + buyQuantity
-                + "/" + listing.quantity() + " unitPrice=" + listing.buyoutPrice() + " totalPrice=" + totalPrice);
+        LOGGER.info("BUY: buyer={} item={} buyQty={}/{} unitPrice={} totalPrice={}",
+                buyerName, listing.itemName(), buyQuantity, listing.quantity(), listing.buyoutPrice(), totalPrice);
 
         // Withdraw from buyer (unit price × buy quantity)
         var withdrawResult = economy.withdraw(buyerUuid, buyoutBD, currency);
         if (!withdrawResult.successful()) {
-            System.err.println("[AH] BUY FAILED: insufficient funds. buyer=" + buyerName + " needed=" + buyoutBD);
+            LOGGER.error("BUY FAILED: insufficient funds. buyer={} needed={}", buyerName, buyoutBD);
             throw new AuctionException("Fonds insuffisants : " + withdrawResult.errorMessage());
         }
-        System.out.println("[AH] Buyer charged: " + buyoutBD + " " + currency.symbol());
+        LOGGER.info("Buyer charged: {} {}", buyoutBD, currency.symbol());
 
         // Credit seller (total price - proportional tax)
         String effectiveAhId = listing.ahId() != null ? listing.ahId() : AHInstance.DEFAULT_ID;
@@ -299,7 +302,7 @@ public class AuctionService {
         if (sellerAmountBD.compareTo(BigDecimal.ZERO) > 0) {
             economy.deposit(listing.sellerUuid(), sellerAmountBD, currency);
         }
-        System.out.println("[AH] Seller credited: " + sellerAmountBD + " " + currency.symbol() + " (tax: " + proportionalTax + " " + currency.symbol() + ")");
+        LOGGER.info("Seller credited: {} {} (tax: {} {})", sellerAmountBD, currency.symbol(), proportionalTax, currency.symbol());
 
         // Send sale tax to tax recipient if configured
         creditTaxRecipient(effectiveAhId, proportionalTax, currency);
@@ -322,7 +325,7 @@ public class AuctionService {
                 false,
                 listing.ahId()
         ));
-        System.out.println("[AH] Parcel created: " + buyQuantity + "x " + listing.itemName() + " for buyer " + buyerName);
+        LOGGER.info("Parcel created: {}x {} for buyer {}", buyQuantity, listing.itemName(), buyerName);
 
         // Sale parcel for seller (revenue entry in ledger)
         storage.createParcel(new AuctionParcel(
@@ -345,10 +348,10 @@ public class AuctionService {
         if (remaining <= 0) {
             storage.updateListingBid(listingId, listing.buyoutPrice(), buyerUuid);
             storage.completeSale(listingId);
-            System.out.println("[AH] Listing " + listingId.substring(0, 8) + " SOLD (fully purchased)");
+            LOGGER.info("Listing {} SOLD (fully purchased)", listingId.substring(0, 8));
         } else {
             storage.updateListingQuantity(listingId, remaining);
-            System.out.println("[AH] Listing " + listingId.substring(0, 8) + " qty reduced: " + listing.quantity() + " -> " + remaining);
+            LOGGER.info("Listing {} qty reduced: {} -> {}", listingId.substring(0, 8), listing.quantity(), remaining);
         }
 
         // Log price history

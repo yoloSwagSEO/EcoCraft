@@ -39,7 +39,7 @@ public class AuctionHouseScreen extends EcoScreen {
 
     // Balance display
     private long playerBalance = -1; // -1 = not yet received
-    private String currencySymbol = "";
+    private String currencySymbol = "G";
     private Label balanceLabel;
 
     // Settings (received from server)
@@ -71,6 +71,7 @@ public class AuctionHouseScreen extends EcoScreen {
         super(Component.translatable("ecocraft_ah.screen.title"));
     }
 
+    public String getCurrencySymbol() { return currencySymbol; }
     public String getCurrentAhId() { return currentAhId; }
     public void setCurrentAhId(String ahId) {
         this.currentAhId = ahId;
@@ -214,7 +215,7 @@ public class AuctionHouseScreen extends EcoScreen {
 
     private void updateBalanceLabel() {
         if (playerBalance >= 0 && balanceLabel != null) {
-            String balanceText = BuyTab.formatPrice(playerBalance);
+            String balanceText = BuyTab.formatPrice(playerBalance, currencySymbol);
             balanceLabel.setText(Component.literal(balanceText));
             int textW = Minecraft.getInstance().font.width(balanceText);
             int rightEdge = guiLeft + guiWidth - 24; // gear button always visible

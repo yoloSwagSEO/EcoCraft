@@ -221,12 +221,12 @@ public class AHServerEvents {
                 }
             } catch (Exception e) {
                 // Log and continue - don't fail server start for one bad listing
-                System.err.println("Failed to reindex enchantments for listing " + listing.id() + ": " + e.getMessage());
+                LOGGER.error("Failed to reindex enchantments for listing {}: {}", listing.id(), e.getMessage());
             }
         }
 
         if (count > 0) {
-            System.out.println("[EcoCraft AH] Reindexed enchantments for " + count + " existing listings.");
+            LOGGER.info("Reindexed enchantments for {} existing listings.", count);
         }
     }
 
@@ -252,7 +252,7 @@ public class AHServerEvents {
         }
 
         if (count > 0) {
-            System.out.println("[EcoCraft AH] Backfilled fingerprints for " + count + " existing listings.");
+            LOGGER.info("Backfilled fingerprints for {} existing listings.", count);
         }
     }
 

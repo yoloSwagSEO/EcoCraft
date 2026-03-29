@@ -6,6 +6,7 @@ import net.ecocraft.ah.data.AHInstance;
 import net.ecocraft.ah.data.ItemCategory;
 import net.ecocraft.ah.data.ListingType;
 import net.ecocraft.ah.data.ListingStatus;
+import net.ecocraft.ah.screen.BuyTab;
 import net.ecocraft.ah.service.AuctionService;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -94,11 +95,8 @@ public final class AHTestCommand {
         );
     }
 
-    private static String formatPrice(long price) {
-        if (price >= 1000) {
-            return String.format("%,d", price).replace(',', ' ') + " G";
-        }
-        return price + " G";
+    private static String formatPrice(long price, String currencySymbol) {
+        return BuyTab.formatPrice(price, currencySymbol);
     }
 
     private static int populate(CommandSourceStack source, int count,
@@ -227,11 +225,11 @@ public final class AHTestCommand {
                 long sellerAmount = listing.buyoutPrice() - listing.taxAmount();
                 source.sendSystemMessage(Component.literal(
                     "§a[Achat] " + buyerName + " a acheté " + listing.quantity() + "x "
-                    + listing.itemName() + " pour " + formatPrice(listing.buyoutPrice())
+                    + listing.itemName() + " pour " + formatPrice(listing.buyoutPrice(), service.getDefaultCurrencySymbol())
                 ));
                 source.sendSystemMessage(Component.literal(
-                    "§e  → Tu as reçu " + formatPrice(sellerAmount)
-                    + " (taxe: " + formatPrice(listing.taxAmount()) + ")"
+                    "§e  → Tu as reçu " + formatPrice(sellerAmount, service.getDefaultCurrencySymbol())
+                    + " (taxe: " + formatPrice(listing.taxAmount(), service.getDefaultCurrencySymbol()) + ")"
                 ));
                 bought++;
             } catch (Exception e) {

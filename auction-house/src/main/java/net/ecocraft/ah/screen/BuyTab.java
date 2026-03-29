@@ -359,12 +359,12 @@ public class BuyTab extends BaseWidget {
 
             if (isAuction) {
                 graphics.drawString(font, Component.translatable("ecocraft_ah.label.current_bid"), labelX, panelY + 80, THEME.textGrey, false);
-                String bid = entry.unitPrice() > 0 ? formatPrice(entry.unitPrice()) : Component.translatable("ecocraft_ah.label.no_bid").getString();
+                String bid = entry.unitPrice() > 0 ? fmtPrice(entry.unitPrice()) : Component.translatable("ecocraft_ah.label.no_bid").getString();
                 graphics.drawString(font, bid, valueX - font.width(bid), panelY + 80, THEME.warning, false);
 
                 long minBid = entry.unitPrice() > 0 ? entry.unitPrice() + 1 : 1;
                 graphics.drawString(font, Component.translatable("ecocraft_ah.label.min_bid"), labelX, panelY + 94, THEME.textGrey, false);
-                String minStr = formatPrice(minBid);
+                String minStr = fmtPrice(minBid);
                 graphics.drawString(font, minStr, valueX - font.width(minStr), panelY + 94, THEME.textLight, false);
 
                 graphics.drawString(font, Component.translatable("ecocraft_ah.label.bid_amount"), labelX, panelY + 112, THEME.textGrey, false);
@@ -376,7 +376,7 @@ public class BuyTab extends BaseWidget {
                 // Bid history table is rendered as a child widget — no manual drawing needed
             } else {
                 graphics.drawString(font, Component.translatable("ecocraft_ah.label.unit_price"), labelX, panelY + 80, THEME.textGrey, false);
-                String price = formatPrice(entry.unitPrice());
+                String price = fmtPrice(entry.unitPrice());
                 graphics.drawString(font, price, valueX - font.width(price), panelY + 80, THEME.accent, false);
 
                 graphics.drawString(font, Component.translatable("ecocraft_ah.label.quantity"), labelX, panelY + 96, THEME.textGrey, false);
@@ -384,7 +384,7 @@ public class BuyTab extends BaseWidget {
                 long qty = panelQuantityInput != null ? panelQuantityInput.getValue() : entry.quantity();
                 long total = entry.unitPrice() * qty;
                 graphics.drawString(font, Component.translatable("ecocraft_ah.label.total_price"), labelX, panelY + 132, THEME.textLight, false);
-                String totalStr = formatPrice(total);
+                String totalStr = fmtPrice(total);
                 graphics.drawString(font, totalStr, valueX - font.width(totalStr), panelY + 132, THEME.accent, false);
             }
         }
@@ -393,8 +393,8 @@ public class BuyTab extends BaseWidget {
         int historyY = tabY + tabH - 18;
         if (detailPriceInfo != null) {
             Component historyLine = Component.translatable("ecocraft_ah.price_info.history_line",
-                    formatPrice(detailPriceInfo.avgPrice()), formatPrice(detailPriceInfo.minPrice()),
-                    formatPrice(detailPriceInfo.maxPrice()), detailPriceInfo.volume7d());
+                    fmtPrice(detailPriceInfo.avgPrice()), fmtPrice(detailPriceInfo.minPrice()),
+                    fmtPrice(detailPriceInfo.maxPrice()), detailPriceInfo.volume7d());
             int historyW = font.width(historyLine);
             graphics.drawString(font, historyLine, tabX + (tabW - historyW) / 2, historyY, THEME.textGrey, false);
         } else {
@@ -406,11 +406,11 @@ public class BuyTab extends BaseWidget {
         // Price info top-right (on the table side)
         if (detailPriceInfo != null) {
             int infoX = tabX + tableW - 120;
-            graphics.drawString(font, Component.translatable("ecocraft_ah.price_info.avg", formatPrice(detailPriceInfo.avgPrice())),
+            graphics.drawString(font, Component.translatable("ecocraft_ah.price_info.avg", fmtPrice(detailPriceInfo.avgPrice())),
                     infoX, tabY + 2, THEME.textGrey, false);
-            graphics.drawString(font, Component.translatable("ecocraft_ah.price_info.min", formatPrice(detailPriceInfo.minPrice())),
+            graphics.drawString(font, Component.translatable("ecocraft_ah.price_info.min", fmtPrice(detailPriceInfo.minPrice())),
                     infoX, tabY + 12, THEME.success, false);
-            graphics.drawString(font, Component.translatable("ecocraft_ah.price_info.max", formatPrice(detailPriceInfo.maxPrice())),
+            graphics.drawString(font, Component.translatable("ecocraft_ah.price_info.max", fmtPrice(detailPriceInfo.maxPrice())),
                     infoX, tabY + 22, THEME.danger, false);
         }
     }
@@ -531,7 +531,7 @@ public class BuyTab extends BaseWidget {
             int color = rank == 1 ? THEME.accent : THEME.textLight;
             rows.add(TableRow.of(List.of(
                     TableRow.Cell.of(Component.literal(bid.bidderName()), color),
-                    TableRow.Cell.of(Component.literal(formatPrice(bid.amount())), color),
+                    TableRow.Cell.of(Component.literal(fmtPrice(bid.amount())), color),
                     TableRow.Cell.of(Component.literal(formatTimeAgo(bid.timestamp())), THEME.textDim)
             ), null));
             rank++;
@@ -594,7 +594,7 @@ public class BuyTab extends BaseWidget {
             ItemStack icon = AuctionHouseScreen.itemFromId(item.itemId());
             rows.add(TableRow.withIcon(icon, item.rarityColor(), List.of(
                     TableRow.Cell.of(Component.literal(item.itemName()), item.rarityColor(), item.itemName()),
-                    TableRow.Cell.of(Component.literal(formatPrice(item.bestPrice())), THEME.accent, item.bestPrice()),
+                    TableRow.Cell.of(Component.literal(fmtPrice(item.bestPrice())), THEME.accent, item.bestPrice()),
                     TableRow.Cell.of(Component.literal(String.valueOf(item.listingCount())), THEME.textLight, item.listingCount()),
                     TableRow.Cell.of(Component.literal(String.valueOf(item.totalAvailable())), THEME.textLight, item.totalAvailable())
             ), () -> onRowClicked(item.itemId())));
@@ -624,7 +624,7 @@ public class BuyTab extends BaseWidget {
             rows.add(TableRow.withIcon(icon, detailRarityColor, List.of(
                     TableRow.Cell.of(Component.literal(entry.sellerName()), THEME.textLight, entry.sellerName()),
                     TableRow.Cell.of(Component.literal(String.valueOf(entry.quantity())), THEME.textLight, entry.quantity()),
-                    TableRow.Cell.of(Component.literal(formatPrice(entry.unitPrice())), THEME.accent, entry.unitPrice()),
+                    TableRow.Cell.of(Component.literal(fmtPrice(entry.unitPrice())), THEME.accent, entry.unitPrice()),
                     TableRow.Cell.of(Component.translatable(isAuction ? "ecocraft_ah.type.auction_short" : "ecocraft_ah.type.buyout_short"),
                             isAuction ? THEME.warning : THEME.success),
                     TableRow.Cell.of(Component.literal(formatTimeRemaining(entry.expiresInMs())), THEME.textGrey, entry.expiresInMs())
@@ -810,9 +810,14 @@ public class BuyTab extends BaseWidget {
 
     // --- Formatting helpers ---
 
-    static String formatPrice(long price) {
-        if (price <= 0) return "0 G";
-        return String.format("%,d", price).replace(',', ' ') + " G";
+    public static String formatPrice(long price, String currencySymbol) {
+        String symbol = (currencySymbol != null && !currencySymbol.isEmpty()) ? currencySymbol : "G";
+        if (price <= 0) return "0 " + symbol;
+        return String.format("%,d", price).replace(',', ' ') + " " + symbol;
+    }
+
+    private String fmtPrice(long price) {
+        return formatPrice(price, parent.getCurrencySymbol());
     }
 
     static String formatTimeRemaining(long expiresInMs) {
