@@ -65,11 +65,8 @@ public class BuyTab extends BaseWidget {
     private EcoNumberInput panelBidInput;
     private EcoButton panelBuyButton;
     private EcoButton panelBidButton;
-    private EcoButton panelSeeAllBidsButton;
+    private EcoTable panelBidHistoryTable;
     private static final int PANEL_WIDTH_RATIO = 35;
-
-    // Bid history state
-    private List<BidHistoryResponsePayload.BidEntry> recentBids = List.of();
 
     // Detail mode filter state
     private List<ItemStack> detailStacks = new ArrayList<>();
@@ -376,29 +373,7 @@ public class BuyTab extends BaseWidget {
                 String expire = formatTimeRemaining(entry.expiresInMs());
                 graphics.drawString(font, expire, valueX - font.width(expire), panelY + 134, THEME.textGrey, false);
 
-                // Recent bids section (below bid button area)
-                int bidHistoryY = panelY + 178;
-                DrawUtils.drawAccentSeparator(graphics, panelX + 4, bidHistoryY, panelW - 8, THEME);
-                bidHistoryY += 6;
-                graphics.drawString(font, Component.translatable("ecocraft_ah.bid_history.recent"),
-                        labelX, bidHistoryY, THEME.textGrey, false);
-                bidHistoryY += 12;
-
-                if (recentBids.isEmpty()) {
-                    graphics.drawString(font,
-                            Component.translatable("ecocraft_ah.bid_history.no_bids"),
-                            labelX, bidHistoryY, THEME.textDim, false);
-                } else {
-                    for (BidHistoryResponsePayload.BidEntry bidEntry : recentBids) {
-                        String bidderAndAmount = DrawUtils.truncateText(font,
-                                bidEntry.bidderName() + " — " + formatPrice(bidEntry.amount()),
-                                panelW - 40);
-                        graphics.drawString(font, bidderAndAmount, labelX, bidHistoryY, THEME.textLight, false);
-                        String timeAgo = formatTimeAgo(bidEntry.timestamp());
-                        graphics.drawString(font, timeAgo, valueX - font.width(timeAgo), bidHistoryY, THEME.textDim, false);
-                        bidHistoryY += 11;
-                    }
-                }
+                // Bid history table is rendered as a child widget — no manual drawing needed
             } else {
                 graphics.drawString(font, Component.translatable("ecocraft_ah.label.unit_price"), labelX, panelY + 80, THEME.textGrey, false);
                 String price = formatPrice(entry.unitPrice());
@@ -549,7 +524,19 @@ public class BuyTab extends BaseWidget {
     }
 
     public void onReceiveBidHistory(BidHistoryResponsePayload payload) {
-        showBidHistoryDialog(payload.bids());
+        if (panelBidHistoryTable == null) return;
+        List<TableRow> rows = new ArrayList<>();
+        int rank = 1;
+        for (BidHistoryResponsePayload.BidEntry bid : payload.bids()) {
+            int color = rank == 1 ? THEME.accent : THEME.textLight;
+            rows.add(TableRow.of(List.of(
+                    TableRow.Cell.of(Component.literal(bid.bidderName()), color),
+                    TableRow.Cell.of(Component.literal(formatPrice(bid.amount())), color),
+                    TableRow.Cell.of(Component.literal(formatTimeAgo(bid.timestamp())), THEME.textDim)
+            ), null));
+            rank++;
+        }
+        panelBidHistoryTable.setRows(rows);
     }
 
     public void onReceiveListingDetail(ListingDetailResponsePayload payload) {
@@ -558,8 +545,6 @@ public class BuyTab extends BaseWidget {
         this.detailRarityColor = payload.rarityColor();
         this.detailEntries = payload.entries();
         this.detailPriceInfo = payload.priceInfo();
-        this.recentBids = payload.recentBids();
-
         this.availableEnchantments = new ArrayList<>(payload.availableEnchantments());
 
         parseDurabilityFilter();
@@ -693,16 +678,25 @@ public class BuyTab extends BaseWidget {
         panelBidButton.setVisible(false);
         addChild(panelBidButton);
 
-        // "Voir tout" button for bid history (auction only)
-        int seeAllY = btnY + 24;
-        panelSeeAllBidsButton = EcoButton.builder(
-                        Component.translatable("ecocraft_ah.bid_history.see_all"),
-                        this::onSeeAllBids)
-                .theme(THEME).bounds(px + 8, seeAllY, pw - 16, 14)
-                .bgColor(THEME.bgMedium).borderColor(THEME.borderLight)
-                .textColor(THEME.textGrey).hoverBg(THEME.bgLight).build();
-        panelSeeAllBidsButton.setVisible(false);
-        addChild(panelSeeAllBidsButton);
+        // Bid history table (auction only, fills remaining panel space)
+        int panelH = tabH - 40;
+        int tableY = btnY + 24;
+        int tableH = py + panelH - tableY - 4;
+        List<TableColumn> bidCols = List.of(
+                TableColumn.left(Component.translatable("ecocraft_ah.column.seller"), 0.40f),
+                TableColumn.right(Component.translatable("ecocraft_ah.label.bid_amount"), 0.30f),
+                TableColumn.right(Component.translatable("ecocraft_ah.column.date"), 0.30f)
+        );
+        panelBidHistoryTable = EcoTable.builder()
+                .columns(bidCols)
+                .theme(THEME)
+                .navigation(EcoTable.Navigation.SCROLL)
+                .scrollLines(3)
+                .showScrollbar(true)
+                .tooltips(false)
+                .build(px + 4, tableY, pw - 8, Math.max(tableH, 40));
+        panelBidHistoryTable.setVisible(false);
+        addChild(panelBidHistoryTable);
 
         // Apply initial selection
         updatePurchasePanel();
@@ -743,14 +737,11 @@ public class BuyTab extends BaseWidget {
             }
             if (panelBuyButton != null) panelBuyButton.setVisible(false);
             if (panelBidButton != null) panelBidButton.setVisible(true);
-            // Show "Voir tout" button only if we have 3+ recent bids
-            if (panelSeeAllBidsButton != null) {
-                boolean showSeeAll = recentBids.size() >= 3;
-                panelSeeAllBidsButton.setVisible(showSeeAll);
-                if (showSeeAll) {
-                    panelSeeAllBidsButton.setLabel(
-                            Component.translatable("ecocraft_ah.bid_history.see_all"));
-                }
+            // Show bid history table and request full history
+            if (panelBidHistoryTable != null) {
+                panelBidHistoryTable.setVisible(true);
+                // Request full bid history from server
+                PacketDistributor.sendToServer(new RequestBidHistoryPayload(entry.listingId()));
             }
         } else {
             if (panelQuantityInput != null) {
@@ -761,7 +752,7 @@ public class BuyTab extends BaseWidget {
             if (panelBidInput != null) panelBidInput.setVisible(false);
             if (panelBuyButton != null) panelBuyButton.setVisible(true);
             if (panelBidButton != null) panelBidButton.setVisible(false);
-            if (panelSeeAllBidsButton != null) panelSeeAllBidsButton.setVisible(false);
+            if (panelBidHistoryTable != null) panelBidHistoryTable.setVisible(false);
         }
     }
 
@@ -794,102 +785,6 @@ public class BuyTab extends BaseWidget {
     }
 
     // --- Bid history helpers ---
-
-    private void onSeeAllBids() {
-        var filtered = getFilteredEntries();
-        if (selectedEntryIndex < 0 || selectedEntryIndex >= filtered.size()) return;
-        var entry = filtered.get(selectedEntryIndex);
-        PacketDistributor.sendToServer(new RequestBidHistoryPayload(entry.listingId()));
-    }
-
-    private void showBidHistoryDialog(List<BidHistoryResponsePayload.BidEntry> bids) {
-        var mc = Minecraft.getInstance();
-        int sw = mc.getWindow().getGuiScaledWidth();
-        int sh = mc.getWindow().getGuiScaledHeight();
-
-        int dialogW = 320;
-        int dialogH = Math.min(sh - 40, 260);
-        int dialogX = (sw - dialogW) / 2;
-        int dialogY = (sh - dialogH) / 2;
-        int padding = 12;
-
-        // Modal container
-        BaseWidget dialog = new BaseWidget(0, 0, sw, sh) {
-            @Override
-            public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-                graphics.fill(0, 0, sw, sh, 0x80000000);
-                DrawUtils.drawPanel(graphics, dialogX, dialogY, dialogW, dialogH,
-                        THEME.bgDark, THEME.borderAccent);
-                Font font = Minecraft.getInstance().font;
-                String title = Component.translatable("ecocraft_ah.bid_history.title").getString();
-                graphics.drawString(font, title, dialogX + padding, dialogY + padding, THEME.accent, false);
-                DrawUtils.drawAccentSeparator(graphics, dialogX + padding, dialogY + padding + 12 + 4,
-                        dialogW - padding * 2, THEME);
-            }
-
-            @Override public boolean onMouseClicked(double mx, double my, int btn) { return true; }
-            @Override public boolean onMouseScrolled(double mx, double my, double sx, double sy) { return true; }
-            @Override
-            public boolean onKeyPressed(int keyCode, int scanCode, int modifiers) {
-                if (keyCode == 256) {
-                    setVisible(false);
-                    parent.getTree().removePortal(this);
-                    return true;
-                }
-                return false;
-            }
-        };
-        dialog.setModal(true);
-
-        // EcoTable with scroll
-        int tableY = dialogY + padding + 12 + 4 + 2 + 8;
-        int btnH = 22;
-        int tableH = dialogY + dialogH - padding - btnH - 8 - tableY;
-        int tableW = dialogW - padding * 2;
-
-        List<TableColumn> columns = List.of(
-                TableColumn.left(Component.literal("#"), 0.12f),
-                TableColumn.left(Component.translatable("ecocraft_ah.column.seller"), 0.32f),
-                TableColumn.right(Component.translatable("ecocraft_ah.label.bid_amount"), 0.28f),
-                TableColumn.right(Component.translatable("ecocraft_ah.column.date"), 0.28f)
-        );
-
-        EcoTable table = EcoTable.builder()
-                .columns(columns)
-                .theme(THEME)
-                .navigation(EcoTable.Navigation.SCROLL)
-                .scrollLines(3)
-                .showScrollbar(true)
-                .tooltips(false)
-                .build(dialogX + padding, tableY, tableW, tableH);
-
-        List<TableRow> rows = new ArrayList<>();
-        int rank = 1;
-        for (BidHistoryResponsePayload.BidEntry bid : bids) {
-            int color = rank == 1 ? THEME.accent : THEME.textLight;
-            rows.add(TableRow.of(List.of(
-                    TableRow.Cell.of(Component.literal("#" + rank), color),
-                    TableRow.Cell.of(Component.literal(bid.bidderName()), color),
-                    TableRow.Cell.of(Component.literal(formatPrice(bid.amount())), color),
-                    TableRow.Cell.of(Component.literal(formatTimestamp(bid.timestamp())), THEME.textDim)
-            ), null));
-            rank++;
-        }
-        table.setRows(rows);
-        dialog.addChild(table);
-
-        // OK button
-        int btnW = 80;
-        EcoButton okBtn = EcoButton.primary(THEME, Component.literal("OK"), () -> {
-            dialog.setVisible(false);
-            parent.getTree().removePortal(dialog);
-        });
-        okBtn.setPosition(dialogX + (dialogW - btnW) / 2, dialogY + dialogH - padding - btnH);
-        okBtn.setSize(btnW, btnH);
-        dialog.addChild(okBtn);
-
-        parent.getTree().addPortal(dialog);
-    }
 
     private static String formatTimeAgo(long timestamp) {
         long elapsed = System.currentTimeMillis() - timestamp;
