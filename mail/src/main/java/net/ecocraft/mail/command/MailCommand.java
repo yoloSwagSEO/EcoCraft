@@ -98,6 +98,12 @@ public final class MailCommand {
                                 .executes(ctx -> executeAdminPurge(ctx.getSource(), serviceSupplier))
                         )
                 )
+
+                // /mail test — generates test mails
+                .then(Commands.literal("test")
+                        .requires(src -> MailPermissions.check(src, MailPermissions.ADMIN))
+                        .executes(ctx -> executeTest(ctx.getSource(), serviceSupplier))
+                )
         );
     }
 
@@ -216,6 +222,96 @@ public final class MailCommand {
                 () -> Component.translatable("ecocraft_mail.command.mails_deleted", deleted, target.getName().getString()),
                 true);
         return deleted;
+    }
+
+    private static int executeTest(CommandSourceStack source,
+                                     Supplier<MailService> serviceSupplier) {
+        MailService service = serviceSupplier.get();
+        if (service == null) {
+            source.sendFailure(Component.translatable("ecocraft_mail.command.error_not_initialized"));
+            return 0;
+        }
+
+        try {
+            ServerPlayer player = source.getPlayerOrException();
+            UUID uuid = player.getUUID();
+
+            // 1. Simple text mail
+            service.sendSystemMail("[Système]", uuid,
+                    "Bienvenue sur le serveur !",
+                    "Ceci est un mail de bienvenue. Bonne aventure !",
+                    List.of(), 0, null, false, 0);
+
+            // 2. Mail with currency
+            service.sendSystemMail("Banque Royale", uuid,
+                    "Prime de connexion",
+                    "Voici votre prime de connexion quotidienne.",
+                    List.of(), 500, service.getDefaultCurrencyId(), false, 0);
+
+            // 3. Mail with items
+            service.sendSystemMail("Hôtel des Ventes", uuid,
+                    "Vente réussie : Épée en diamant",
+                    "Votre Épée en diamant a été vendue pour 250 Gold.",
+                    List.of(new net.ecocraft.mail.data.MailItemAttachment(
+                            "minecraft:diamond_sword", "Épée en diamant", null, 1)),
+                    250, service.getDefaultCurrencyId(), false, 0);
+
+            // 4. Mail with items + currency (simulating AH purchase)
+            service.sendSystemMail("Hôtel des Ventes", uuid,
+                    "Achat : 16x Bloc de diamant",
+                    "Vous avez acheté 16 Blocs de diamant.",
+                    List.of(new net.ecocraft.mail.data.MailItemAttachment(
+                            "minecraft:diamond_block", "Bloc de diamant", null, 16)),
+                    0, null, false, 0);
+
+            // 5. Indestructible admin mail
+            service.sendSystemMail("[Admin]", uuid,
+                    "Règles du serveur",
+                    "1. Pas de grief\n2. Respectez les autres\n3. Amusez-vous !",
+                    List.of(), 0, null, true, 0);
+
+            // 6. COD mail (from a fake player)
+            service.sendSystemMail("Grimald", uuid,
+                    "Commande spéciale",
+                    "Voici les objets que tu m'as demandé. N'oublie pas de payer !",
+                    List.of(
+                            new net.ecocraft.mail.data.MailItemAttachment(
+                                    "minecraft:golden_apple", "Pomme dorée", null, 5),
+                            new net.ecocraft.mail.data.MailItemAttachment(
+                                    "minecraft:ender_pearl", "Perle de l'Ender", null, 8)
+                    ),
+                    0, null, false, 0);
+            // Note: COD requires sendMail (P2P), not sendSystemMail. We'll create one manually:
+            long now = System.currentTimeMillis();
+            var codMail = new net.ecocraft.mail.data.Mail(
+                    java.util.UUID.randomUUID().toString(),
+                    java.util.UUID.randomUUID(), // fake sender UUID
+                    "Thoria",
+                    uuid,
+                    "Livraison contre remboursement",
+                    "Tu me dois 300 Gold pour ces potions !",
+                    List.of(
+                            new net.ecocraft.mail.data.MailItemAttachment(
+                                    "minecraft:potion", "Potion de soin", null, 3),
+                            new net.ecocraft.mail.data.MailItemAttachment(
+                                    "minecraft:golden_carrot", "Carotte dorée", null, 10)
+                    ),
+                    0, null,
+                    300, service.getDefaultCurrencyId(), // COD: 300 Gold
+                    false, false, false, false,
+                    now, now,
+                    now + MailService.DEFAULT_EXPIRY_MS
+            );
+            service.getStorage().createMail(codMail);
+
+            source.sendSuccess(
+                    () -> Component.literal("§a7 mails de test créés ! Ouvrez la boîte aux lettres."),
+                    false);
+            return 7;
+        } catch (Exception e) {
+            source.sendFailure(Component.literal("§cErreur: " + e.getMessage()));
+            return 0;
+        }
     }
 
     private static int executeAdminPurge(CommandSourceStack source,

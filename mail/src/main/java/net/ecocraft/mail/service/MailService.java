@@ -78,6 +78,15 @@ public class MailService {
         this.expiryMs = expiryMs;
     }
 
+    public MailStorageProvider getStorage() {
+        return storage;
+    }
+
+    public @Nullable String getDefaultCurrencyId() {
+        var c = currencies.getDefault();
+        return c != null ? c.id() : null;
+    }
+
     // -------------------------------------------------------------------------
     // Send mail (player-to-player)
     // -------------------------------------------------------------------------
