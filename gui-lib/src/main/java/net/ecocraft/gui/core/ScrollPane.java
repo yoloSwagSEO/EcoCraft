@@ -174,6 +174,15 @@ public class ScrollPane extends BaseWidget {
 
     @Override
     public boolean onMouseScrolled(double mx, double my, double scrollX, double scrollY) {
+        // Let children handle scroll first (e.g., nested EcoRepeater with its own scroll)
+        double adjustedY = my + scrollOffset;
+        for (int i = getChildren().size() - 1; i >= 0; i--) {
+            WidgetNode child = getChildren().get(i);
+            if (child.isVisible() && child.containsPoint(mx, adjustedY)) {
+                if (child.onMouseScrolled(mx, adjustedY, scrollX, scrollY)) return true;
+            }
+        }
+        // No child consumed it — scroll ourselves
         if (!needsScrollbar()) return false;
         scrollOffset -= (int) (scrollY * SCROLL_LINE_HEIGHT);
         clampScroll();
