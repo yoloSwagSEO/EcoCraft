@@ -93,6 +93,21 @@ public class AuctioneerEntity extends Mob {
     }
 
     @Override
+    public void checkDespawn() {
+        // Never despawn — these are permanent world NPCs
+    }
+
+    @Override
+    public boolean removeWhenFarAway(double distanceToClosestPlayer) {
+        return false;
+    }
+
+    @Override
+    public boolean requiresCustomPersistence() {
+        return true;
+    }
+
+    @Override
     protected void defineSynchedData(SynchedEntityData.Builder builder) {
         super.defineSynchedData(builder);
         builder.define(DATA_SKIN_PROFILE, new CompoundTag());

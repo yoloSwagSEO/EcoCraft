@@ -55,6 +55,7 @@ public class AHRegistries {
             "auctioneer",
             () -> EntityType.Builder.<AuctioneerEntity>of(AuctioneerEntity::new, MobCategory.MISC)
                     .sized(0.6f, 1.95f)
+                    .clientTrackingRange(80)
                     .build("auctioneer")
     );
 

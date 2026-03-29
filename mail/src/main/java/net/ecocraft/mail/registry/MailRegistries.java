@@ -70,6 +70,7 @@ public class MailRegistries {
             "postman",
             () -> EntityType.Builder.<PostmanEntity>of(PostmanEntity::new, MobCategory.MISC)
                     .sized(0.6f, 1.95f)
+                    .clientTrackingRange(80)
                     .build("postman")
     );
 

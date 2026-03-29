@@ -74,6 +74,21 @@ public class PostmanEntity extends Mob {
     }
 
     @Override
+    public void checkDespawn() {
+        // Never despawn — these are permanent world NPCs
+    }
+
+    @Override
+    public boolean removeWhenFarAway(double distanceToClosestPlayer) {
+        return false;
+    }
+
+    @Override
+    public boolean requiresCustomPersistence() {
+        return true;
+    }
+
+    @Override
     public void addAdditionalSaveData(CompoundTag tag) {
         super.addAdditionalSaveData(tag);
     }
