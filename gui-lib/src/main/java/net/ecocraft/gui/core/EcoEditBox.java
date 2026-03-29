@@ -121,9 +121,10 @@ public class EcoEditBox extends BaseWidget {
         int borderColor = focused ? theme.borderAccent : theme.border;
         DrawUtils.drawPanel(graphics, x, y, w, h, theme.bgDark, borderColor);
 
-        // 2. Scissor clipping
+        // 2. Scissor clipping (adjusted for ScrollPane render offset)
+        int scrollY = ScrollPane.getRenderOffsetY();
         int clipX = x + H_PADDING;
-        int clipY = y + 1;
+        int clipY = y + 1 + scrollY;
         int clipW = w - H_PADDING * 2;
         int clipH = h - 2;
         graphics.enableScissor(clipX, clipY, clipX + clipW, clipY + clipH);

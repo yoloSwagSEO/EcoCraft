@@ -270,7 +270,8 @@ public class EcoTable extends BaseWidget {
         // Row area with scissor clipping
         int rowAreaY = headerY + HEADER_HEIGHT;
         int rowAreaH = getHeight() - HEADER_HEIGHT - 2;
-        graphics.enableScissor(getX() + 1, rowAreaY, getX() + getWidth() - 1, rowAreaY + rowAreaH);
+        int scrollYOff = ScrollPane.getRenderOffsetY();
+        graphics.enableScissor(getX() + 1, rowAreaY + scrollYOff, getX() + getWidth() - 1, rowAreaY + rowAreaH + scrollYOff);
 
         int startIdx;
         int endIdx;

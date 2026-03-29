@@ -183,9 +183,10 @@ public class EcoTextArea extends BaseWidget {
         int borderColor = focused ? theme.borderAccent : theme.border;
         DrawUtils.drawPanel(graphics, x, y, w, h, theme.bgDark, borderColor);
 
-        // 2. Scissor clipping for text area
+        // 2. Scissor clipping for text area (adjusted for ScrollPane render offset)
+        int scrollY = ScrollPane.getRenderOffsetY();
         int clipX = x + H_PADDING;
-        int clipY = y + V_PADDING;
+        int clipY = y + V_PADDING + scrollY;
         int clipW = getTextAreaWidth();
         int clipH = getTextAreaHeight();
         graphics.enableScissor(clipX, clipY, clipX + clipW, clipY + clipH);

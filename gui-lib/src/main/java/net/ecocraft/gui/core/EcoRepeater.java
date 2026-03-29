@@ -214,8 +214,9 @@ public class EcoRepeater<T> extends BaseWidget {
         int listH = getListHeight();
         int contentW = w - 2;
 
-        // Scissor for the list area
-        graphics.enableScissor(listX, listY, listX + contentW, listY + listH);
+        // Scissor for the list area (adjusted for ScrollPane render offset)
+        int scrollY = ScrollPane.getRenderOffsetY();
+        graphics.enableScissor(listX, listY + scrollY, listX + contentW, listY + listH + scrollY);
 
         if (data.isEmpty()) {
             String emptyText = "Aucun \u00e9l\u00e9ment";

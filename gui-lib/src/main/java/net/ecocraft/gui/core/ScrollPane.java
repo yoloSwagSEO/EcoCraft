@@ -24,6 +24,17 @@ public class ScrollPane extends BaseWidget {
     private double dragStartY;
     private int dragStartOffset;
 
+    /**
+     * Thread-local render offset tracking. Widgets that use enableScissor
+     * should call ScrollPane.getRenderOffsetY() to adjust their scissor coordinates.
+     */
+    private static int renderOffsetY = 0;
+
+    /** Returns the current cumulative Y render offset from enclosing ScrollPanes. */
+    public static int getRenderOffsetY() {
+        return renderOffsetY;
+    }
+
     public ScrollPane(int x, int y, int width, int height, Theme theme) {
         super(x, y, width, height);
         this.theme = theme;
@@ -70,7 +81,10 @@ public class ScrollPane extends BaseWidget {
         // 3. Translate and render children (adjust mouseY so hover/focus states work)
         graphics.pose().pushPose();
         graphics.pose().translate(0, -scrollOffset, 0);
+        int prevOffset = renderOffsetY;
+        renderOffsetY = prevOffset - scrollOffset;
         renderChildrenInternal(graphics, mouseX, mouseY + scrollOffset, partialTick);
+        renderOffsetY = prevOffset;
         graphics.pose().popPose();
 
         // 4. Disable scissor
