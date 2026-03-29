@@ -522,11 +522,16 @@ public class AuctionService {
         Currency currency = currencies.getById(listing.currencyId());
         if (currency == null) return;
 
-        // Credit seller (final bid - tax)
-        long sellerAmount = listing.currentBid() - listing.taxAmount();
+        // Credit seller (final bid - recalculated tax based on final bid, not starting bid)
+        String effectiveAhId = listing.ahId() != null ? listing.ahId() : AHInstance.DEFAULT_ID;
+        long proportionalTax = Math.max(1, (long) (listing.currentBid() * getTaxRate(effectiveAhId)));
+        long sellerAmount = listing.currentBid() - proportionalTax;
         if (sellerAmount > 0) {
             economy.deposit(listing.sellerUuid(), fromSmallestUnit(sellerAmount, currency), currency);
         }
+
+        // Send sale tax to tax recipient if configured
+        creditTaxRecipient(effectiveAhId, proportionalTax, currency);
 
         // Item parcel for winner
         storage.createParcel(new AuctionParcel(
