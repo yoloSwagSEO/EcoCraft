@@ -3,6 +3,7 @@ package net.ecocraft.core.impl;
 import net.ecocraft.api.currency.Currency;
 import net.ecocraft.core.storage.SqliteDatabaseProvider;
 import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.Disabled;
 
 import java.math.BigDecimal;
 import java.nio.file.Files;
@@ -100,5 +101,47 @@ class EconomyProviderImplTest {
         economy.deposit(player, new BigDecimal("100"), GOLD);
         assertTrue(economy.canAfford(player, new BigDecimal("100"), GOLD));
         assertFalse(economy.canAfford(player, new BigDecimal("101"), GOLD));
+    }
+
+    // -------------------------------------------------------------------------
+    // Negative amount rejection (I9)
+    // -------------------------------------------------------------------------
+
+    @Test
+    @Disabled("Pending I9 fix — deposit should reject negative amounts")
+    void depositWithNegativeAmountShouldFail() {
+        var player = UUID.randomUUID();
+        economy.deposit(player, new BigDecimal("100"), GOLD);
+
+        var result = economy.deposit(player, new BigDecimal("-50"), GOLD);
+
+        assertFalse(result.successful(), "Deposit with negative amount should fail");
+        assertAmountEquals(new BigDecimal("100"), economy.getBalance(player, GOLD));
+    }
+
+    @Test
+    @Disabled("Pending I9 fix — withdraw should reject negative amounts")
+    void withdrawWithNegativeAmountShouldFail() {
+        var player = UUID.randomUUID();
+        economy.deposit(player, new BigDecimal("100"), GOLD);
+
+        var result = economy.withdraw(player, new BigDecimal("-50"), GOLD);
+
+        assertFalse(result.successful(), "Withdraw with negative amount should fail");
+        assertAmountEquals(new BigDecimal("100"), economy.getBalance(player, GOLD));
+    }
+
+    @Test
+    @Disabled("Pending I9 fix — transfer should reject negative amounts")
+    void transferWithNegativeAmountShouldFail() {
+        var p1 = UUID.randomUUID();
+        var p2 = UUID.randomUUID();
+        economy.deposit(p1, new BigDecimal("100"), GOLD);
+
+        var result = economy.transfer(p1, p2, new BigDecimal("-50"), GOLD);
+
+        assertFalse(result.successful(), "Transfer with negative amount should fail");
+        assertAmountEquals(new BigDecimal("100"), economy.getBalance(p1, GOLD));
+        assertAmountEquals(BigDecimal.ZERO, economy.getBalance(p2, GOLD));
     }
 }

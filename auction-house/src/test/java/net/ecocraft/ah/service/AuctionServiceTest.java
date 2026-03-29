@@ -495,6 +495,50 @@ class AuctionServiceTest {
     }
 
     @Test
+    void expireAuctionTaxCalculatedOnFinalBidNotStartingBid() {
+        UUID seller = UUID.randomUUID();
+        UUID winner = UUID.randomUUID();
+
+        economy.setBalance(seller, GOLD, new BigDecimal("1000.00"));
+        economy.setBalance(winner, GOLD, new BigDecimal("500.00"));
+
+        // Insert an expired AUCTION listing directly:
+        //   startingBid = 10 (i.e. 10.00 Gold), currentBid = 100 (i.e. 100.00 Gold)
+        // This simulates an auction where the starting bid was 10 but the winning bid was 100.
+        long past = System.currentTimeMillis() - 10_000L;
+        long startingBid = 10L;   // 10.00 Gold
+        long finalBid = 100L;     // 100.00 Gold — 10x the starting bid
+        AuctionListing listing = new AuctionListing(
+                UUID.randomUUID().toString(), seller, "Seller",
+                "minecraft:diamond_pickaxe", "Diamond Pickaxe", null, 1,
+                ListingType.AUCTION, 0L, startingBid, finalBid, winner, "gold",
+                ItemCategory.TOOLS, past, ListingStatus.ACTIVE, 0L, past - 86_400_000L, null, null);
+        storage.createListing(listing);
+
+        BigDecimal sellerBalanceBefore = economy.getBalance(seller, GOLD);
+
+        service.expireListings();
+
+        // Tax should be 5% of 100 (final bid) = 5, NOT 5% of 10 (starting bid)
+        long expectedTax = Math.max(1, (long) (finalBid * AuctionService.DEFAULT_TAX_RATE));
+        assertEquals(5L, expectedTax, "Tax should be 5% of final bid (100), not starting bid (10)");
+
+        long sellerGain = finalBid - expectedTax; // 100 - 5 = 95
+        BigDecimal expectedBalance = sellerBalanceBefore.add(
+                AuctionService.fromSmallestUnit(sellerGain, GOLD));
+        assertEquals(expectedBalance, economy.getBalance(seller, GOLD),
+                "Seller should receive final bid minus tax calculated on final bid");
+
+        // Verify listing is marked as sold
+        assertEquals(ListingStatus.SOLD, storage.getListingById(listing.id()).status());
+
+        // Winner should have item parcel
+        List<AuctionParcel> winnerParcels = storage.getUncollectedParcels(winner);
+        assertEquals(1, winnerParcels.size());
+        assertEquals(ParcelSource.HDV_PURCHASE, winnerParcels.get(0).source());
+    }
+
+    @Test
     void expireListingsCompletesAuctionWithBids() {
         UUID seller = UUID.randomUUID();
         UUID winner = UUID.randomUUID();
