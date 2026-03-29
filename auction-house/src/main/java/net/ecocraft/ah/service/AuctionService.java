@@ -97,6 +97,28 @@ public class AuctionService {
         @Nullable UUID resolve(String playerName);
     }
 
+    /**
+     * Event dispatcher interface for KubeJS integration.
+     * PRE methods return false to cancel the operation; POST methods are fire-and-forget.
+     * Null when KubeJS is not loaded.
+     */
+    public interface AHEventDispatcher {
+        boolean fireListingCreating(UUID seller, String itemId, String itemName, int qty,
+                                     long price, ListingType type, String ahId);
+        void fireListingCreated(AuctionListing listing);
+        boolean fireBuying(UUID buyer, AuctionListing listing, int qty, long totalPrice);
+        void fireSold(UUID buyer, String buyerName, AuctionListing listing, int qty,
+                       long totalPrice, long tax);
+        boolean fireBidPlacing(UUID bidder, AuctionListing listing, long amount);
+        void fireBidPlaced(UUID bidder, String bidderName, AuctionListing listing,
+                            long amount, long prevBid, @Nullable UUID prevBidder);
+        void fireAuctionWon(UUID winner, String winnerName, AuctionListing listing, long finalPrice);
+        void fireAuctionLost(UUID loser, String loserName, AuctionListing listing, long refund);
+        boolean fireListingCancelling(UUID player, AuctionListing listing);
+        void fireListingCancelled(UUID player, AuctionListing listing);
+        void fireListingExpired(AuctionListing listing, boolean hadBids);
+    }
+
     /** Notification sender injected from AHServerEvents; null means no notifications. */
     @Nullable
     private NotificationSender notificationSender;
@@ -104,6 +126,10 @@ public class AuctionService {
     /** Profile resolver injected from AHServerEvents; null means tax recipient lookup is skipped. */
     @Nullable
     private ProfileResolver profileResolver;
+
+    /** KubeJS event dispatcher; null when KubeJS is not loaded. */
+    @Nullable
+    private AHEventDispatcher ahEventDispatcher;
 
     /** System UUID used as a "from" identity for tax/deposit withdrawals. */
     private static final UUID SYSTEM_UUID = new UUID(0, 0);
@@ -124,6 +150,11 @@ public class AuctionService {
     /** Sets the profile resolver (called from AHServerEvents when server starts/stops). */
     public void setProfileResolver(@Nullable ProfileResolver resolver) {
         this.profileResolver = resolver;
+    }
+
+    /** Sets the KubeJS event dispatcher (called from AHServerEvents when KubeJS is loaded). */
+    public void setAHEventDispatcher(@Nullable AHEventDispatcher dispatcher) {
+        this.ahEventDispatcher = dispatcher;
     }
 
     /**
@@ -192,6 +223,13 @@ public class AuctionService {
         LOGGER.info("CREATE LISTING: seller={} item={} qty={} unitPrice={} totalPrice={} deposit={} tax={}",
                 sellerName, itemName, quantity, priceUnits, totalPrice, depositUnits, taxUnits);
 
+        // KubeJS PRE event
+        if (ahEventDispatcher != null &&
+            !ahEventDispatcher.fireListingCreating(sellerUuid, itemId, itemName, quantity,
+                    priceUnits, listingType, effectiveAhId)) {
+            throw new AuctionException("Mise en vente bloquée par un script");
+        }
+
         // --- Withdraw deposit ---
         BigDecimal depositBD = fromSmallestUnit(depositUnits, currency);
         if (depositBD.compareTo(BigDecimal.ZERO) > 0) {
@@ -233,6 +271,11 @@ public class AuctionService {
         );
 
         storage.createListing(listing);
+
+        // KubeJS POST event
+        if (ahEventDispatcher != null) {
+            ahEventDispatcher.fireListingCreated(listing);
+        }
 
         // Log deposit fee in ledger as a parcel entry
         if (depositUnits > 0) {
@@ -285,6 +328,12 @@ public class AuctionService {
 
         LOGGER.info("BUY: buyer={} item={} buyQty={}/{} unitPrice={} totalPrice={}",
                 buyerName, listing.itemName(), buyQuantity, listing.quantity(), listing.buyoutPrice(), totalPrice);
+
+        // KubeJS PRE event
+        if (ahEventDispatcher != null &&
+            !ahEventDispatcher.fireBuying(buyerUuid, listing, buyQuantity, totalPrice)) {
+            throw new AuctionException("Achat bloqué par un script");
+        }
 
         // Withdraw from buyer (unit price × buy quantity)
         var withdrawResult = economy.withdraw(buyerUuid, buyoutBD, currency);
@@ -354,6 +403,11 @@ public class AuctionService {
             LOGGER.info("Listing {} qty reduced: {} -> {}", listingId.substring(0, 8), listing.quantity(), remaining);
         }
 
+        // KubeJS POST event
+        if (ahEventDispatcher != null) {
+            ahEventDispatcher.fireSold(buyerUuid, buyerName, listing, buyQuantity, totalPrice, proportionalTax);
+        }
+
         // Log price history
         storage.logPriceHistory(
                 listing.ahId() != null ? listing.ahId() : AHInstance.DEFAULT_ID,
@@ -395,6 +449,12 @@ public class AuctionService {
         if (amountUnits < minimumBid)
             throw new AuctionException("L'enchère doit être d'au moins " + fromSmallestUnit(minimumBid, currency).toPlainString());
 
+        // KubeJS PRE event
+        if (ahEventDispatcher != null &&
+            !ahEventDispatcher.fireBidPlacing(bidderUuid, listing, amountUnits)) {
+            throw new AuctionException("Enchère bloquée par un script");
+        }
+
         // Withdraw new bid from bidder
         var withdrawResult = economy.withdraw(bidderUuid, amount, currency);
         if (!withdrawResult.successful())
@@ -434,6 +494,12 @@ public class AuctionService {
         );
         storage.placeBid(bid);
         storage.updateListingBid(listingId, amountUnits, bidderUuid);
+
+        // KubeJS POST event
+        if (ahEventDispatcher != null) {
+            ahEventDispatcher.fireBidPlaced(bidderUuid, bidderName, listing, amountUnits,
+                    listing.currentBid(), listing.currentBidderUuid());
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -455,6 +521,12 @@ public class AuctionService {
         if (listing.listingType() == ListingType.AUCTION && listing.currentBid() > 0)
             throw new AuctionException("Impossible d'annuler une enchère ayant déjà des offres");
 
+        // KubeJS PRE event
+        if (ahEventDispatcher != null &&
+            !ahEventDispatcher.fireListingCancelling(playerUuid, listing)) {
+            throw new AuctionException("Annulation bloquée par un script");
+        }
+
         // Return item to seller via parcel
         long now = System.currentTimeMillis();
         storage.createParcel(new AuctionParcel(
@@ -473,6 +545,11 @@ public class AuctionService {
         ));
 
         storage.cancelListing(listingId);
+
+        // KubeJS POST event
+        if (ahEventDispatcher != null) {
+            ahEventDispatcher.fireListingCancelled(playerUuid, listing);
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -517,6 +594,11 @@ public class AuctionService {
                 // Notify seller that their listing expired with no bids
                 sendNotification(listing.sellerUuid(), "listing_expired",
                         listing.itemName(), "", 0L, listing.currencyId());
+
+                // KubeJS POST event — expired with no bids
+                if (ahEventDispatcher != null) {
+                    ahEventDispatcher.fireListingExpired(listing, false);
+                }
             }
         }
     }
@@ -573,6 +655,12 @@ public class AuctionService {
         sendNotification(listing.currentBidderUuid(), "auction_won",
                 listing.itemName(), listing.sellerName(), listing.currentBid(), listing.currencyId());
 
+        // KubeJS POST event — auction won
+        if (ahEventDispatcher != null) {
+            ahEventDispatcher.fireAuctionWon(listing.currentBidderUuid(),
+                    winnerName, listing, listing.currentBid());
+        }
+
         // Notify seller
         sendNotification(listing.sellerUuid(), "sale_completed",
                 listing.itemName(), winnerName, listing.currentBid(), listing.currencyId());
@@ -583,7 +671,18 @@ public class AuctionService {
             if (!bid.bidderUuid().equals(listing.currentBidderUuid())) {
                 sendNotification(bid.bidderUuid(), "auction_lost",
                         listing.itemName(), "", bid.amount(), listing.currencyId());
+
+                // KubeJS POST event — auction lost
+                if (ahEventDispatcher != null) {
+                    ahEventDispatcher.fireAuctionLost(bid.bidderUuid(),
+                            bid.bidderName(), listing, bid.amount());
+                }
             }
+        }
+
+        // KubeJS POST event — listing expired with bids (auction completed)
+        if (ahEventDispatcher != null) {
+            ahEventDispatcher.fireListingExpired(listing, true);
         }
     }
 

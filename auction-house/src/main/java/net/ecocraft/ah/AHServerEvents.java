@@ -83,6 +83,17 @@ public class AHServerEvents {
             return profile.map(com.mojang.authlib.GameProfile::getId).orElse(null);
         });
 
+        // Wire KubeJS event dispatcher if KubeJS is loaded
+        if (net.neoforged.fml.ModList.get().isLoaded("kubejs")) {
+            try {
+                var dispatcher = new net.ecocraft.ah.compat.kubejs.AHEventDispatcherImpl(server);
+                auctionService.setAHEventDispatcher(dispatcher);
+                LOGGER.info("KubeJS integration enabled for EcoCraft Auction House");
+            } catch (Exception e) {
+                LOGGER.warn("Failed to initialize KubeJS AH integration: {}", e.getMessage());
+            }
+        }
+
         applyConfigDefaults();
         reindexEnchantments(server);
         backfillFingerprints(server);
@@ -100,6 +111,7 @@ public class AHServerEvents {
         if (auctionService != null) {
             auctionService.setNotificationSender(null);
             auctionService.setProfileResolver(null);
+            auctionService.setAHEventDispatcher(null);
         }
         auctionService = null;
         tickCounter = 0;
@@ -268,6 +280,11 @@ public class AHServerEvents {
     }
 
     public static AuctionService getService() {
+        return auctionService;
+    }
+
+    /** Alias for KubeJS bindings. */
+    public static AuctionService getAuctionService() {
         return auctionService;
     }
 
