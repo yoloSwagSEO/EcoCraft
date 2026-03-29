@@ -173,7 +173,7 @@ public class AuctionHouseScreen extends EcoScreen {
                 .theme(THEME).bounds(guiLeft + guiWidth - 20, guiTop + 6, 16, 16)
                 .bgColor(THEME.bgMedium).borderColor(THEME.borderLight)
                 .textColor(THEME.accent).hoverBg(THEME.bgLight).build();
-        gearButton.setVisible(isAdmin);
+        gearButton.setVisible(true);
         getTree().addChild(gearButton);
 
         activateTab(activeTab);
@@ -203,7 +203,7 @@ public class AuctionHouseScreen extends EcoScreen {
     private void onGearClicked() {
         Minecraft.getInstance().setScreen(new AHSettingsScreen(
                 this, npcEntityId, npcSkinName,
-                npcLinkedAhId, new java.util.ArrayList<>(ahInstances)));
+                npcLinkedAhId, new java.util.ArrayList<>(ahInstances), isAdmin));
     }
 
     @Override
@@ -217,7 +217,7 @@ public class AuctionHouseScreen extends EcoScreen {
             String balanceText = BuyTab.formatPrice(playerBalance);
             balanceLabel.setText(Component.literal(balanceText));
             int textW = Minecraft.getInstance().font.width(balanceText);
-            int rightEdge = isAdmin ? guiLeft + guiWidth - 24 : guiLeft + guiWidth;
+            int rightEdge = guiLeft + guiWidth - 24; // gear button always visible
             balanceLabel.setPosition(rightEdge - textW - 8, guiTop + 10);
         }
     }
@@ -355,7 +355,7 @@ public class AuctionHouseScreen extends EcoScreen {
         SellTab.activeDepositRate = payload.depositRate() / 100.0;
         // Update gear button visibility
         if (gearButton != null) {
-            gearButton.setVisible(isAdmin);
+            gearButton.setVisible(true);
             updateBalanceLabel();
         }
     }

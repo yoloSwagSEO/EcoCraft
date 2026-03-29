@@ -3,6 +3,7 @@ package net.ecocraft.ah.screen;
 import net.ecocraft.ah.data.AHInstance;
 import net.ecocraft.ah.network.payload.*;
 import net.ecocraft.gui.core.*;
+import net.ecocraft.ah.screen.NotificationsTab;
 import net.ecocraft.gui.theme.DrawUtils;
 import net.ecocraft.gui.theme.Theme;
 import net.minecraft.client.Minecraft;
@@ -20,7 +21,8 @@ import java.util.UUID;
 
 /**
  * Settings screen with a left sidebar (tab buttons) and right panel using EcoGrid.
- * Tab 0 = "General" (NPC config), Tab 1+ = per-AH instance settings.
+ * Tab 0 = "Notifications" (all players), Tab 1 = "General" (admin, NPC config),
+ * Tab 2+ = per-AH instance settings (admin only).
  */
 public class AHSettingsScreen extends EcoScreen {
 
@@ -33,6 +35,7 @@ public class AHSettingsScreen extends EcoScreen {
 
     private final Screen parentScreen;
     private int selectedTab = 0;
+    private final boolean isAdmin;
     private List<AHInstancesPayload.AHInstanceData> ahInstances;
     private final Map<String, EditedAH> editedAHs = new HashMap<>();
 
@@ -50,13 +53,15 @@ public class AHSettingsScreen extends EcoScreen {
     private final List<EcoButton> sidebarButtons = new ArrayList<>();
 
     public AHSettingsScreen(Screen parent, int npcEntityId, String skinPlayerName,
-                            String currentAhId, List<AHInstancesPayload.AHInstanceData> ahInstances) {
+                            String currentAhId, List<AHInstancesPayload.AHInstanceData> ahInstances,
+                            boolean isAdmin) {
         super(Component.translatable("ecocraft_ah.settings.title"));
         this.parentScreen = parent;
         this.npcEntityId = npcEntityId;
         this.skinPlayerName = skinPlayerName != null ? skinPlayerName : "";
         this.linkedAhId = currentAhId != null ? currentAhId : AHInstance.DEFAULT_ID;
         this.ahInstances = new ArrayList<>(ahInstances);
+        this.isAdmin = isAdmin;
     }
 
     // --- EditedAH inner class ---
@@ -125,32 +130,42 @@ public class AHSettingsScreen extends EcoScreen {
         int btnH = 18;
         int y = guiTop + 8;
 
-        // Tab 0: "General"
-        EcoButton generalBtn = createSidebarButton(
-                Component.translatable("ecocraft_ah.settings.general").getString(), 0, btnX, y, btnW, btnH);
-        getTree().addChild(generalBtn);
-        sidebarButtons.add(generalBtn);
+        // Tab 0: "Notifications" (always visible)
+        EcoButton notifBtn = createSidebarButton(
+                Component.translatable("ecocraft_ah.settings.notifications").getString(), 0, btnX, y, btnW, btnH);
+        getTree().addChild(notifBtn);
+        sidebarButtons.add(notifBtn);
         y += btnH + 4;
         y += 4;
 
-        // One button per AH instance
-        for (int i = 0; i < ahInstances.size(); i++) {
-            AHInstancesPayload.AHInstanceData data = ahInstances.get(i);
-            String label = getAHDisplayName(data);
-            EcoButton ahBtn = createSidebarButton(label, i + 1, btnX, y, btnW, btnH);
-            getTree().addChild(ahBtn);
-            sidebarButtons.add(ahBtn);
-            y += btnH + 2;
-        }
+        if (isAdmin) {
+            // Tab 1: "General" (admin only)
+            EcoButton generalBtn = createSidebarButton(
+                    Component.translatable("ecocraft_ah.settings.general").getString(), 1, btnX, y, btnW, btnH);
+            getTree().addChild(generalBtn);
+            sidebarButtons.add(generalBtn);
+            y += btnH + 4;
+            y += 4;
 
-        // "+ Creer un AH" button at bottom
-        int createY = guiTop + guiHeight - 30 - 30;
-        EcoButton createBtn = EcoButton.builder(
-                Component.translatable("ecocraft_ah.settings.create_ah"), this::onCreateAH)
-                .theme(THEME).bounds(btnX, createY, btnW, btnH)
-                .bgColor(THEME.successBg).borderColor(THEME.success)
-                .textColor(THEME.success).hoverBg(0xFF2A4A2A).build();
-        getTree().addChild(createBtn);
+            // Tab 2+: One button per AH instance (admin only)
+            for (int i = 0; i < ahInstances.size(); i++) {
+                AHInstancesPayload.AHInstanceData data = ahInstances.get(i);
+                String label = getAHDisplayName(data);
+                EcoButton ahBtn = createSidebarButton(label, i + 2, btnX, y, btnW, btnH);
+                getTree().addChild(ahBtn);
+                sidebarButtons.add(ahBtn);
+                y += btnH + 2;
+            }
+
+            // "+ Creer un AH" button at bottom (admin only)
+            int createY = guiTop + guiHeight - 30 - 30;
+            EcoButton createBtn = EcoButton.builder(
+                    Component.translatable("ecocraft_ah.settings.create_ah"), this::onCreateAH)
+                    .theme(THEME).bounds(btnX, createY, btnW, btnH)
+                    .bgColor(THEME.successBg).borderColor(THEME.success)
+                    .textColor(THEME.success).hoverBg(0xFF2A4A2A).build();
+            getTree().addChild(createBtn);
+        }
     }
 
     private EcoButton createSidebarButton(String label, int tabIndex, int x, int y, int w, int h) {
@@ -181,9 +196,11 @@ public class AHSettingsScreen extends EcoScreen {
             return;
         }
         if (selectedTab == 0) {
+            initNotificationsPanel();
+        } else if (selectedTab == 1 && isAdmin) {
             initGeneralPanel();
-        } else {
-            int ahIndex = selectedTab - 1;
+        } else if (selectedTab >= 2 && isAdmin) {
+            int ahIndex = selectedTab - 2;
             if (ahIndex >= 0 && ahIndex < ahInstances.size()) {
                 initAHPanel(ahInstances.get(ahIndex));
             }
@@ -228,6 +245,19 @@ public class AHSettingsScreen extends EcoScreen {
         cancelBtn.setPosition(panelX + 10, y);
         cancelBtn.setSize(btnW, 20);
         getTree().addChild(cancelBtn);
+    }
+
+    // --- Notifications tab ---
+
+    private void initNotificationsPanel() {
+        Font font = Minecraft.getInstance().font;
+        int panelX = guiLeft + sidebarWidth + 10;
+        int panelY = guiTop + 28;
+        int panelW = guiWidth - sidebarWidth - 20;
+        int panelH = guiHeight - 28 - 40;
+
+        NotificationsTab notifTab = new NotificationsTab(font, panelX, panelY, panelW, panelH);
+        getTree().addChild(notifTab);
     }
 
     // --- General tab ---
@@ -525,13 +555,22 @@ public class AHSettingsScreen extends EcoScreen {
             graphics.drawString(font, Component.translatable("ecocraft_ah.settings.delete_question"),
                     panelX, guiTop + 36, THEME.textLight, false);
         } else if (selectedTab == 0) {
+            renderNotificationsTitle(graphics, font, panelX, panelW);
+        } else if (selectedTab == 1 && isAdmin) {
             renderGeneralTitle(graphics, font, panelX, panelW);
-        } else {
-            int ahIndex = selectedTab - 1;
+        } else if (selectedTab >= 2 && isAdmin) {
+            int ahIndex = selectedTab - 2;
             if (ahIndex >= 0 && ahIndex < ahInstances.size()) {
                 renderAHTitle(graphics, font, panelX, panelW, ahInstances.get(ahIndex));
             }
         }
+    }
+
+    private void renderNotificationsTitle(GuiGraphics graphics, Font font, int panelX, int panelW) {
+        int y = guiTop + 10;
+        Component notifTitle = Component.translatable("ecocraft_ah.settings.notifications");
+        graphics.drawString(font, notifTitle, panelX, y, THEME.accent, false);
+        DrawUtils.drawAccentSeparator(graphics, panelX, y + 12, panelW, THEME);
     }
 
     private void renderGeneralTitle(GuiGraphics graphics, Font font, int panelX, int panelW) {
@@ -569,7 +608,7 @@ public class AHSettingsScreen extends EcoScreen {
         ahInstances.add(newData);
         PacketDistributor.sendToServer(new CreateAHPayload(newName));
 
-        selectedTab = ahInstances.size();
+        selectedTab = ahInstances.size() + 1; // +1 for Notifications tab offset
         rebuildScreen();
     }
 
