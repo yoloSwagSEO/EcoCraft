@@ -107,7 +107,7 @@ public final class EcoToastManager {
         int currentY = MARGIN_TOP;
 
         for (EcoToast toast : active) {
-            if (toast.containsPoint(baseX, currentY, mouseX, mouseY)) {
+            if (toast.isFullyVisible() && toast.containsPoint(baseX, currentY, mouseX, mouseY)) {
                 if (toast.isDismissOnClick()) {
                     toast.dismiss();
                     return true;

@@ -127,6 +127,9 @@ public final class EcoToast {
     /** Trigger the dismiss/exit animation. */
     void dismiss() {
         this.dismissed = true;
+        if (dismissTime < 0) {
+            dismissTime = System.currentTimeMillis();
+        }
     }
 
     /** Whether the toast has fully completed (including exit animation). */
@@ -167,9 +170,6 @@ public final class EcoToast {
         long elapsed = now - spawnTime;
 
         if (dismissed) {
-            if (dismissTime < 0) {
-                dismissTime = now;
-            }
             long exitElapsed = now - dismissTime;
             float t = Math.min(1f, (float) exitElapsed / ANIM_DURATION_MS);
             return easeOut(1f - t); // fade out
@@ -200,6 +200,9 @@ public final class EcoToast {
     ToastAnimation getAnimation() { return animation; }
     int getHeight() { return height; }
     boolean isDismissOnClick() { return dismissOnClick; }
+
+    /** Returns true when the toast has fully slid in and is not yet animating out. */
+    boolean isFullyVisible() { return getVisibility() >= 0.99f; }
 
     /** Returns true if (mouseX, mouseY) is within the rendered bounds of this toast. */
     boolean containsPoint(int renderX, int renderY, double mouseX, double mouseY) {
@@ -253,7 +256,7 @@ public final class EcoToast {
             textX += ICON_SIZE + PADDING;
         }
 
-        int contentWidth = rx + WIDTH - PADDING - textX;
+        int contentWidth = WIDTH - ACCENT_BAR_WIDTH - PADDING * 2 - (icon != null ? ICON_SIZE + PADDING : 0);
 
         // Title
         int titleY = ry + PADDING;
