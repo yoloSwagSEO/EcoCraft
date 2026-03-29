@@ -442,14 +442,12 @@ public final class ServerPayloadHandler {
                 AuctionStorageProvider.PlayerStats stats = service.getPlayerStats(player.getUUID(), sinceMs);
                 int parcelsCount = service.countUncollectedParcels(player.getUUID());
 
-                // Determine effective delivery mode (use default AH instance if multiple)
+                // Determine effective delivery mode from global config
                 String deliveryMode = "DIRECT";
-                if (storage != null) {
-                    var defaultAh = storage.getDefaultAHInstance();
-                    if (defaultAh != null && defaultAh.deliveryMode() != null) {
-                        deliveryMode = defaultAh.deliveryMode();
-                    }
-                }
+                try {
+                    String dm = net.ecocraft.ah.config.AHConfig.CONFIG.deliveryMode.get();
+                    if (dm != null && !dm.isEmpty()) deliveryMode = dm;
+                } catch (Exception ignored) {}
 
                 context.reply(new MyListingsResponsePayload(
                         entries, stats.totalSalesRevenue(), stats.taxesPaid(), parcelsCount, deliveryMode));
@@ -557,7 +555,7 @@ public final class ServerPayloadHandler {
             data.add(new AHInstancesPayload.AHInstanceData(
                     ah.id(), ah.slug(), ah.name(), ah.saleRate(), ah.depositRate(), new ArrayList<>(ah.durations()),
                     ah.allowBuyout(), ah.allowAuction(), ah.taxRecipient(), ah.overridePermTax(),
-                    ah.deliveryMode(), ah.deliveryDelayPurchase(), ah.deliveryDelayExpired()));
+                    ah.deliveryDelayPurchase(), ah.deliveryDelayExpired()));
         }
         PacketDistributor.sendToPlayer(player, new AHInstancesPayload(data));
     }
@@ -644,7 +642,7 @@ public final class ServerPayloadHandler {
             }
             AHInstance updated = existing.withConfig(payload.name(), payload.saleRate(), payload.depositRate(), payload.durations(),
                     payload.allowBuyout(), payload.allowAuction(), payload.taxRecipient(), payload.overridePermTax(),
-                    payload.deliveryMode(), payload.deliveryDelayPurchase(), payload.deliveryDelayExpired());
+                    payload.deliveryDelayPurchase(), payload.deliveryDelayExpired());
             storage.updateAHInstance(updated);
             context.reply(new AHActionResultPayload(true, Component.translatable("ecocraft_ah.message.ah_updated", updated.name()).getString()));
             sendAHInstances(player);
@@ -676,7 +674,8 @@ public final class ServerPayloadHandler {
             int saleRate = config.saleRate.get();
             int depositRate = config.depositRate.get();
             List<Integer> durations = new ArrayList<>(config.durations.get());
-            PacketDistributor.sendToPlayer(player, new AHSettingsPayload(isAdmin, saleRate, depositRate, durations));
+            String deliveryMode = config.deliveryMode.get();
+            PacketDistributor.sendToPlayer(player, new AHSettingsPayload(isAdmin, saleRate, depositRate, durations, deliveryMode));
         } catch (Exception e) {
             LOGGER.error("Error sending AH settings", e);
         }
@@ -691,12 +690,20 @@ public final class ServerPayloadHandler {
             }
             try {
                 var config = net.ecocraft.ah.config.AHConfig.CONFIG;
-                config.saleRate.set(Math.max(0, Math.min(100, payload.saleRate())));
-                config.depositRate.set(Math.max(0, Math.min(100, payload.depositRate())));
+                if (payload.saleRate() >= 0) {
+                    config.saleRate.set(Math.max(0, Math.min(100, payload.saleRate())));
+                }
+                if (payload.depositRate() >= 0) {
+                    config.depositRate.set(Math.max(0, Math.min(100, payload.depositRate())));
+                }
                 List<Integer> validDurations = payload.durations().stream()
                         .filter(d -> d >= 1 && d <= 168).toList();
                 if (!validDurations.isEmpty()) {
                     config.durations.set(validDurations);
+                }
+                String dm = payload.deliveryMode();
+                if ("DIRECT".equals(dm) || "MAILBOX".equals(dm) || "BOTH".equals(dm)) {
+                    config.deliveryMode.set(dm);
                 }
                 net.ecocraft.ah.config.AHConfig.CONFIG_SPEC.save();
                 context.reply(new AHActionResultPayload(true, Component.translatable("ecocraft_ah.message.settings_saved").getString()));

@@ -73,6 +73,16 @@
   "ecocraft_mail.settings.config.cod_fee": "Frais COD: 0%",
   "ecocraft_mail.settings.config.mailbox_craft": "Craft boîte aux lettres: Actif",
 
+  "ecocraft_mail.settings.toggle.player_mail": "Courrier entre joueurs",
+  "ecocraft_mail.settings.toggle.item_attachments": "Pièces jointes (items)",
+  "ecocraft_mail.settings.toggle.currency_attachments": "Pièces jointes (monnaie)",
+  "ecocraft_mail.settings.toggle.cod": "Contre-remboursement",
+  "ecocraft_mail.settings.toggle.mailbox_craft": "Craft boîte aux lettres",
+  "ecocraft_mail.settings.input.max_attachments": "Max pièces jointes",
+  "ecocraft_mail.settings.input.expiry_days": "Expiration (jours)",
+  "ecocraft_mail.settings.input.send_cost": "Coût d'envoi",
+  "ecocraft_mail.settings.input.cod_fee": "Frais COD (%)",
+
   "ecocraft_mail.notification.new_mail": "Nouveau courrier",
   "ecocraft_mail.notification.cod_received": "Paiement COD reçu",
   "ecocraft_mail.notification.mail_returned": "Courrier retourné",

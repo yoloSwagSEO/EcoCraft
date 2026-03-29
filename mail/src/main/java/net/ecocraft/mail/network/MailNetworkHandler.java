@@ -53,6 +53,12 @@ public final class MailNetworkHandler {
                 MailClientPayloadHandler::handleNotification
         );
 
+        registrar.playToClient(
+                MailSettingsPayload.TYPE,
+                MailSettingsPayload.STREAM_CODEC,
+                MailClientPayloadHandler::handleMailSettings
+        );
+
         // Client -> Server
         registrar.playToServer(
                 RequestMailListPayload.TYPE,
@@ -94,6 +100,12 @@ public final class MailNetworkHandler {
                 PayCODPayload.TYPE,
                 PayCODPayload.STREAM_CODEC,
                 MailServerPayloadHandler::handlePayCOD
+        );
+
+        registrar.playToServer(
+                UpdateMailSettingsPayload.TYPE,
+                UpdateMailSettingsPayload.STREAM_CODEC,
+                MailServerPayloadHandler::handleUpdateMailSettings
         );
     }
 }

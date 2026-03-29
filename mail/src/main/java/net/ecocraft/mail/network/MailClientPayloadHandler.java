@@ -35,4 +35,13 @@ public final class MailClientPayloadHandler {
     public static void handleNotification(MailNotificationPayload payload, IPayloadContext context) {
         context.enqueueWork(() -> MailNotificationManager.handle(payload));
     }
+
+    public static void handleMailSettings(MailSettingsPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            var screen = net.minecraft.client.Minecraft.getInstance().screen;
+            if (screen instanceof net.ecocraft.mail.screen.MailSettingsScreen settingsScreen) {
+                settingsScreen.receiveSettings(payload);
+            }
+        });
+    }
 }

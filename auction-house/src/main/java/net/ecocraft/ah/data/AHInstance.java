@@ -18,7 +18,6 @@ public record AHInstance(
         boolean allowAuction,
         String taxRecipient,
         boolean overridePermTax,
-        String deliveryMode,
         int deliveryDelayPurchase,
         int deliveryDelayExpired
 ) {
@@ -34,22 +33,21 @@ public record AHInstance(
     public static AHInstance create(String name) {
         return new AHInstance(UUID.randomUUID().toString(), slugify(name), name,
                 DEFAULT_SALE_RATE, DEFAULT_DEPOSIT_RATE, DEFAULT_DURATIONS, true, true, "", false,
-                DEFAULT_DELIVERY_MODE, DEFAULT_DELIVERY_DELAY_PURCHASE, DEFAULT_DELIVERY_DELAY_EXPIRED);
+                DEFAULT_DELIVERY_DELAY_PURCHASE, DEFAULT_DELIVERY_DELAY_EXPIRED);
     }
 
     public static AHInstance createDefault() {
         return new AHInstance(DEFAULT_ID, "default", DEFAULT_NAME,
                 DEFAULT_SALE_RATE, DEFAULT_DEPOSIT_RATE, DEFAULT_DURATIONS, true, true, "", false,
-                DEFAULT_DELIVERY_MODE, DEFAULT_DELIVERY_DELAY_PURCHASE, DEFAULT_DELIVERY_DELAY_EXPIRED);
+                DEFAULT_DELIVERY_DELAY_PURCHASE, DEFAULT_DELIVERY_DELAY_EXPIRED);
     }
 
     public AHInstance withConfig(String name, int saleRate, int depositRate, List<Integer> durations,
                                  boolean allowBuyout, boolean allowAuction, String taxRecipient,
-                                 boolean overridePermTax, String deliveryMode,
+                                 boolean overridePermTax,
                                  int deliveryDelayPurchase, int deliveryDelayExpired) {
         return new AHInstance(id, slugify(name), name, saleRate, depositRate, durations, allowBuyout, allowAuction,
                 taxRecipient != null ? taxRecipient : "", overridePermTax,
-                deliveryMode != null ? deliveryMode : DEFAULT_DELIVERY_MODE,
                 deliveryDelayPurchase, deliveryDelayExpired);
     }
 

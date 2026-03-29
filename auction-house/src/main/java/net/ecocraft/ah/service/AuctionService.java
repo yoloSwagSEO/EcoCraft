@@ -199,12 +199,15 @@ public class AuctionService {
         notificationSender.send(playerUuid, eventType, itemName, otherPlayerName, amount, currencyId);
     }
 
-    /** Returns the delivery mode for the given AH instance ("DIRECT", "MAILBOX", or "BOTH"). */
+    /** Returns the global delivery mode ("DIRECT", "MAILBOX", or "BOTH") from server config. */
     private String getDeliveryMode(String ahId) {
         try {
-            AHInstance ah = storage.getAHInstance(ahId);
-            if (ah != null && ah.deliveryMode() != null) return ah.deliveryMode();
-        } catch (Exception ignored) {}
+            var config = net.ecocraft.ah.config.AHConfig.CONFIG;
+            if (config != null && config.deliveryMode != null) {
+                String mode = config.deliveryMode.get();
+                if (mode != null && !mode.isEmpty()) return mode;
+            }
+        } catch (Exception | NoClassDefFoundError ignored) {}
         return "DIRECT";
     }
 

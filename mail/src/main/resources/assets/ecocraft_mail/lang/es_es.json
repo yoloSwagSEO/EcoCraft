@@ -73,6 +73,16 @@
   "ecocraft_mail.settings.config.cod_fee": "Comisión COD: 0%",
   "ecocraft_mail.settings.config.mailbox_craft": "Fabricar buzón: Activo",
 
+  "ecocraft_mail.settings.toggle.player_mail": "Correo entre jugadores",
+  "ecocraft_mail.settings.toggle.item_attachments": "Adjuntos (items)",
+  "ecocraft_mail.settings.toggle.currency_attachments": "Adjuntos (moneda)",
+  "ecocraft_mail.settings.toggle.cod": "Contra reembolso",
+  "ecocraft_mail.settings.toggle.mailbox_craft": "Fabricar buzón",
+  "ecocraft_mail.settings.input.max_attachments": "Máx. adjuntos",
+  "ecocraft_mail.settings.input.expiry_days": "Expiración (días)",
+  "ecocraft_mail.settings.input.send_cost": "Coste de envío",
+  "ecocraft_mail.settings.input.cod_fee": "Comisión COD (%)",
+
   "ecocraft_mail.notification.new_mail": "Correo nuevo",
   "ecocraft_mail.notification.cod_received": "Pago COD recibido",
   "ecocraft_mail.notification.mail_returned": "Correo devuelto",

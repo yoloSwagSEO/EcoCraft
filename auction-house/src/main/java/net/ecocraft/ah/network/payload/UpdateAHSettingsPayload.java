@@ -12,7 +12,7 @@ import java.util.List;
 /**
  * Client -> Server payload to update AH settings (admin only).
  */
-public record UpdateAHSettingsPayload(int saleRate, int depositRate, List<Integer> durations)
+public record UpdateAHSettingsPayload(int saleRate, int depositRate, List<Integer> durations, String deliveryMode)
         implements CustomPacketPayload {
 
     public static final CustomPacketPayload.Type<UpdateAHSettingsPayload> TYPE =
@@ -28,7 +28,8 @@ public record UpdateAHSettingsPayload(int saleRate, int depositRate, List<Intege
             for (int i = 0; i < count; i++) {
                 durations.add(ByteBufCodecs.VAR_INT.decode(buf));
             }
-            return new UpdateAHSettingsPayload(saleRate, depositRate, durations);
+            String deliveryMode = ByteBufCodecs.STRING_UTF8.decode(buf);
+            return new UpdateAHSettingsPayload(saleRate, depositRate, durations, deliveryMode);
         }
 
         @Override
@@ -39,6 +40,7 @@ public record UpdateAHSettingsPayload(int saleRate, int depositRate, List<Intege
             for (int d : payload.durations()) {
                 ByteBufCodecs.VAR_INT.encode(buf, d);
             }
+            ByteBufCodecs.STRING_UTF8.encode(buf, payload.deliveryMode() != null ? payload.deliveryMode() : "DIRECT");
         }
     };
 

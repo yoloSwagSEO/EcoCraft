@@ -6,11 +6,15 @@ import net.ecocraft.gui.theme.Theme;
 import net.ecocraft.mail.client.MailNotificationChannel;
 import net.ecocraft.mail.client.MailNotificationConfig;
 import net.ecocraft.mail.client.MailNotificationEventType;
+import net.ecocraft.mail.config.MailConfig;
+import net.ecocraft.mail.network.payload.MailSettingsPayload;
+import net.ecocraft.mail.network.payload.UpdateMailSettingsPayload;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
+import net.neoforged.neoforge.network.PacketDistributor;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -34,10 +38,46 @@ public class MailSettingsScreen extends EcoScreen {
     private int selectedTab = 0;
     private final List<EcoButton> sidebarButtons = new ArrayList<>();
 
+    // Editable config values (loaded from MailConfig on open, synced via payload)
+    private boolean editAllowPlayerMail;
+    private boolean editAllowItemAttachments;
+    private boolean editAllowCurrencyAttachments;
+    private boolean editAllowCOD;
+    private boolean editAllowMailboxCraft;
+    private int editMaxItemAttachments;
+    private int editMailExpiryDays;
+    private long editSendCost;
+    private int editCodFeePercent;
+
     public MailSettingsScreen(Screen parent, boolean isAdmin) {
         super(Component.translatable("ecocraft_mail.screen.settings_title"));
         this.parentScreen = parent;
         this.isAdmin = isAdmin;
+        // Initialize from current config values
+        var config = MailConfig.CONFIG;
+        this.editAllowPlayerMail = config.allowPlayerMail.get();
+        this.editAllowItemAttachments = config.allowItemAttachments.get();
+        this.editAllowCurrencyAttachments = config.allowCurrencyAttachments.get();
+        this.editAllowCOD = config.allowCOD.get();
+        this.editAllowMailboxCraft = config.allowMailboxCraft.get();
+        this.editMaxItemAttachments = config.maxItemAttachments.get();
+        this.editMailExpiryDays = config.mailExpiryDays.get();
+        this.editSendCost = config.sendCost.get();
+        this.editCodFeePercent = config.codFeePercent.get();
+    }
+
+    /** Called when the server sends updated settings back. */
+    public void receiveSettings(MailSettingsPayload payload) {
+        this.editAllowPlayerMail = payload.allowPlayerMail();
+        this.editAllowItemAttachments = payload.allowItemAttachments();
+        this.editAllowCurrencyAttachments = payload.allowCurrencyAttachments();
+        this.editAllowCOD = payload.allowCOD();
+        this.editAllowMailboxCraft = payload.allowMailboxCraft();
+        this.editMaxItemAttachments = payload.maxItemAttachments();
+        this.editMailExpiryDays = payload.mailExpiryDays();
+        this.editSendCost = payload.sendCost();
+        this.editCodFeePercent = payload.codFeePercent();
+        if (selectedTab == 1) rebuildScreen();
     }
 
     @Override
@@ -199,41 +239,111 @@ public class MailSettingsScreen extends EcoScreen {
     private void buildGeneralTab(int x, int y, int w, int h) {
         Font font = Minecraft.getInstance().font;
         int contentX = x + 8;
+        int contentW = w - 16;
         int currentY = y + 8;
 
         // Title
         Label title = new Label(font, contentX, currentY, Component.translatable("ecocraft_mail.settings.general_title"), THEME);
         title.setColor(THEME.accent);
         getTree().addChild(title);
-        currentY += font.lineHeight + 8;
-
-        // Info label — admin config is server-side, these are display-only indicators
-        // Real config changes would require UpdateMailSettingsPayload (future enhancement)
-        Label infoLabel = new Label(font, contentX, currentY,
-                Component.translatable("ecocraft_mail.settings.general_info"), THEME);
-        infoLabel.setColor(THEME.textDim);
-        getTree().addChild(infoLabel);
         currentY += font.lineHeight + 12;
 
-        // Display current config values as read-only labels
-        String[] configKeys = {
-                "ecocraft_mail.settings.config.player_mail",
-                "ecocraft_mail.settings.config.item_attachments",
-                "ecocraft_mail.settings.config.currency_attachments",
-                "ecocraft_mail.settings.config.cod",
-                "ecocraft_mail.settings.config.max_attachments",
-                "ecocraft_mail.settings.config.expiry_days",
-                "ecocraft_mail.settings.config.send_cost",
-                "ecocraft_mail.settings.config.cod_fee",
-                "ecocraft_mail.settings.config.mailbox_craft"
-        };
+        int toggleW = 40;
+        int inputW = (int) (contentW * 0.35);
+        int rightX = contentX + contentW - toggleW;
+        int rightInputX = contentX + contentW - inputW;
 
-        for (String key : configKeys) {
-            Label configLabel = new Label(font, contentX, currentY, Component.translatable(key), THEME);
-            configLabel.setColor(THEME.textLight);
-            getTree().addChild(configLabel);
-            currentY += font.lineHeight + 6;
-        }
+        // --- Boolean toggles ---
+
+        currentY = addToggleRow(font, contentX, currentY, rightX, toggleW,
+                Component.translatable("ecocraft_mail.settings.toggle.player_mail").getString(),
+                editAllowPlayerMail, val -> editAllowPlayerMail = val);
+
+        currentY = addToggleRow(font, contentX, currentY, rightX, toggleW,
+                Component.translatable("ecocraft_mail.settings.toggle.item_attachments").getString(),
+                editAllowItemAttachments, val -> editAllowItemAttachments = val);
+
+        currentY = addToggleRow(font, contentX, currentY, rightX, toggleW,
+                Component.translatable("ecocraft_mail.settings.toggle.currency_attachments").getString(),
+                editAllowCurrencyAttachments, val -> editAllowCurrencyAttachments = val);
+
+        currentY = addToggleRow(font, contentX, currentY, rightX, toggleW,
+                Component.translatable("ecocraft_mail.settings.toggle.cod").getString(),
+                editAllowCOD, val -> editAllowCOD = val);
+
+        currentY = addToggleRow(font, contentX, currentY, rightX, toggleW,
+                Component.translatable("ecocraft_mail.settings.toggle.mailbox_craft").getString(),
+                editAllowMailboxCraft, val -> editAllowMailboxCraft = val);
+
+        currentY += 4;
+
+        // --- Numeric inputs ---
+
+        currentY = addNumberRow(font, contentX, currentY, rightInputX, inputW,
+                Component.translatable("ecocraft_mail.settings.input.max_attachments").getString(),
+                editMaxItemAttachments, 1, 54, val -> editMaxItemAttachments = val.intValue());
+
+        currentY = addNumberRow(font, contentX, currentY, rightInputX, inputW,
+                Component.translatable("ecocraft_mail.settings.input.expiry_days").getString(),
+                editMailExpiryDays, 1, 365, val -> editMailExpiryDays = val.intValue());
+
+        currentY = addNumberRow(font, contentX, currentY, rightInputX, inputW,
+                Component.translatable("ecocraft_mail.settings.input.send_cost").getString(),
+                (int) editSendCost, 0, 999999, val -> editSendCost = val);
+
+        currentY = addNumberRow(font, contentX, currentY, rightInputX, inputW,
+                Component.translatable("ecocraft_mail.settings.input.cod_fee").getString(),
+                editCodFeePercent, 0, 100, val -> editCodFeePercent = val.intValue());
+
+        // Save button
+        currentY += 8;
+        int saveBtnW = 120;
+        int saveBtnX = contentX + (contentW - saveBtnW) / 2;
+        EcoButton saveBtn = EcoButton.success(THEME,
+                Component.translatable("ecocraft_ah.button.save"), this::onSaveSettings);
+        saveBtn.setPosition(saveBtnX, currentY);
+        saveBtn.setSize(saveBtnW, 20);
+        getTree().addChild(saveBtn);
+    }
+
+    private int addToggleRow(Font font, int labelX, int y, int toggleX, int toggleW,
+                              String labelText, boolean value, java.util.function.Consumer<Boolean> responder) {
+        Label label = new Label(font, labelX, y + 3,
+                Component.literal(labelText), THEME);
+        label.setColor(THEME.textLight);
+        getTree().addChild(label);
+
+        EcoToggle toggle = new EcoToggle(toggleX, y, toggleW, 14, THEME);
+        toggle.value(value);
+        toggle.responder(responder);
+        getTree().addChild(toggle);
+
+        return y + ROW_HEIGHT;
+    }
+
+    private int addNumberRow(Font font, int labelX, int y, int inputX, int inputW,
+                              String labelText, int value, int min, int max,
+                              java.util.function.Consumer<Long> responder) {
+        Label label = new Label(font, labelX, y + 3,
+                Component.literal(labelText), THEME);
+        label.setColor(THEME.textLight);
+        getTree().addChild(label);
+
+        EcoNumberInput input = new EcoNumberInput(font, inputX, y, inputW, 16, THEME);
+        input.min(min).max(max).step(1).showButtons(true);
+        input.setValue(value);
+        input.responder(responder);
+        getTree().addChild(input);
+
+        return y + ROW_HEIGHT + 2;
+    }
+
+    private void onSaveSettings() {
+        PacketDistributor.sendToServer(new UpdateMailSettingsPayload(
+                editAllowPlayerMail, editAllowItemAttachments,
+                editAllowCurrencyAttachments, editAllowCOD, editAllowMailboxCraft,
+                editMaxItemAttachments, editMailExpiryDays, editSendCost, editCodFeePercent
+        ));
     }
 
     // --- Footer ---

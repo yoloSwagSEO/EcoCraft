@@ -47,6 +47,7 @@ public class AuctionHouseScreen extends EcoScreen {
     private int settingsSaleRate = 5;
     private int settingsDepositRate = 2;
     private java.util.List<Integer> settingsDurations = java.util.List.of(12, 24, 48);
+    private String globalDeliveryMode = "DIRECT";
 
     // Gear button for admin settings
     private EcoButton gearButton;
@@ -204,7 +205,7 @@ public class AuctionHouseScreen extends EcoScreen {
     private void onGearClicked() {
         Minecraft.getInstance().setScreen(new AHSettingsScreen(
                 this, npcEntityId, npcSkinName,
-                npcLinkedAhId, new java.util.ArrayList<>(ahInstances), isAdmin));
+                npcLinkedAhId, new java.util.ArrayList<>(ahInstances), isAdmin, globalDeliveryMode));
     }
 
     @Override
@@ -356,6 +357,7 @@ public class AuctionHouseScreen extends EcoScreen {
         this.settingsSaleRate = payload.saleRate();
         this.settingsDepositRate = payload.depositRate();
         this.settingsDurations = new java.util.ArrayList<>(payload.durations());
+        this.globalDeliveryMode = payload.deliveryMode() != null ? payload.deliveryMode() : "DIRECT";
         // Update SellTab with current settings
         sellTab.activeDurations = payload.durations().stream().mapToInt(Integer::intValue).toArray();
         sellTab.activeTaxRate = payload.saleRate() / 100.0;

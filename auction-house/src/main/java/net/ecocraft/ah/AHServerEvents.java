@@ -219,7 +219,6 @@ public class AHServerEvents {
                         config.saleRate.get(), config.depositRate.get(),
                         new java.util.ArrayList<>(config.durations.get()),
                         true, true, "", false,
-                        net.ecocraft.ah.data.AHInstance.DEFAULT_DELIVERY_MODE,
                         net.ecocraft.ah.data.AHInstance.DEFAULT_DELIVERY_DELAY_PURCHASE,
                         net.ecocraft.ah.data.AHInstance.DEFAULT_DELIVERY_DELAY_EXPIRED);
                 storageProvider.createAHInstance(newDefault);
@@ -236,7 +235,7 @@ public class AHServerEvents {
                             defaultAh.name(), cfgSaleRate, cfgDepositRate,
                             cfgDurations, defaultAh.allowBuyout(), defaultAh.allowAuction(),
                             defaultAh.taxRecipient(), defaultAh.overridePermTax(),
-                            defaultAh.deliveryMode(), defaultAh.deliveryDelayPurchase(),
+                            defaultAh.deliveryDelayPurchase(),
                             defaultAh.deliveryDelayExpired());
                     storageProvider.updateAHInstance(updated);
                     LOGGER.info("Applied NeoForge config defaults to default AH instance");

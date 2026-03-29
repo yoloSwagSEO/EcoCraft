@@ -12,7 +12,8 @@ import java.util.List;
 /**
  * Server -> Client payload carrying current AH settings and admin status.
  */
-public record AHSettingsPayload(boolean isAdmin, int saleRate, int depositRate, List<Integer> durations)
+public record AHSettingsPayload(boolean isAdmin, int saleRate, int depositRate, List<Integer> durations,
+                                 String deliveryMode)
         implements CustomPacketPayload {
 
     public static final CustomPacketPayload.Type<AHSettingsPayload> TYPE =
@@ -29,7 +30,8 @@ public record AHSettingsPayload(boolean isAdmin, int saleRate, int depositRate, 
             for (int i = 0; i < count; i++) {
                 durations.add(ByteBufCodecs.VAR_INT.decode(buf));
             }
-            return new AHSettingsPayload(isAdmin, saleRate, depositRate, durations);
+            String deliveryMode = ByteBufCodecs.STRING_UTF8.decode(buf);
+            return new AHSettingsPayload(isAdmin, saleRate, depositRate, durations, deliveryMode);
         }
 
         @Override
@@ -41,6 +43,7 @@ public record AHSettingsPayload(boolean isAdmin, int saleRate, int depositRate, 
             for (int d : payload.durations()) {
                 ByteBufCodecs.VAR_INT.encode(buf, d);
             }
+            ByteBufCodecs.STRING_UTF8.encode(buf, payload.deliveryMode() != null ? payload.deliveryMode() : "DIRECT");
         }
     };
 

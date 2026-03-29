@@ -17,7 +17,7 @@ public record AHInstancesPayload(List<AHInstanceData> instances) implements Cust
     public record AHInstanceData(String id, String slug, String name, int saleRate, int depositRate,
                                   List<Integer> durations, boolean allowBuyout, boolean allowAuction,
                                   String taxRecipient, boolean overridePermTax,
-                                  String deliveryMode, int deliveryDelayPurchase, int deliveryDelayExpired) {}
+                                  int deliveryDelayPurchase, int deliveryDelayExpired) {}
 
     public static final Type<AHInstancesPayload> TYPE =
             new Type<>(ResourceLocation.fromNamespaceAndPath("ecocraft_ah", "ah_instances"));
@@ -40,11 +40,10 @@ public record AHInstancesPayload(List<AHInstanceData> instances) implements Cust
                 boolean allowAuction = ByteBufCodecs.BOOL.decode(buf);
                 String taxRecipient = ByteBufCodecs.STRING_UTF8.decode(buf);
                 boolean overridePermTax = ByteBufCodecs.BOOL.decode(buf);
-                String deliveryMode = ByteBufCodecs.STRING_UTF8.decode(buf);
                 int deliveryDelayPurchase = ByteBufCodecs.VAR_INT.decode(buf);
                 int deliveryDelayExpired = ByteBufCodecs.VAR_INT.decode(buf);
                 list.add(new AHInstanceData(id, slug, name, saleRate, depositRate, durations, allowBuyout, allowAuction,
-                        taxRecipient, overridePermTax, deliveryMode, deliveryDelayPurchase, deliveryDelayExpired));
+                        taxRecipient, overridePermTax, deliveryDelayPurchase, deliveryDelayExpired));
             }
             return new AHInstancesPayload(list);
         }
@@ -64,7 +63,6 @@ public record AHInstancesPayload(List<AHInstanceData> instances) implements Cust
                 ByteBufCodecs.BOOL.encode(buf, inst.allowAuction());
                 ByteBufCodecs.STRING_UTF8.encode(buf, inst.taxRecipient() != null ? inst.taxRecipient() : "");
                 ByteBufCodecs.BOOL.encode(buf, inst.overridePermTax());
-                ByteBufCodecs.STRING_UTF8.encode(buf, inst.deliveryMode() != null ? inst.deliveryMode() : "DIRECT");
                 ByteBufCodecs.VAR_INT.encode(buf, inst.deliveryDelayPurchase());
                 ByteBufCodecs.VAR_INT.encode(buf, inst.deliveryDelayExpired());
             }

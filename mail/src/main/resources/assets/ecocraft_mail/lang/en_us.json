@@ -73,6 +73,16 @@
   "ecocraft_mail.settings.config.cod_fee": "COD fee: 0%",
   "ecocraft_mail.settings.config.mailbox_craft": "Mailbox crafting: Active",
 
+  "ecocraft_mail.settings.toggle.player_mail": "Player mail",
+  "ecocraft_mail.settings.toggle.item_attachments": "Item attachments",
+  "ecocraft_mail.settings.toggle.currency_attachments": "Currency attachments",
+  "ecocraft_mail.settings.toggle.cod": "Cash on Delivery",
+  "ecocraft_mail.settings.toggle.mailbox_craft": "Mailbox crafting",
+  "ecocraft_mail.settings.input.max_attachments": "Max attachments",
+  "ecocraft_mail.settings.input.expiry_days": "Expiry (days)",
+  "ecocraft_mail.settings.input.send_cost": "Send cost",
+  "ecocraft_mail.settings.input.cod_fee": "COD fee (%)",
+
   "ecocraft_mail.notification.new_mail": "New mail",
   "ecocraft_mail.notification.cod_received": "COD payment received",
   "ecocraft_mail.notification.mail_returned": "Mail returned",

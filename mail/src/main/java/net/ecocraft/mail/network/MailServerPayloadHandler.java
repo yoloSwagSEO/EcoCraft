@@ -390,6 +390,46 @@ public final class MailServerPayloadHandler {
     }
 
     // -------------------------------------------------------------------------
+    // Settings
+    // -------------------------------------------------------------------------
+
+    public static void handleUpdateMailSettings(UpdateMailSettingsPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            try {
+                ServerPlayer player = (ServerPlayer) context.player();
+                if (!PermissionAPI.getPermission(player, MailPermissions.ADMIN)) {
+                    return;
+                }
+                var config = MailConfig.CONFIG;
+                config.allowPlayerMail.set(payload.allowPlayerMail());
+                config.allowItemAttachments.set(payload.allowItemAttachments());
+                config.allowCurrencyAttachments.set(payload.allowCurrencyAttachments());
+                config.allowCOD.set(payload.allowCOD());
+                config.allowMailboxCraft.set(payload.allowMailboxCraft());
+                config.maxItemAttachments.set(Math.max(1, Math.min(54, payload.maxItemAttachments())));
+                config.mailExpiryDays.set(Math.max(1, Math.min(365, payload.mailExpiryDays())));
+                config.sendCost.set(Math.max(0, payload.sendCost()));
+                config.codFeePercent.set(Math.max(0, Math.min(100, payload.codFeePercent())));
+                MailConfig.CONFIG_SPEC.save();
+                // Send updated settings back to the client
+                context.reply(new MailSettingsPayload(
+                        config.allowPlayerMail.get(),
+                        config.allowItemAttachments.get(),
+                        config.allowCurrencyAttachments.get(),
+                        config.allowCOD.get(),
+                        config.allowMailboxCraft.get(),
+                        config.maxItemAttachments.get(),
+                        config.mailExpiryDays.get(),
+                        config.sendCost.get(),
+                        config.codFeePercent.get()
+                ));
+            } catch (Exception e) {
+                LOGGER.error("Error handling UpdateMailSettings", e);
+            }
+        });
+    }
+
+    // -------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------
 

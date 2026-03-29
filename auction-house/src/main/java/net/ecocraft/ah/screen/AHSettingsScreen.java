@@ -44,6 +44,9 @@ public class AHSettingsScreen extends EcoScreen {
     private String skinPlayerName;
     private String linkedAhId;
 
+    // Global delivery mode (from AHConfig via AHSettingsPayload)
+    private String globalDeliveryMode;
+
     // Delete confirmation state
     private String deleteAhId = null;
     private String deleteAhName = null;
@@ -54,7 +57,7 @@ public class AHSettingsScreen extends EcoScreen {
 
     public AHSettingsScreen(Screen parent, int npcEntityId, String skinPlayerName,
                             String currentAhId, List<AHInstancesPayload.AHInstanceData> ahInstances,
-                            boolean isAdmin) {
+                            boolean isAdmin, String globalDeliveryMode) {
         super(Component.translatable("ecocraft_ah.settings.title"));
         this.parentScreen = parent;
         this.npcEntityId = npcEntityId;
@@ -62,6 +65,7 @@ public class AHSettingsScreen extends EcoScreen {
         this.linkedAhId = currentAhId != null ? currentAhId : AHInstance.DEFAULT_ID;
         this.ahInstances = new ArrayList<>(ahInstances);
         this.isAdmin = isAdmin;
+        this.globalDeliveryMode = globalDeliveryMode != null ? globalDeliveryMode : "DIRECT";
     }
 
     // --- EditedAH inner class ---
@@ -75,7 +79,6 @@ public class AHSettingsScreen extends EcoScreen {
         boolean allowAuction;
         String taxRecipient;
         boolean overridePermTax;
-        String deliveryMode;
         int deliveryDelayPurchase;
         int deliveryDelayExpired;
 
@@ -88,7 +91,6 @@ public class AHSettingsScreen extends EcoScreen {
             this.allowAuction = data.allowAuction();
             this.taxRecipient = data.taxRecipient() != null ? data.taxRecipient() : "";
             this.overridePermTax = data.overridePermTax();
-            this.deliveryMode = data.deliveryMode() != null ? data.deliveryMode() : "DIRECT";
             this.deliveryDelayPurchase = data.deliveryDelayPurchase();
             this.deliveryDelayExpired = data.deliveryDelayExpired();
         }
@@ -275,11 +277,47 @@ public class AHSettingsScreen extends EcoScreen {
         int panelX = guiLeft + sidebarWidth + 10;
         int panelW = guiWidth - sidebarWidth - 20;
 
+        int y = guiTop + 30;
+
+        // -- Delivery mode dropdown (global setting) --
+        Label deliveryModeLabel = new Label(font, panelX, y,
+                Component.translatable("ecocraft_ah.settings.delivery_mode"), THEME);
+        deliveryModeLabel.setColor(THEME.textGrey);
+        getTree().addChild(deliveryModeLabel);
+        y += font.lineHeight + 4;
+
+        List<String> deliveryModeOptions = List.of(
+                Component.translatable("ecocraft_ah.settings.delivery_mode.direct").getString(),
+                Component.translatable("ecocraft_ah.settings.delivery_mode.mailbox").getString(),
+                Component.translatable("ecocraft_ah.settings.delivery_mode.both").getString()
+        );
+        String[] deliveryModeValues = {"DIRECT", "MAILBOX", "BOTH"};
+        int selectedDeliveryIdx = 0;
+        for (int di = 0; di < deliveryModeValues.length; di++) {
+            if (deliveryModeValues[di].equals(globalDeliveryMode)) {
+                selectedDeliveryIdx = di;
+                break;
+            }
+        }
+
+        int halfW = panelW / 2;
+        EcoDropdown deliveryModeDropdown = new EcoDropdown(panelX, y, halfW, 16, THEME);
+        deliveryModeDropdown.options(deliveryModeOptions).selectedIndex(selectedDeliveryIdx);
+        deliveryModeDropdown.responder(idx -> {
+            if (idx >= 0 && idx < deliveryModeValues.length) {
+                globalDeliveryMode = deliveryModeValues[idx];
+                // Rebuild per-AH panels to show/hide delay inputs
+                if (selectedTab >= 2) rebuildScreen();
+            }
+        });
+        getTree().addChild(deliveryModeDropdown);
+        y += 26;
+
         if (npcEntityId == -1) {
             return;
         }
 
-        int y = guiTop + 30;
+        y += 8;
 
         // Skin pseudo input
         Label skinLabel = new Label(font, panelX, y, Component.translatable("ecocraft_ah.settings.skin_label"), THEME);
@@ -319,7 +357,7 @@ public class AHSettingsScreen extends EcoScreen {
         getTree().addChild(ahDropdown);
     }
 
-    // --- AH instance tab (EcoGrid layout) ---
+    // --- AH instance tab (EcoGrid layout inside ScrollPane) ---
 
     private void initAHPanel(AHInstancesPayload.AHInstanceData data) {
         Font font = Minecraft.getInstance().font;
@@ -338,14 +376,27 @@ public class AHSettingsScreen extends EcoScreen {
         int taxesH = PANEL_PADDING * 2 + titleBlockH +
                 (font.lineHeight + 4 + 16 + 10) + // slider row
                 (font.lineHeight + 4 + 16 + 2);   // recipient row
-        int deliveryH = PANEL_PADDING * 2 + titleBlockH +
-                (font.lineHeight + 4 + 16 + 8) +  // delivery mode dropdown
-                (font.lineHeight + 4 + 16 + 4) +  // delay purchase input
-                (font.lineHeight + 4 + 16 + 2);   // delay expired input
+
+        boolean showDelays = !"DIRECT".equals(globalDeliveryMode);
+        int deliveryH = 0;
+        if (showDelays) {
+            deliveryH = PANEL_PADDING * 2 + titleBlockH +
+                    (font.lineHeight + 4 + 16 + 4) +  // delay purchase input
+                    (font.lineHeight + 4 + 16 + 2);   // delay expired input
+        }
+
         // Durations panel gets all remaining vertical space
-        int usedH = identityH + modesH + taxesH + deliveryH + SECTION_GAP * 5;
+        int usedH = identityH + modesH + taxesH + deliveryH + SECTION_GAP * (showDelays ? 5 : 4);
         int durationsH = Math.max(availableH - usedH, PANEL_PADDING * 2 + titleBlockH + 80);
         int repeaterH = durationsH - PANEL_PADDING * 2 - titleBlockH;
+
+        // Calculate total content height for scroll
+        int totalContentH = identityH + modesH + taxesH + deliveryH + durationsH + SECTION_GAP * (showDelays ? 5 : 4) + 30;
+
+        // Create ScrollPane wrapping all panels
+        ScrollPane scrollPane = new ScrollPane(panelX, contentTop, panelW, availableH, THEME);
+        scrollPane.setContentHeight(totalContentH);
+        getTree().addChild(scrollPane);
 
         // Create panels — EcoCol auto-fills width/height, so (0,0,0,0) is fine
         Panel identityPanel = new Panel(0, 0, 0, 0, THEME);
@@ -363,24 +414,29 @@ public class AHSettingsScreen extends EcoScreen {
                 .separatorStyle(Panel.SeparatorStyle.NONE)
                 .title(Component.literal("\u272A Taxes"), font);
 
-        Panel deliveryPanel = new Panel(0, 0, 0, 0, THEME);
-        deliveryPanel.padding(PANEL_PADDING).titleUppercase(true).titleMarginBottom(6)
-                .separatorStyle(Panel.SeparatorStyle.NONE)
-                .title(Component.literal("\u2709 Livraison"), font);
+        Panel deliveryPanel = null;
+        if (showDelays) {
+            deliveryPanel = new Panel(0, 0, 0, 0, THEME);
+            deliveryPanel.padding(PANEL_PADDING).titleUppercase(true).titleMarginBottom(6)
+                    .separatorStyle(Panel.SeparatorStyle.NONE)
+                    .title(Component.literal("\u2709 Délais de livraison"), font);
+        }
 
         Panel durationsPanel = new Panel(0, 0, 0, 0, THEME);
         durationsPanel.padding(PANEL_PADDING).titleUppercase(true).titleMarginBottom(6)
                 .separatorStyle(Panel.SeparatorStyle.NONE)
                 .title(Component.literal("\u29D7 Durées de listing"), font);
 
-        EcoGrid grid = new EcoGrid(panelX, contentTop, panelW, availableH, 0);
+        EcoGrid grid = new EcoGrid(panelX, contentTop, panelW, totalContentH, 0);
         grid.rowGap(SECTION_GAP);
-        getTree().addChild(grid);
+        scrollPane.addChild(grid);
 
         grid.addRow(identityH).addCol(12).addChild(identityPanel);
         grid.addRow(modesH).addCol(12).addChild(modesPanel);
         grid.addRow(taxesH).addCol(12).addChild(taxesPanel);
-        grid.addRow(deliveryH).addCol(12).addChild(deliveryPanel);
+        if (showDelays && deliveryPanel != null) {
+            grid.addRow(deliveryH).addCol(12).addChild(deliveryPanel);
+        }
         grid.addRow(durationsH).addCol(12).addChild(durationsPanel);
         grid.relayout();
 
@@ -395,7 +451,7 @@ public class AHSettingsScreen extends EcoScreen {
         Label nameLabel = new Label(font, cx, cy,
                 Component.translatable("ecocraft_ah.settings.ah_name_label"), THEME);
         nameLabel.setColor(THEME.textGrey);
-        getTree().addChild(nameLabel);
+        scrollPane.addChild(nameLabel);
 
         EcoTextInput nameInput = new EcoTextInput(font, cx, cy + font.lineHeight + 2, halfW, 16,
                 Component.translatable("ecocraft_ah.settings.ah_name_placeholder"), THEME);
@@ -404,7 +460,7 @@ public class AHSettingsScreen extends EcoScreen {
             edited.name = val;
             rebuildSidebarLabels();
         });
-        getTree().addChild(nameInput);
+        scrollPane.addChild(nameInput);
 
         // -- Modes de vente: label left + toggle right-aligned in col-4 area --
         cx = modesPanel.getContentX();
@@ -415,36 +471,36 @@ public class AHSettingsScreen extends EcoScreen {
         Label buyoutLabel = new Label(font, cx, cy + 3,
                 Component.translatable("ecocraft_ah.settings.allow_buyout"), THEME);
         buyoutLabel.setColor(THEME.textLight);
-        getTree().addChild(buyoutLabel);
+        scrollPane.addChild(buyoutLabel);
 
         EcoToggle buyoutToggle = new EcoToggle(cx + toggleAreaW - toggleW, cy, toggleW, 14, THEME);
         buyoutToggle.value(edited.allowBuyout);
         buyoutToggle.responder(val -> edited.allowBuyout = val);
-        getTree().addChild(buyoutToggle);
+        scrollPane.addChild(buyoutToggle);
 
         cy += 20;
 
         Label auctionLabel = new Label(font, cx, cy + 3,
                 Component.translatable("ecocraft_ah.settings.allow_auction"), THEME);
         auctionLabel.setColor(THEME.textLight);
-        getTree().addChild(auctionLabel);
+        scrollPane.addChild(auctionLabel);
 
         EcoToggle auctionToggle = new EcoToggle(cx + toggleAreaW - toggleW, cy, toggleW, 14, THEME);
         auctionToggle.value(edited.allowAuction);
         auctionToggle.responder(val -> edited.allowAuction = val);
-        getTree().addChild(auctionToggle);
+        scrollPane.addChild(auctionToggle);
 
         cy += 20;
 
         Label overridePermTaxLabel = new Label(font, cx, cy + 3,
                 Component.translatable("ecocraft_ah.settings.override_perm_tax"), THEME);
         overridePermTaxLabel.setColor(THEME.textLight);
-        getTree().addChild(overridePermTaxLabel);
+        scrollPane.addChild(overridePermTaxLabel);
 
         EcoToggle overridePermTaxToggle = new EcoToggle(cx + toggleAreaW - toggleW, cy, toggleW, 14, THEME);
         overridePermTaxToggle.value(edited.overridePermTax);
         overridePermTaxToggle.responder(val -> edited.overridePermTax = val);
-        getTree().addChild(overridePermTaxToggle);
+        scrollPane.addChild(overridePermTaxToggle);
 
         // -- Taxes: sliders side-by-side (50/50) + recipient below --
         cx = taxesPanel.getContentX();
@@ -456,103 +512,71 @@ public class AHSettingsScreen extends EcoScreen {
         Label saleLabel = new Label(font, cx, cy,
                 Component.translatable("ecocraft_ah.settings.sale_tax_label"), THEME);
         saleLabel.setColor(THEME.textGrey);
-        getTree().addChild(saleLabel);
+        scrollPane.addChild(saleLabel);
 
         EcoSlider saleSlider = new EcoSlider(font, cx, cy + font.lineHeight + 4, halfW, 16, THEME);
         saleSlider.min(0).max(100).step(1).value(edited.saleRate).suffix("%")
                 .labelPosition(EcoSlider.LabelPosition.AFTER);
         saleSlider.responder(val -> edited.saleRate = val.intValue());
-        getTree().addChild(saleSlider);
+        scrollPane.addChild(saleSlider);
 
         // Deposit slider (right)
         int rightX = cx + halfW + 8;
         Label depositLabel = new Label(font, rightX, cy,
                 Component.translatable("ecocraft_ah.settings.deposit_label"), THEME);
         depositLabel.setColor(THEME.textGrey);
-        getTree().addChild(depositLabel);
+        scrollPane.addChild(depositLabel);
 
         EcoSlider depositSlider = new EcoSlider(font, rightX, cy + font.lineHeight + 4, halfW, 16, THEME);
         depositSlider.min(0).max(100).step(1).value(edited.depositRate).suffix("%")
                 .labelPosition(EcoSlider.LabelPosition.AFTER);
         depositSlider.responder(val -> edited.depositRate = val.intValue());
-        getTree().addChild(depositSlider);
+        scrollPane.addChild(depositSlider);
 
         // Tax recipient (below sliders, col-6)
         cy += font.lineHeight + 4 + 16 + 8;
         Label recipientLabel = new Label(font, cx, cy,
                 Component.translatable("ecocraft_ah.settings.tax_recipient_label"), THEME);
         recipientLabel.setColor(THEME.textGrey);
-        getTree().addChild(recipientLabel);
+        scrollPane.addChild(recipientLabel);
 
         EcoTextInput taxRecipientInput = new EcoTextInput(font,
                 cx, cy + font.lineHeight + 4, halfW, 16,
                 Component.translatable("ecocraft_ah.settings.tax_recipient_placeholder"), THEME);
         taxRecipientInput.setValue(edited.taxRecipient);
         taxRecipientInput.responder(val -> edited.taxRecipient = val);
-        getTree().addChild(taxRecipientInput);
+        scrollPane.addChild(taxRecipientInput);
 
-        // -- Livraison: delivery mode dropdown + delay inputs --
-        cx = deliveryPanel.getContentX();
-        cy = deliveryPanel.getContentY();
-        cw = deliveryPanel.getContentWidth();
-        halfW = cw / 2;
+        // -- Delivery delays (only when mode != DIRECT) --
+        if (showDelays && deliveryPanel != null) {
+            cx = deliveryPanel.getContentX();
+            cy = deliveryPanel.getContentY();
+            cw = deliveryPanel.getContentWidth();
+            halfW = cw / 2;
 
-        Label deliveryModeLabel = new Label(font, cx, cy,
-                Component.translatable("ecocraft_ah.settings.delivery_mode"), THEME);
-        deliveryModeLabel.setColor(THEME.textGrey);
-        getTree().addChild(deliveryModeLabel);
-
-        List<String> deliveryModeOptions = List.of(
-                Component.translatable("ecocraft_ah.settings.delivery_mode.direct").getString(),
-                Component.translatable("ecocraft_ah.settings.delivery_mode.mailbox").getString(),
-                Component.translatable("ecocraft_ah.settings.delivery_mode.both").getString()
-        );
-        String[] deliveryModeValues = {"DIRECT", "MAILBOX", "BOTH"};
-        int selectedDeliveryIdx = 0;
-        for (int di = 0; di < deliveryModeValues.length; di++) {
-            if (deliveryModeValues[di].equals(edited.deliveryMode)) {
-                selectedDeliveryIdx = di;
-                break;
-            }
-        }
-
-        EcoDropdown deliveryModeDropdown = new EcoDropdown(cx, cy + font.lineHeight + 4, halfW, 16, THEME);
-        deliveryModeDropdown.options(deliveryModeOptions).selectedIndex(selectedDeliveryIdx);
-        deliveryModeDropdown.responder(idx -> {
-            if (idx >= 0 && idx < deliveryModeValues.length) {
-                edited.deliveryMode = deliveryModeValues[idx];
-                rebuildScreen();
-            }
-        });
-        getTree().addChild(deliveryModeDropdown);
-
-        cy += font.lineHeight + 4 + 16 + 8;
-
-        boolean showDelays = !"DIRECT".equals(edited.deliveryMode);
-        if (showDelays) {
             Label delayPurchaseLabel = new Label(font, cx, cy,
                     Component.translatable("ecocraft_ah.settings.delivery_delay_purchase"), THEME);
             delayPurchaseLabel.setColor(THEME.textGrey);
-            getTree().addChild(delayPurchaseLabel);
+            scrollPane.addChild(delayPurchaseLabel);
 
             EcoNumberInput delayPurchaseInput = new EcoNumberInput(font, cx, cy + font.lineHeight + 4, halfW, 16, THEME);
             delayPurchaseInput.min(0).max(10080).step(1).showButtons(true);
             delayPurchaseInput.setValue(edited.deliveryDelayPurchase);
             delayPurchaseInput.responder(val -> edited.deliveryDelayPurchase = val.intValue());
-            getTree().addChild(delayPurchaseInput);
+            scrollPane.addChild(delayPurchaseInput);
 
             cy += font.lineHeight + 4 + 16 + 4;
 
             Label delayExpiredLabel = new Label(font, cx, cy,
                     Component.translatable("ecocraft_ah.settings.delivery_delay_expired"), THEME);
             delayExpiredLabel.setColor(THEME.textGrey);
-            getTree().addChild(delayExpiredLabel);
+            scrollPane.addChild(delayExpiredLabel);
 
             EcoNumberInput delayExpiredInput = new EcoNumberInput(font, cx, cy + font.lineHeight + 4, halfW, 16, THEME);
             delayExpiredInput.min(0).max(10080).step(1).showButtons(true);
             delayExpiredInput.setValue(edited.deliveryDelayExpired);
             delayExpiredInput.responder(val -> edited.deliveryDelayExpired = val.intValue());
-            getTree().addChild(delayExpiredInput);
+            scrollPane.addChild(delayExpiredInput);
         }
 
         // -- Durées: repeater centered (col-6 offset-3) --
@@ -575,7 +599,7 @@ public class AHSettingsScreen extends EcoScreen {
             ctx.addWidget(input);
         });
         durationsRepeater.responder(vals -> edited.durations = new ArrayList<>(vals));
-        getTree().addChild(durationsRepeater);
+        scrollPane.addChild(durationsRepeater);
         durationsRepeater.values(edited.durations);
 
         // --- Delete button (hidden for default AH) ---
@@ -588,7 +612,7 @@ public class AHSettingsScreen extends EcoScreen {
                     () -> onDeleteAH(data.id(), edited.name));
             deleteBtn.setPosition(deleteX, deleteY);
             deleteBtn.setSize(deleteW, 20);
-            getTree().addChild(deleteBtn);
+            scrollPane.addChild(deleteBtn);
         }
     }
 
@@ -674,11 +698,7 @@ public class AHSettingsScreen extends EcoScreen {
         DrawUtils.drawAccentSeparator(graphics, panelX, y + 12, panelW, THEME);
 
         if (npcEntityId == -1) {
-            Component msg = Component.translatable("ecocraft_ah.settings.npc_hint");
-            int msgW = font.width(msg);
-            int msgX = panelX + (panelW - msgW) / 2;
-            int msgY = guiTop + guiHeight / 2 - font.lineHeight / 2;
-            graphics.drawString(font, msg, msgX, msgY, THEME.textDim, false);
+            // Still show the delivery mode dropdown even without NPC
         }
     }
 
@@ -699,7 +719,7 @@ public class AHSettingsScreen extends EcoScreen {
                 newId, AHInstance.slugify(newName), newName,
                 AHInstance.DEFAULT_SALE_RATE, AHInstance.DEFAULT_DEPOSIT_RATE,
                 new ArrayList<>(AHInstance.DEFAULT_DURATIONS), true, true, "", false,
-                AHInstance.DEFAULT_DELIVERY_MODE, AHInstance.DEFAULT_DELIVERY_DELAY_PURCHASE,
+                AHInstance.DEFAULT_DELIVERY_DELAY_PURCHASE,
                 AHInstance.DEFAULT_DELIVERY_DELAY_EXPIRED);
         ahInstances.add(newData);
         PacketDistributor.sendToServer(new CreateAHPayload(newName));
@@ -735,13 +755,17 @@ public class AHSettingsScreen extends EcoScreen {
     }
 
     private void onSave() {
+        // Save per-AH instance settings
         for (var entry : editedAHs.entrySet()) {
             var edit = entry.getValue();
             PacketDistributor.sendToServer(new UpdateAHInstancePayload(
                     entry.getKey(), edit.name, edit.saleRate, edit.depositRate, edit.durations,
                     edit.allowBuyout, edit.allowAuction, edit.taxRecipient, edit.overridePermTax,
-                    edit.deliveryMode, edit.deliveryDelayPurchase, edit.deliveryDelayExpired));
+                    edit.deliveryDelayPurchase, edit.deliveryDelayExpired));
         }
+        // Save global delivery mode via UpdateAHSettingsPayload (pass -1 for rates to signal "no change")
+        PacketDistributor.sendToServer(new UpdateAHSettingsPayload(
+                -1, -1, List.of(), globalDeliveryMode));
         if (npcEntityId != -1) {
             PacketDistributor.sendToServer(new UpdateNPCSkinPayload(npcEntityId, skinPlayerName, linkedAhId));
             if (parentScreen instanceof AuctionHouseScreen ahScreen) {

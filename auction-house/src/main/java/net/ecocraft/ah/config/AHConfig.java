@@ -19,6 +19,8 @@ public class AHConfig {
     public final ModConfigSpec.IntValue depositRate;
     public final ModConfigSpec.ConfigValue<List<? extends Integer>> durations;
 
+    public final ModConfigSpec.ConfigValue<String> deliveryMode;
+
     private AHConfig(ModConfigSpec.Builder builder) {
         builder.push("taxes");
         saleRate = builder
@@ -34,6 +36,13 @@ public class AHConfig {
             .comment("Available listing durations in hours")
             .defineListAllowEmpty("durations", List.of(12, 24, 48),
                     () -> 24, v -> v instanceof Integer i && i >= 1 && i <= 168);
+        builder.pop();
+
+        builder.push("delivery");
+        deliveryMode = builder
+            .comment("Global delivery mode: DIRECT, MAILBOX, or BOTH")
+            .define("deliveryMode", "DIRECT", v -> v instanceof String s &&
+                    (s.equals("DIRECT") || s.equals("MAILBOX") || s.equals("BOTH")));
         builder.pop();
     }
 
