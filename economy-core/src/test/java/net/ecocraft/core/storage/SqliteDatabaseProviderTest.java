@@ -85,4 +85,53 @@ class SqliteDatabaseProviderTest {
         long count = db.getTransactionCount(player, null, null, null);
         assertEquals(5, count);
     }
+
+    // C3: getAllBalances numeric sort
+
+    @Test
+    void getAllBalancesReturnedInNumericDescOrder() {
+        var p1 = UUID.randomUUID();
+        var p2 = UUID.randomUUID();
+        var p3 = UUID.randomUUID();
+        var p4 = UUID.randomUUID();
+
+        db.setVirtualBalance(p1, "gold", new BigDecimal("9"));
+        db.setVirtualBalance(p2, "gold", new BigDecimal("80"));
+        db.setVirtualBalance(p3, "gold", new BigDecimal("200"));
+        db.setVirtualBalance(p4, "gold", new BigDecimal("1000"));
+
+        var balances = db.getAllBalances("gold");
+        assertEquals(4, balances.size());
+        assertEquals(new BigDecimal("1000"), balances.get(0).amount());
+        assertEquals(new BigDecimal("200"), balances.get(1).amount());
+        assertEquals(new BigDecimal("80"), balances.get(2).amount());
+        assertEquals(new BigDecimal("9"), balances.get(3).amount());
+    }
+
+    // C4: hasAccount / starting balance
+
+    @Test
+    void hasAccountReturnsFalseForUnknownPlayer() {
+        var player = UUID.randomUUID();
+        assertFalse(db.hasAccount(player, "gold"));
+    }
+
+    @Test
+    void hasAccountReturnsTrueAfterDeposit() {
+        var player = UUID.randomUUID();
+        db.setVirtualBalance(player, "gold", new BigDecimal("100"));
+        assertTrue(db.hasAccount(player, "gold"));
+    }
+
+    @Test
+    void hasAccountReturnsTrueEvenWhenBalanceIsZero() {
+        var player = UUID.randomUUID();
+        // Player gets a balance, then it goes to zero
+        db.setVirtualBalance(player, "gold", new BigDecimal("100"));
+        db.setVirtualBalance(player, "gold", BigDecimal.ZERO);
+
+        // Account row still exists, so hasAccount must be true
+        // This ensures starting balance is NOT given again
+        assertTrue(db.hasAccount(player, "gold"));
+    }
 }

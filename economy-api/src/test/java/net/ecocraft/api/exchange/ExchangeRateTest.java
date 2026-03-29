@@ -45,4 +45,27 @@ class ExchangeRateTest {
             new ExchangeRate(GOLD, GOLD, BigDecimal.ONE, BigDecimal.ZERO)
         );
     }
+
+    // C1: ExchangeRate.convert() rounding tests
+
+    @Test
+    void convertRoundsToTargetCurrencyDecimals() {
+        // 10.50 * 3.33 = 34.965 → rounds to 34.97 (2 decimals)
+        var rate = new ExchangeRate(SILVER, GOLD, new BigDecimal("3.33"), BigDecimal.ZERO);
+        assertEquals(new BigDecimal("34.97"), rate.convert(new BigDecimal("10.50")));
+    }
+
+    @Test
+    void convertRoundsToZeroDecimalsForIntegerCurrency() {
+        // 10.50 * 3.33 = 34.965 → rounds to 35 (0 decimals)
+        var rate = new ExchangeRate(GOLD, SILVER, new BigDecimal("3.33"), BigDecimal.ZERO);
+        assertEquals(new BigDecimal("35"), rate.convert(new BigDecimal("10.50")));
+    }
+
+    @Test
+    void convertWithFeeProducesCorrectlyRoundedResult() {
+        // 10 * 3.33 = 33.30, fee 5% = 1.665, result = 31.635 → rounds to 31.64 (2 decimals)
+        var rate = new ExchangeRate(SILVER, GOLD, new BigDecimal("3.33"), new BigDecimal("0.05"));
+        assertEquals(new BigDecimal("31.64"), rate.convert(new BigDecimal("10")));
+    }
 }
