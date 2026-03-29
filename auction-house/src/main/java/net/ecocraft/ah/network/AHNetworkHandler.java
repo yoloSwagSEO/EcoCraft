@@ -92,6 +92,9 @@ public final class AHNetworkHandler {
         registrar.playToClient(AHNotificationPayload.TYPE, AHNotificationPayload.STREAM_CODEC,
                 ClientPayloadHandler::handleNotification);
 
+        registrar.playToClient(BidHistoryResponsePayload.TYPE, BidHistoryResponsePayload.STREAM_CODEC,
+                ClientPayloadHandler::handleBidHistoryResponse);
+
         // Client → Server
         registrar.playToServer(
                 RequestListingsPayload.TYPE,
@@ -182,5 +185,8 @@ public final class AHNetworkHandler {
                 UpdateAHInstancePayload.STREAM_CODEC,
                 ServerPayloadHandler::handleUpdateAHInstance
         );
+
+        registrar.playToServer(RequestBidHistoryPayload.TYPE, RequestBidHistoryPayload.STREAM_CODEC,
+                ServerPayloadHandler::handleRequestBidHistory);
     }
 }

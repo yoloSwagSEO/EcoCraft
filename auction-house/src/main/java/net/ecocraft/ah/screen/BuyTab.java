@@ -520,6 +520,10 @@ public class BuyTab extends BaseWidget {
         }
     }
 
+    public void onReceiveBidHistory(BidHistoryResponsePayload payload) {
+        // TODO Task 15: display full bid history panel
+    }
+
     public void onReceiveListingDetail(ListingDetailResponsePayload payload) {
         this.detailItemId = payload.itemId();
         this.detailItemName = payload.itemName();

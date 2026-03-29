@@ -624,6 +624,10 @@ public class AuctionService {
         return storage.getPlayerBids(playerUuid);
     }
 
+    public List<AuctionBid> getBidsForListing(String listingId) {
+        return storage.getBidsForListing(listingId);
+    }
+
     public List<AuctionParcel> getLedger(UUID playerUuid, @Nullable ParcelSource source,
                                          long sinceMs, int page, int pageSize) {
         return storage.getPlayerLedger(playerUuid, source, sinceMs, page, pageSize);

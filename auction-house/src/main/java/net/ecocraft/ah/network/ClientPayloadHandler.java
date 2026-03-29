@@ -112,4 +112,11 @@ public final class ClientPayloadHandler {
             NotificationManager.handle(payload);
         });
     }
+
+    public static void handleBidHistoryResponse(BidHistoryResponsePayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            LOGGER.debug("AH: Received BidHistoryResponse for listing '{}'", payload.listingId());
+            AuctionHouseScreen.receiveBidHistory(payload);
+        });
+    }
 }

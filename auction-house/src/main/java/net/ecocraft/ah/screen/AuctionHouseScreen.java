@@ -309,6 +309,12 @@ public class AuctionHouseScreen extends EcoScreen {
         }
     }
 
+    public static void receiveBidHistory(BidHistoryResponsePayload payload) {
+        if (Minecraft.getInstance().screen instanceof AuctionHouseScreen screen) {
+            screen.buyTab.onReceiveBidHistory(payload);
+        }
+    }
+
     // --- Instance dispatch methods ---
 
     protected void onReceiveListings(ListingsResponsePayload payload) {

@@ -151,8 +151,18 @@ public final class ServerPayloadHandler {
                     priceInfo = new ListingDetailResponsePayload.PriceInfo(0, 0, 0, 0);
                 }
 
+                // Fetch top 3 bids for the first AUCTION listing
+                List<BidHistoryResponsePayload.BidEntry> recentBids = List.of();
+                if (!entries.isEmpty() && "AUCTION".equals(entries.get(0).type())) {
+                    List<net.ecocraft.ah.data.AuctionBid> bids = service.getBidsForListing(entries.get(0).listingId());
+                    recentBids = bids.stream()
+                            .limit(3)
+                            .map(b -> new BidHistoryResponsePayload.BidEntry(b.bidderName(), b.amount(), b.timestamp()))
+                            .toList();
+                }
+
                 context.reply(new ListingDetailResponsePayload(
-                        payload.itemId(), itemName, 0xFFFFFFFF, entries, priceInfo, availableEnchantments));
+                        payload.itemId(), itemName, 0xFFFFFFFF, entries, priceInfo, availableEnchantments, recentBids));
             } catch (Exception e) {
                 LOGGER.error("Error handling RequestListingDetail", e);
                 context.reply(new ListingDetailResponsePayload(
@@ -732,6 +742,22 @@ public final class ServerPayloadHandler {
                     server.execute(() -> context.reply(new AHActionResultPayload(false, Component.translatable("ecocraft_ah.message.skin_resolve_error").getString())));
                 }
             });
+        });
+    }
+
+    public static void handleRequestBidHistory(RequestBidHistoryPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            try {
+                AuctionService service = requireService();
+                List<net.ecocraft.ah.data.AuctionBid> bids = service.getBidsForListing(payload.listingId());
+                List<BidHistoryResponsePayload.BidEntry> entries = bids.stream()
+                        .map(b -> new BidHistoryResponsePayload.BidEntry(
+                                b.bidderName(), b.amount(), b.timestamp()))
+                        .toList();
+                context.reply(new BidHistoryResponsePayload(payload.listingId(), entries));
+            } catch (Exception e) {
+                LOGGER.error("Error handling RequestBidHistory", e);
+            }
         });
     }
 
