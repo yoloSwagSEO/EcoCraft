@@ -1,6 +1,7 @@
 package net.ecocraft.ah.network;
 
 import com.mojang.logging.LogUtils;
+import net.ecocraft.ah.client.NotificationManager;
 import net.ecocraft.ah.network.payload.*;
 import net.ecocraft.ah.screen.AuctionHouseScreen;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
@@ -102,6 +103,13 @@ public final class ClientPayloadHandler {
             LOGGER.debug("AH: Received settings isAdmin={} saleRate={} depositRate={} durations={}",
                     payload.isAdmin(), payload.saleRate(), payload.depositRate(), payload.durations());
             AuctionHouseScreen.receiveSettings(payload);
+        });
+    }
+
+    public static void handleNotification(AHNotificationPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            LOGGER.debug("AH: Received notification: {}", payload.eventType());
+            NotificationManager.handle(payload);
         });
     }
 }
