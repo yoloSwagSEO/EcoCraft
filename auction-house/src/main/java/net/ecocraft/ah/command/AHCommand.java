@@ -12,6 +12,7 @@ import net.ecocraft.ah.data.ListingType;
 import net.ecocraft.ah.network.ServerPayloadHandler;
 import net.ecocraft.ah.network.payload.AHNotificationPayload;
 import net.ecocraft.ah.network.payload.OpenAHPayload;
+import net.ecocraft.ah.permission.AHPermissions;
 import net.ecocraft.ah.service.AuctionService;
 import net.ecocraft.ah.storage.AuctionStorageProvider;
 import net.minecraft.commands.CommandSourceStack;
@@ -96,7 +97,7 @@ public final class AHCommand {
 
                 // /ah admin ...
                 .then(Commands.literal("admin")
-                        .requires(src -> src.hasPermission(2))
+                        .requires(src -> AHPermissions.check(src, AHPermissions.ADMIN_RELOAD))
 
                         // /ah admin reload
                         .then(Commands.literal("reload")
@@ -163,7 +164,7 @@ public final class AHCommand {
 
                 // /ah testnotif <type> — sends a fake notification packet to the executing player
                 .then(Commands.literal("testnotif")
-                        .requires(s -> s.hasPermission(2))
+                        .requires(s -> AHPermissions.check(s, AHPermissions.ADMIN_RELOAD))
                         .then(Commands.argument("type", StringArgumentType.word())
                                 .suggests((ctx, builder) -> {
                                     for (String t : List.of("outbid", "auction_won", "auction_lost",
@@ -191,7 +192,7 @@ public final class AHCommand {
 
                 // /ah testtoast — sends a quick outbid toast for rendering validation
                 .then(Commands.literal("testtoast")
-                        .requires(s -> s.hasPermission(2))
+                        .requires(s -> AHPermissions.check(s, AHPermissions.ADMIN_RELOAD))
                         .executes(ctx -> {
                             ServerPlayer player = ctx.getSource().getPlayerOrException();
                             PacketDistributor.sendToPlayer(player, new AHNotificationPayload(
@@ -204,7 +205,7 @@ public final class AHCommand {
 
                 // /ah testbids — injects fake bids on the first active AUCTION listing
                 .then(Commands.literal("testbids")
-                        .requires(s -> s.hasPermission(2))
+                        .requires(s -> AHPermissions.check(s, AHPermissions.ADMIN_RELOAD))
                         .executes(ctx -> {
                             return executeTestBids(ctx.getSource(), serviceSupplier);
                         })

@@ -4,6 +4,7 @@ import com.mojang.logging.LogUtils;
 import net.ecocraft.ah.AHServerEvents;
 import net.ecocraft.ah.data.*;
 import net.ecocraft.ah.network.payload.*;
+import net.ecocraft.ah.permission.AHPermissions;
 import net.ecocraft.ah.service.AuctionService;
 import net.ecocraft.ah.storage.AuctionStorageProvider;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -12,6 +13,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.network.PacketDistributor;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.neoforged.neoforge.server.permission.PermissionAPI;
 import org.slf4j.Logger;
 
 import java.math.BigDecimal;
@@ -159,6 +161,23 @@ public final class ServerPayloadHandler {
             try {
                 AuctionService service = requireService();
                 ServerPlayer player = (ServerPlayer) context.player();
+
+                if (!PermissionAPI.getPermission(player, AHPermissions.SELL)) {
+                    context.reply(new AHActionResultPayload(false, "Permission refusée"));
+                    return;
+                }
+
+                // Check max listings limit
+                int maxListings = PermissionAPI.getPermission(player, AHPermissions.MAX_LISTINGS);
+                if (maxListings >= 0) {
+                    int currentCount = service.getMyListings(player.getUUID(), 0, Integer.MAX_VALUE).size();
+                    if (currentCount >= maxListings) {
+                        context.reply(new AHActionResultPayload(false,
+                                "Nombre maximum d'annonces atteint (" + maxListings + ")"));
+                        return;
+                    }
+                }
+
                 LOGGER.info("[AH] handleCreateListing: ahId={} type={} price={}", payload.ahId(), payload.listingType(), payload.price());
 
                 // Get item from the specified slot, or main hand if -1
@@ -252,6 +271,11 @@ public final class ServerPayloadHandler {
                 AuctionService service = requireService();
                 ServerPlayer player = (ServerPlayer) context.player();
 
+                if (!PermissionAPI.getPermission(player, AHPermissions.USE)) {
+                    context.reply(new AHActionResultPayload(false, "Permission refusée"));
+                    return;
+                }
+
                 service.buyListing(player.getUUID(), player.getName().getString(), payload.listingId(), payload.quantity());
                 context.reply(new AHActionResultPayload(true, Component.translatable("ecocraft_ah.message.purchase_success").getString()));
                 sendBalanceUpdate(player);
@@ -269,6 +293,11 @@ public final class ServerPayloadHandler {
             try {
                 AuctionService service = requireService();
                 ServerPlayer player = (ServerPlayer) context.player();
+
+                if (!PermissionAPI.getPermission(player, AHPermissions.BID)) {
+                    context.reply(new AHActionResultPayload(false, "Permission refusée"));
+                    return;
+                }
 
                 BigDecimal amount = BigDecimal.valueOf(payload.amount());
                 service.placeBid(player.getUUID(), player.getName().getString(), payload.listingId(), amount);
@@ -288,6 +317,11 @@ public final class ServerPayloadHandler {
             try {
                 AuctionService service = requireService();
                 ServerPlayer player = (ServerPlayer) context.player();
+
+                if (!PermissionAPI.getPermission(player, AHPermissions.CANCEL)) {
+                    context.reply(new AHActionResultPayload(false, "Permission refusée"));
+                    return;
+                }
 
                 service.cancelListing(player.getUUID(), payload.listingId());
                 context.reply(new AHActionResultPayload(true, Component.translatable("ecocraft_ah.message.listing_cancelled").getString()));
@@ -516,7 +550,7 @@ public final class ServerPayloadHandler {
     public static void handleCreateAH(CreateAHPayload payload, IPayloadContext context) {
         context.enqueueWork(() -> {
             ServerPlayer player = (ServerPlayer) context.player();
-            if (!player.hasPermissions(2)) {
+            if (!PermissionAPI.getPermission(player, AHPermissions.ADMIN_SETTINGS)) {
                 context.reply(new AHActionResultPayload(false, Component.translatable("ecocraft_ah.message.permission_denied").getString()));
                 return;
             }
@@ -535,7 +569,7 @@ public final class ServerPayloadHandler {
     public static void handleDeleteAH(DeleteAHPayload payload, IPayloadContext context) {
         context.enqueueWork(() -> {
             ServerPlayer player = (ServerPlayer) context.player();
-            if (!player.hasPermissions(2)) {
+            if (!PermissionAPI.getPermission(player, AHPermissions.ADMIN_SETTINGS)) {
                 context.reply(new AHActionResultPayload(false, Component.translatable("ecocraft_ah.message.permission_denied").getString()));
                 return;
             }
@@ -579,7 +613,7 @@ public final class ServerPayloadHandler {
     public static void handleUpdateAHInstance(UpdateAHInstancePayload payload, IPayloadContext context) {
         context.enqueueWork(() -> {
             ServerPlayer player = (ServerPlayer) context.player();
-            if (!player.hasPermissions(2)) {
+            if (!PermissionAPI.getPermission(player, AHPermissions.ADMIN_SETTINGS)) {
                 context.reply(new AHActionResultPayload(false, Component.translatable("ecocraft_ah.message.permission_denied").getString()));
                 return;
             }
@@ -622,7 +656,7 @@ public final class ServerPayloadHandler {
     public static void sendAHSettings(ServerPlayer player) {
         try {
             var config = net.ecocraft.ah.config.AHConfig.CONFIG;
-            boolean isAdmin = player.hasPermissions(2);
+            boolean isAdmin = PermissionAPI.getPermission(player, AHPermissions.ADMIN_SETTINGS);
             int saleRate = config.saleRate.get();
             int depositRate = config.depositRate.get();
             List<Integer> durations = new ArrayList<>(config.durations.get());
@@ -635,7 +669,7 @@ public final class ServerPayloadHandler {
     public static void handleUpdateAHSettings(UpdateAHSettingsPayload payload, IPayloadContext context) {
         context.enqueueWork(() -> {
             ServerPlayer player = (ServerPlayer) context.player();
-            if (!player.hasPermissions(2)) {
+            if (!PermissionAPI.getPermission(player, AHPermissions.ADMIN_SETTINGS)) {
                 context.reply(new AHActionResultPayload(false, Component.translatable("ecocraft_ah.message.permission_denied").getString()));
                 return;
             }
@@ -682,7 +716,7 @@ public final class ServerPayloadHandler {
     public static void handleUpdateNPCSkin(UpdateNPCSkinPayload payload, IPayloadContext context) {
         context.enqueueWork(() -> {
             ServerPlayer player = (ServerPlayer) context.player();
-            if (!player.hasPermissions(2)) {
+            if (!PermissionAPI.getPermission(player, AHPermissions.ADMIN_SETTINGS)) {
                 context.reply(new AHActionResultPayload(false, Component.translatable("ecocraft_ah.message.permission_denied").getString()));
                 return;
             }

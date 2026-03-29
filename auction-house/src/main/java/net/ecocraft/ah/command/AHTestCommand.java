@@ -6,6 +6,7 @@ import net.ecocraft.ah.data.AHInstance;
 import net.ecocraft.ah.data.ItemCategory;
 import net.ecocraft.ah.data.ListingType;
 import net.ecocraft.ah.data.ListingStatus;
+import net.ecocraft.ah.permission.AHPermissions;
 import net.ecocraft.ah.screen.BuyTab;
 import net.ecocraft.ah.service.AuctionService;
 import net.minecraft.commands.CommandSourceStack;
@@ -72,7 +73,7 @@ public final class AHTestCommand {
                                 Supplier<AuctionService> serviceSupplier) {
         dispatcher.register(Commands.literal("ah")
             .then(Commands.literal("populate")
-                .requires(src -> src.hasPermission(2))
+                .requires(src -> AHPermissions.check(src, AHPermissions.ADMIN_RELOAD))
                 .executes(ctx -> populate(ctx.getSource(), 50, serviceSupplier))
                 .then(Commands.argument("count", IntegerArgumentType.integer(1, 500))
                     .executes(ctx -> populate(ctx.getSource(),
@@ -80,7 +81,7 @@ public final class AHTestCommand {
                 )
             )
             .then(Commands.literal("simulate")
-                .requires(src -> src.hasPermission(2))
+                .requires(src -> AHPermissions.check(src, AHPermissions.ADMIN_RELOAD))
                 .then(Commands.literal("buy")
                     .executes(ctx -> simulateBuy(ctx.getSource(), 5, serviceSupplier))
                     .then(Commands.argument("count", IntegerArgumentType.integer(1, 50))

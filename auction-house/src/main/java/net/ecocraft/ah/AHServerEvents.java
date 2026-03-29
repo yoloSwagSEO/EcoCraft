@@ -23,8 +23,10 @@ import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.server.ServerStartingEvent;
 import net.neoforged.neoforge.event.server.ServerStoppedEvent;
+import net.ecocraft.ah.permission.AHPermissions;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
+import net.neoforged.neoforge.server.permission.events.PermissionGatherEvent;
 import org.slf4j.Logger;
 
 import java.nio.file.Path;
@@ -277,6 +279,23 @@ public class AHServerEvents {
             java.util.UUID uuid = java.util.UUID.nameUUIDFromBytes(("ecocraft_fake:" + name).getBytes());
             profileCache.add(new com.mojang.authlib.GameProfile(uuid, name));
         }
+    }
+
+    @SubscribeEvent
+    public static void onPermissionGather(PermissionGatherEvent.Nodes event) {
+        event.addNodes(
+            AHPermissions.USE,
+            AHPermissions.SELL,
+            AHPermissions.BID,
+            AHPermissions.CANCEL,
+            AHPermissions.ADMIN_CANCEL,
+            AHPermissions.ADMIN_SETTINGS,
+            AHPermissions.ADMIN_RELOAD,
+            AHPermissions.MAX_LISTINGS,
+            AHPermissions.TAX_RATE,
+            AHPermissions.DEPOSIT_RATE
+        );
+        LOGGER.info("EcoCraft Auction House permission nodes registered.");
     }
 
     public static AuctionService getService() {
