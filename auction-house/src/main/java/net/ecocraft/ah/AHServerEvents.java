@@ -58,13 +58,22 @@ public class AHServerEvents {
                 EcoServerEvents.getEconomy(),
                 EcoServerEvents.getCurrencyRegistry()
         );
-        // Inject notification sender: sends AHNotificationPayload to online players
+        // Inject notification sender: online players get immediate toast,
+        // offline players get notification queued in DB for delivery on login
         final MinecraftServer finalServer = server;
         auctionService.setNotificationSender((playerUuid, eventType, itemName, otherPlayerName, amount, currencyId) -> {
             ServerPlayer player = finalServer.getPlayerList().getPlayer(playerUuid);
-            if (player == null) return; // Offline — notification lost
-            PacketDistributor.sendToPlayer(player,
-                    new AHNotificationPayload(eventType, itemName, otherPlayerName, amount, currencyId));
+            if (player != null) {
+                PacketDistributor.sendToPlayer(player,
+                        new AHNotificationPayload(eventType, itemName, otherPlayerName, amount, currencyId));
+            } else if (storageProvider != null) {
+                try {
+                    storageProvider.createPendingNotification(playerUuid, eventType, itemName,
+                            otherPlayerName, amount, currencyId);
+                } catch (Exception e) {
+                    LOGGER.error("Failed to queue notification for offline player {}", playerUuid, e);
+                }
+            }
         });
         // Inject profile resolver: resolves player names to UUIDs via game profile cache
         auctionService.setProfileResolver(playerName -> {
@@ -74,6 +83,7 @@ public class AHServerEvents {
             return profile.map(com.mojang.authlib.GameProfile::getId).orElse(null);
         });
 
+        applyConfigDefaults();
         reindexEnchantments(server);
         backfillFingerprints(server);
         registerFakeProfiles(server);
@@ -130,6 +140,62 @@ public class AHServerEvents {
             }
         } catch (Exception e) {
             LOGGER.error("Error checking uncollected parcels for player {}", player.getName().getString(), e);
+        }
+
+        // Deliver pending notifications queued while player was offline
+        if (storageProvider != null) {
+            try {
+                var pending = storageProvider.getPendingNotifications(player.getUUID());
+                for (var notif : pending) {
+                    PacketDistributor.sendToPlayer(player,
+                            new AHNotificationPayload(notif.eventType(), notif.itemName(),
+                                    notif.playerName(), notif.amount(), notif.currencyId()));
+                }
+                if (!pending.isEmpty()) {
+                    storageProvider.deletePendingNotifications(player.getUUID());
+                }
+            } catch (Exception e) {
+                LOGGER.error("Error delivering pending notifications for player {}", player.getName().getString(), e);
+            }
+        }
+    }
+
+    /**
+     * Applies NeoForge config values as defaults to the default AH instance
+     * when it has not been customized yet (still at hardcoded defaults).
+     */
+    private static void applyConfigDefaults() {
+        if (storageProvider == null) return;
+        try {
+            var config = net.ecocraft.ah.config.AHConfig.CONFIG;
+            net.ecocraft.ah.data.AHInstance defaultAh = storageProvider.getDefaultAHInstance();
+            if (defaultAh == null) {
+                net.ecocraft.ah.data.AHInstance newDefault = new net.ecocraft.ah.data.AHInstance(
+                        net.ecocraft.ah.data.AHInstance.DEFAULT_ID, "default",
+                        net.ecocraft.ah.data.AHInstance.DEFAULT_NAME,
+                        config.saleRate.get(), config.depositRate.get(),
+                        new java.util.ArrayList<>(config.durations.get()),
+                        true, true, "");
+                storageProvider.createAHInstance(newDefault);
+            } else if (defaultAh.saleRate() == net.ecocraft.ah.data.AHInstance.DEFAULT_SALE_RATE
+                    && defaultAh.depositRate() == net.ecocraft.ah.data.AHInstance.DEFAULT_DEPOSIT_RATE
+                    && defaultAh.durations().equals(net.ecocraft.ah.data.AHInstance.DEFAULT_DURATIONS)) {
+                int cfgSaleRate = config.saleRate.get();
+                int cfgDepositRate = config.depositRate.get();
+                java.util.List<Integer> cfgDurations = new java.util.ArrayList<>(config.durations.get());
+                if (cfgSaleRate != net.ecocraft.ah.data.AHInstance.DEFAULT_SALE_RATE
+                        || cfgDepositRate != net.ecocraft.ah.data.AHInstance.DEFAULT_DEPOSIT_RATE
+                        || !cfgDurations.equals(net.ecocraft.ah.data.AHInstance.DEFAULT_DURATIONS)) {
+                    net.ecocraft.ah.data.AHInstance updated = defaultAh.withConfig(
+                            defaultAh.name(), cfgSaleRate, cfgDepositRate,
+                            cfgDurations, defaultAh.allowBuyout(), defaultAh.allowAuction(),
+                            defaultAh.taxRecipient());
+                    storageProvider.updateAHInstance(updated);
+                    LOGGER.info("Applied NeoForge config defaults to default AH instance");
+                }
+            }
+        } catch (Exception e) {
+            LOGGER.error("Error applying config defaults to AH instance", e);
         }
     }
 

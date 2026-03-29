@@ -96,11 +96,11 @@ public class AuctionHouseScreen extends EcoScreen {
     private void updateSellTabFromCurrentAH() {
         for (var inst : ahInstances) {
             if (inst.id().equals(currentAhId)) {
-                SellTab.activeTaxRate = inst.saleRate() / 100.0;
-                SellTab.activeDepositRate = inst.depositRate() / 100.0;
-                SellTab.activeDurations = inst.durations().stream().mapToInt(Integer::intValue).toArray();
-                SellTab.activeAllowBuyout = inst.allowBuyout();
-                SellTab.activeAllowAuction = inst.allowAuction();
+                sellTab.activeTaxRate = inst.saleRate() / 100.0;
+                sellTab.activeDepositRate = inst.depositRate() / 100.0;
+                sellTab.activeDurations = inst.durations().stream().mapToInt(Integer::intValue).toArray();
+                sellTab.activeAllowBuyout = inst.allowBuyout();
+                sellTab.activeAllowAuction = inst.allowAuction();
                 // Disable sell tab if neither buyout nor auction is allowed
                 boolean sellEnabled = inst.allowBuyout() || inst.allowAuction();
                 if (tabBar != null) {
@@ -187,7 +187,7 @@ public class AuctionHouseScreen extends EcoScreen {
     private void activateTab(int tab) {
         tabBar.setActiveTab(tab);
         buyTab.setVisible(tab == 0);
-        sellTab.setVisible(tab == 1 && (SellTab.activeAllowBuyout || SellTab.activeAllowAuction));
+        sellTab.setVisible(tab == 1 && (sellTab.activeAllowBuyout || sellTab.activeAllowAuction));
         myAuctionsTab.setVisible(tab == 2);
         ledgerTab.setVisible(tab == 3);
 
@@ -356,9 +356,9 @@ public class AuctionHouseScreen extends EcoScreen {
         this.settingsDepositRate = payload.depositRate();
         this.settingsDurations = new java.util.ArrayList<>(payload.durations());
         // Update SellTab with current settings
-        SellTab.activeDurations = payload.durations().stream().mapToInt(Integer::intValue).toArray();
-        SellTab.activeTaxRate = payload.saleRate() / 100.0;
-        SellTab.activeDepositRate = payload.depositRate() / 100.0;
+        sellTab.activeDurations = payload.durations().stream().mapToInt(Integer::intValue).toArray();
+        sellTab.activeTaxRate = payload.saleRate() / 100.0;
+        sellTab.activeDepositRate = payload.depositRate() / 100.0;
         // Update gear button visibility
         if (gearButton != null) {
             gearButton.setVisible(true);

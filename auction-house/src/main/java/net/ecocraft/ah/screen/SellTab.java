@@ -25,12 +25,12 @@ public class SellTab extends BaseWidget {
     private static final Theme THEME = Theme.dark();
     private static final int INV_COLS = 9;
 
-    // Set by AuctionHouseScreen when settings are received from server
-    static int[] activeDurations = {12, 24, 48};
-    static double activeTaxRate = 0.05;
-    static double activeDepositRate = 0.02;
-    static boolean activeAllowBuyout = true;
-    static boolean activeAllowAuction = true;
+    // Set by AuctionHouseScreen when settings are received from server (instance, not static)
+    int[] activeDurations = {12, 24, 48};
+    double activeTaxRate = 0.05;
+    double activeDepositRate = 0.02;
+    boolean activeAllowBuyout = true;
+    boolean activeAllowAuction = true;
 
     private final AuctionHouseScreen parent;
     private final int tabX, tabY, tabW, tabH;

@@ -423,7 +423,33 @@ public final class AHCommand {
             if (parcels.isEmpty()) {
                 source.sendSuccess(() -> Component.translatable("ecocraft_ah.command.no_parcels"), false);
             } else {
-                // Item parcels would need to be given to player inventory — handled in the handler
+                // Deliver item parcels to player inventory (mirrors ServerPayloadHandler.handleCollectParcels)
+                for (var parcel : parcels) {
+                    if (parcel.hasItem() && parcel.itemId() != null) {
+                        try {
+                            ItemStack stack;
+                            if (parcel.itemNbt() != null && !parcel.itemNbt().isEmpty()) {
+                                stack = net.ecocraft.ah.data.ItemStackSerializer.deserialize(
+                                        parcel.itemNbt(), player.registryAccess());
+                                if (stack.isEmpty()) {
+                                    var itemRL = net.minecraft.resources.ResourceLocation.parse(parcel.itemId());
+                                    var item = BuiltInRegistries.ITEM.get(itemRL);
+                                    stack = new ItemStack(item, parcel.quantity());
+                                }
+                            } else {
+                                var itemRL = net.minecraft.resources.ResourceLocation.parse(parcel.itemId());
+                                var item = BuiltInRegistries.ITEM.get(itemRL);
+                                stack = new ItemStack(item, parcel.quantity());
+                            }
+                            if (!player.getInventory().add(stack)) {
+                                player.drop(stack, false);
+                            }
+                        } catch (Exception itemEx) {
+                            com.mojang.logging.LogUtils.getLogger().error(
+                                    "Failed to deliver parcel item {} via /ah collect", parcel.itemId(), itemEx);
+                        }
+                    }
+                }
                 int count = parcels.size();
                 source.sendSuccess(() -> Component.translatable("ecocraft_ah.command.parcels_collected", count), false);
             }

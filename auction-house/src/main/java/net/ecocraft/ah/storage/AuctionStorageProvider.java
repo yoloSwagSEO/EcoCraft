@@ -203,6 +203,24 @@ public class AuctionStorageProvider {
                 }
             });
 
+            migrator.addMigration(7, "Add pending_notifications table for offline players", conn -> {
+                try (Statement stmt = conn.createStatement()) {
+                    stmt.execute("""
+                        CREATE TABLE IF NOT EXISTS ah_pending_notifications (
+                            id          TEXT PRIMARY KEY,
+                            player_uuid TEXT NOT NULL,
+                            event_type  TEXT NOT NULL,
+                            item_name   TEXT NOT NULL DEFAULT '',
+                            player_name TEXT NOT NULL DEFAULT '',
+                            amount      INTEGER NOT NULL DEFAULT 0,
+                            currency_id TEXT NOT NULL DEFAULT '',
+                            created_at  INTEGER NOT NULL
+                        )
+                    """);
+                    stmt.execute("CREATE INDEX IF NOT EXISTS idx_pending_notif_player ON ah_pending_notifications(player_uuid)");
+                }
+            });
+
             migrator.migrate(connection);
         } catch (SQLException e) {
             throw new RuntimeException("Failed to initialize auction-house database", e);
@@ -1095,6 +1113,67 @@ public class AuctionStorageProvider {
 
         return queryListings(sql, params);
     }
+
+    // -------------------------------------------------------------------------
+    // Pending Notifications (for offline players)
+    // -------------------------------------------------------------------------
+
+    public void createPendingNotification(UUID playerUuid, String eventType, String itemName,
+                                           String playerName, long amount, String currencyId) {
+        try (PreparedStatement ps = connection.prepareStatement(
+                "INSERT INTO ah_pending_notifications (id, player_uuid, event_type, item_name, player_name, amount, currency_id, created_at) VALUES (?,?,?,?,?,?,?,?)")) {
+            ps.setString(1, UUID.randomUUID().toString());
+            ps.setString(2, playerUuid.toString());
+            ps.setString(3, eventType);
+            ps.setString(4, itemName != null ? itemName : "");
+            ps.setString(5, playerName != null ? playerName : "");
+            ps.setLong(6, amount);
+            ps.setString(7, currencyId != null ? currencyId : "");
+            ps.setLong(8, System.currentTimeMillis());
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to create pending notification", e);
+        }
+    }
+
+    public List<PendingNotification> getPendingNotifications(UUID playerUuid) {
+        List<PendingNotification> results = new ArrayList<>();
+        try (PreparedStatement ps = connection.prepareStatement(
+                "SELECT * FROM ah_pending_notifications WHERE player_uuid = ? ORDER BY created_at ASC")) {
+            ps.setString(1, playerUuid.toString());
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    results.add(new PendingNotification(
+                            rs.getString("id"),
+                            UUID.fromString(rs.getString("player_uuid")),
+                            rs.getString("event_type"),
+                            rs.getString("item_name"),
+                            rs.getString("player_name"),
+                            rs.getLong("amount"),
+                            rs.getString("currency_id"),
+                            rs.getLong("created_at")
+                    ));
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to get pending notifications", e);
+        }
+        return results;
+    }
+
+    public void deletePendingNotifications(UUID playerUuid) {
+        try (PreparedStatement ps = connection.prepareStatement(
+                "DELETE FROM ah_pending_notifications WHERE player_uuid = ?")) {
+            ps.setString(1, playerUuid.toString());
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to delete pending notifications", e);
+        }
+    }
+
+    public record PendingNotification(
+            String id, UUID playerUuid, String eventType, String itemName,
+            String playerName, long amount, String currencyId, long createdAt) {}
 
     // -------------------------------------------------------------------------
     // Helpers

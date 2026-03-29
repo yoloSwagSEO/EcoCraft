@@ -38,29 +38,10 @@ public final class ServerPayloadHandler {
                 String search = payload.search().isEmpty() ? null : payload.search();
                 ItemCategory category = payload.category().isEmpty() ? null : ItemCategory.valueOf(payload.category());
 
-                // Fetch all results (no category filter in SQL) and filter dynamically
-                List<AuctionStorageProvider.ListingGroupSummary> allResults =
-                        service.searchListings(payload.ahId(), search, null, 0, Integer.MAX_VALUE);
-
-                // Filter by dynamically detected category if requested
-                List<AuctionStorageProvider.ListingGroupSummary> filtered;
-                if (category != null) {
-                    filtered = new ArrayList<>();
-                    for (var r : allResults) {
-                        if (ItemCategoryDetector.detectFromId(r.itemId()) == category) {
-                            filtered.add(r);
-                        }
-                    }
-                } else {
-                    filtered = allResults;
-                }
-
-                // Server-side pagination with client-provided page size
+                // Pass category directly to SQL for efficient server-side filtering
                 int clientPageSize = Math.max(1, Math.min(payload.pageSize(), 100));
-                int start = payload.page() * clientPageSize;
-                int end = Math.min(start + clientPageSize, filtered.size());
                 List<AuctionStorageProvider.ListingGroupSummary> page =
-                        start < filtered.size() ? filtered.subList(start, end) : List.of();
+                        service.searchListings(payload.ahId(), search, category, payload.page(), clientPageSize);
 
                 List<ListingsResponsePayload.ListingSummary> summaries = new ArrayList<>();
                 for (var r : page) {
@@ -74,7 +55,8 @@ public final class ServerPayloadHandler {
                     ));
                 }
 
-                int totalPages = (int) Math.ceil((double) filtered.size() / clientPageSize);
+                // Estimate total pages (if full page returned, there may be more)
+                int totalPages = page.size() < clientPageSize ? payload.page() + 1 : payload.page() + 2;
                 context.reply(new ListingsResponsePayload(summaries, payload.page(), totalPages));
             } catch (Exception e) {
                 LOGGER.error("Error handling RequestListings", e);
@@ -204,6 +186,23 @@ public final class ServerPayloadHandler {
                 int quantity = itemToSell.getCount();
                 ListingType type = ListingType.valueOf(payload.listingType());
                 BigDecimal price = BigDecimal.valueOf(payload.price());
+
+                // Validate listing type against AH instance configuration
+                AuctionStorageProvider validationStorage = AHServerEvents.getStorage();
+                if (validationStorage != null) {
+                    AHInstance ahInstance = validationStorage.getAHInstance(payload.ahId());
+                    if (ahInstance == null) ahInstance = validationStorage.getDefaultAHInstance();
+                    if (ahInstance != null) {
+                        if (type == ListingType.AUCTION && !ahInstance.allowAuction()) {
+                            context.reply(new AHActionResultPayload(false, Component.translatable("ecocraft_ah.message.auction_not_allowed").getString()));
+                            return;
+                        }
+                        if (type == ListingType.BUYOUT && !ahInstance.allowBuyout()) {
+                            context.reply(new AHActionResultPayload(false, Component.translatable("ecocraft_ah.message.buyout_not_allowed").getString()));
+                            return;
+                        }
+                    }
+                }
 
                 String currencyId = service.getDefaultCurrencyId();
                 ItemCategory category = ItemCategoryDetector.detect(itemToSell);
