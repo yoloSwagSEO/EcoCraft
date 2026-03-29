@@ -37,8 +37,17 @@ public class DatabaseMigrator {
         for (var m : migrations) {
             if (m.version() > currentVersion) {
                 System.out.println("[" + dbName + "] Running migration v" + m.version() + ": " + m.description());
-                m.migration().execute(conn);
-                setVersion(conn, m.version());
+                conn.setAutoCommit(false);
+                try {
+                    m.migration().execute(conn);
+                    setVersion(conn, m.version());
+                    conn.commit();
+                } catch (SQLException e) {
+                    conn.rollback();
+                    throw e;
+                } finally {
+                    conn.setAutoCommit(true);
+                }
                 System.out.println("[" + dbName + "] Migration v" + m.version() + " complete.");
             }
         }

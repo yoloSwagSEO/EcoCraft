@@ -20,7 +20,7 @@ public class SqliteDatabaseProvider implements DatabaseProvider {
     }
 
     @Override
-    public void initialize() {
+    public synchronized void initialize() {
         try {
             connection = DriverManager.getConnection("jdbc:sqlite:" + dbPath.toAbsolutePath());
             connection.setAutoCommit(true);
@@ -61,7 +61,7 @@ public class SqliteDatabaseProvider implements DatabaseProvider {
     }
 
     @Override
-    public void shutdown() {
+    public synchronized void shutdown() {
         try {
             if (connection != null && !connection.isClosed()) {
                 connection.close();
@@ -72,7 +72,7 @@ public class SqliteDatabaseProvider implements DatabaseProvider {
     }
 
     @Override
-    public BigDecimal getVirtualBalance(UUID player, String currencyId) {
+    public synchronized BigDecimal getVirtualBalance(UUID player, String currencyId) {
         try (PreparedStatement ps = connection.prepareStatement(
                 "SELECT amount FROM balances WHERE player_uuid = ? AND currency_id = ?")) {
             ps.setString(1, player.toString());
@@ -88,7 +88,7 @@ public class SqliteDatabaseProvider implements DatabaseProvider {
     }
 
     @Override
-    public List<BalanceEntry> getAllBalances(String currencyId) {
+    public synchronized List<BalanceEntry> getAllBalances(String currencyId) {
         List<BalanceEntry> results = new java.util.ArrayList<>();
         try (PreparedStatement ps = connection.prepareStatement(
                 "SELECT player_uuid, currency_id, amount FROM balances WHERE currency_id = ? ORDER BY CAST(amount AS REAL) DESC")) {
@@ -107,7 +107,7 @@ public class SqliteDatabaseProvider implements DatabaseProvider {
     }
 
     @Override
-    public boolean hasAccount(UUID player, String currencyId) {
+    public synchronized boolean hasAccount(UUID player, String currencyId) {
         try (PreparedStatement ps = connection.prepareStatement(
                 "SELECT COUNT(*) FROM balances WHERE player_uuid = ? AND currency_id = ?")) {
             ps.setString(1, player.toString());
@@ -120,7 +120,7 @@ public class SqliteDatabaseProvider implements DatabaseProvider {
     }
 
     @Override
-    public void setVirtualBalance(UUID player, String currencyId, BigDecimal amount) {
+    public synchronized void setVirtualBalance(UUID player, String currencyId, BigDecimal amount) {
         try (PreparedStatement ps = connection.prepareStatement("""
                 INSERT INTO balances (player_uuid, currency_id, amount) VALUES (?, ?, ?)
                 ON CONFLICT(player_uuid, currency_id) DO UPDATE SET amount = excluded.amount
@@ -135,7 +135,7 @@ public class SqliteDatabaseProvider implements DatabaseProvider {
     }
 
     @Override
-    public void logTransaction(UUID txId, @Nullable UUID from, @Nullable UUID to,
+    public synchronized void logTransaction(UUID txId, @Nullable UUID from, @Nullable UUID to,
                                BigDecimal amount, String currencyId, String type, Instant timestamp) {
         try (PreparedStatement ps = connection.prepareStatement(
                 "INSERT INTO transactions (id, from_uuid, to_uuid, amount, currency_id, type, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?)")) {
@@ -153,14 +153,16 @@ public class SqliteDatabaseProvider implements DatabaseProvider {
     }
 
     @Override
-    public List<TransactionRecord> getTransactionHistory(UUID player, @Nullable String type,
+    public synchronized List<TransactionRecord> getTransactionHistory(@Nullable UUID player, @Nullable String type,
                                                           @Nullable Instant from, @Nullable Instant to,
                                                           int offset, int limit) {
-        var sql = new StringBuilder(
-            "SELECT * FROM transactions WHERE (from_uuid = ? OR to_uuid = ?)");
+        var sql = new StringBuilder("SELECT * FROM transactions WHERE 1=1");
         var params = new ArrayList<Object>();
-        params.add(player.toString());
-        params.add(player.toString());
+        if (player != null) {
+            sql.append(" AND (from_uuid = ? OR to_uuid = ?)");
+            params.add(player.toString());
+            params.add(player.toString());
+        }
 
         appendFilters(sql, params, type, from, to);
         sql.append(" ORDER BY timestamp DESC LIMIT ? OFFSET ?");
@@ -183,13 +185,15 @@ public class SqliteDatabaseProvider implements DatabaseProvider {
     }
 
     @Override
-    public long getTransactionCount(UUID player, @Nullable String type,
+    public synchronized long getTransactionCount(@Nullable UUID player, @Nullable String type,
                                      @Nullable Instant from, @Nullable Instant to) {
-        var sql = new StringBuilder(
-            "SELECT COUNT(*) FROM transactions WHERE (from_uuid = ? OR to_uuid = ?)");
+        var sql = new StringBuilder("SELECT COUNT(*) FROM transactions WHERE 1=1");
         var params = new ArrayList<Object>();
-        params.add(player.toString());
-        params.add(player.toString());
+        if (player != null) {
+            sql.append(" AND (from_uuid = ? OR to_uuid = ?)");
+            params.add(player.toString());
+            params.add(player.toString());
+        }
 
         appendFilters(sql, params, type, from, to);
 

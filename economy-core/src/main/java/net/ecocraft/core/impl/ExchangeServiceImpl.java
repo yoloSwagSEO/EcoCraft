@@ -36,8 +36,20 @@ public class ExchangeServiceImpl implements ExchangeService {
             return withdrawResult;
         }
 
-        BigDecimal converted = rate.convert(amount);
-        return economy.deposit(player, converted, to);
+        try {
+            BigDecimal converted = rate.convert(amount);
+            var depositResult = economy.deposit(player, converted, to);
+            if (!depositResult.successful()) {
+                // Rollback: re-deposit withdrawn amount
+                economy.deposit(player, amount, from);
+                return depositResult;
+            }
+            return depositResult;
+        } catch (Exception e) {
+            // Rollback: re-deposit withdrawn amount
+            economy.deposit(player, amount, from);
+            throw e;
+        }
     }
 
     @Override

@@ -30,11 +30,6 @@ public class EconomyProviderImpl implements EconomyProvider {
     }
 
     @Override
-    public BigDecimal getBalance(UUID player, Currency currency) {
-        return db.getVirtualBalance(player, currency.id());
-    }
-
-    @Override
     public BigDecimal getVirtualBalance(UUID player, Currency currency) {
         return db.getVirtualBalance(player, currency.id());
     }
@@ -47,6 +42,9 @@ public class EconomyProviderImpl implements EconomyProvider {
     @Override
     public TransactionResult withdraw(UUID player, BigDecimal amount, Currency currency) {
         synchronized (db) {
+            if (amount.signum() <= 0) {
+                return TransactionResult.failure("Amount must be positive");
+            }
             BigDecimal current = db.getVirtualBalance(player, currency.id());
             if (current.compareTo(amount) < 0) {
                 return TransactionResult.failure("Insufficient funds");
@@ -66,6 +64,9 @@ public class EconomyProviderImpl implements EconomyProvider {
     @Override
     public TransactionResult deposit(UUID player, BigDecimal amount, Currency currency) {
         synchronized (db) {
+            if (amount.signum() <= 0) {
+                return TransactionResult.failure("Amount must be positive");
+            }
             BigDecimal current = db.getVirtualBalance(player, currency.id());
             BigDecimal newBalance = current.add(amount);
             db.setVirtualBalance(player, currency.id(), newBalance);
@@ -82,6 +83,9 @@ public class EconomyProviderImpl implements EconomyProvider {
     @Override
     public TransactionResult transfer(UUID from, UUID to, BigDecimal amount, Currency currency) {
         synchronized (db) {
+            if (amount.signum() <= 0) {
+                return TransactionResult.failure("Amount must be positive");
+            }
             BigDecimal senderBalance = db.getVirtualBalance(from, currency.id());
             if (senderBalance.compareTo(amount) < 0) {
                 return TransactionResult.failure("Insufficient funds");
@@ -97,6 +101,21 @@ public class EconomyProviderImpl implements EconomyProvider {
                 currency.id(), tx.type().name(), tx.timestamp());
 
             return TransactionResult.success(tx);
+        }
+    }
+
+    /**
+     * Directly sets a player's balance without creating phantom withdraw/deposit transactions.
+     * Used by admin commands. Logs a single ADMIN_SET transaction.
+     */
+    public void setBalance(UUID player, BigDecimal amount, Currency currency) {
+        synchronized (db) {
+            db.setVirtualBalance(player, currency.id(), amount);
+
+            var tx = new Transaction(UUID.randomUUID(), null, player, amount, currency,
+                TransactionType.ADMIN_SET, Instant.now());
+            db.logTransaction(tx.id(), tx.from(), tx.to(), tx.amount(),
+                currency.id(), tx.type().name(), tx.timestamp());
         }
     }
 

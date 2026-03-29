@@ -9,5 +9,6 @@ public enum TransactionType {
     HDV_SALE,
     HDV_PURCHASE,
     HDV_LISTING_FEE,
-    HDV_EXPIRED_REFUND
+    HDV_EXPIRED_REFUND,
+    ADMIN_SET
 }

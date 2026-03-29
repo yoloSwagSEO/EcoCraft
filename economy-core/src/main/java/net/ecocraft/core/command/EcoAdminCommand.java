@@ -6,6 +6,7 @@ import com.mojang.brigadier.arguments.DoubleArgumentType;
 import net.ecocraft.api.EconomyProvider;
 import net.ecocraft.api.currency.Currency;
 import net.ecocraft.api.currency.CurrencyRegistry;
+import net.ecocraft.core.impl.EconomyProviderImpl;
 import net.ecocraft.core.permission.PermissionChecker;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -88,14 +89,8 @@ public class EcoAdminCommand {
     private static int set(CommandSourceStack source, ServerPlayer target, double amount,
                            EconomyProvider economy, CurrencyRegistry currencies) {
         Currency currency = currencies.getDefault();
-        // Withdraw all, then deposit new amount
-        BigDecimal current = economy.getBalance(target.getUUID(), currency);
-        if (current.signum() > 0) {
-            economy.withdraw(target.getUUID(), current, currency);
-        }
-        if (BigDecimal.valueOf(amount).signum() > 0) {
-            economy.deposit(target.getUUID(), BigDecimal.valueOf(amount), currency);
-        }
+        // Direct set via EconomyProviderImpl to avoid phantom withdraw/deposit transactions
+        ((EconomyProviderImpl) economy).setBalance(target.getUUID(), BigDecimal.valueOf(amount), currency);
         source.sendSuccess(() -> Component.translatable(
             "ecocraft_core.command.eco.set", target.getName().getString(), amount, currency.symbol()
         ), true);

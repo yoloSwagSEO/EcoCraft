@@ -3,7 +3,6 @@ package net.ecocraft.core.impl;
 import net.ecocraft.api.currency.Currency;
 import net.ecocraft.core.storage.SqliteDatabaseProvider;
 import org.junit.jupiter.api.*;
-import org.junit.jupiter.api.Disabled;
 
 import java.math.BigDecimal;
 import java.nio.file.Files;
@@ -43,7 +42,7 @@ class EconomyProviderImplTest {
     @Test
     void newPlayerHasZeroBalance() {
         var player = UUID.randomUUID();
-        assertAmountEquals(BigDecimal.ZERO, economy.getBalance(player, GOLD));
+        assertAmountEquals(BigDecimal.ZERO, economy.getVirtualBalance(player, GOLD));
     }
 
     @Test
@@ -51,7 +50,7 @@ class EconomyProviderImplTest {
         var player = UUID.randomUUID();
         var result = economy.deposit(player, new BigDecimal("100"), GOLD);
         assertTrue(result.successful());
-        assertAmountEquals(new BigDecimal("100"), economy.getBalance(player, GOLD));
+        assertAmountEquals(new BigDecimal("100"), economy.getVirtualBalance(player, GOLD));
     }
 
     @Test
@@ -60,7 +59,7 @@ class EconomyProviderImplTest {
         economy.deposit(player, new BigDecimal("100"), GOLD);
         var result = economy.withdraw(player, new BigDecimal("30"), GOLD);
         assertTrue(result.successful());
-        assertAmountEquals(new BigDecimal("70.00"), economy.getBalance(player, GOLD));
+        assertAmountEquals(new BigDecimal("70.00"), economy.getVirtualBalance(player, GOLD));
     }
 
     @Test
@@ -70,7 +69,7 @@ class EconomyProviderImplTest {
         var result = economy.withdraw(player, new BigDecimal("50"), GOLD);
         assertFalse(result.successful());
         assertEquals("Insufficient funds", result.errorMessage());
-        assertAmountEquals(new BigDecimal("10"), economy.getBalance(player, GOLD));
+        assertAmountEquals(new BigDecimal("10"), economy.getVirtualBalance(player, GOLD));
     }
 
     @Test
@@ -81,8 +80,8 @@ class EconomyProviderImplTest {
 
         var result = economy.transfer(p1, p2, new BigDecimal("40"), GOLD);
         assertTrue(result.successful());
-        assertAmountEquals(new BigDecimal("60.00"), economy.getBalance(p1, GOLD));
-        assertAmountEquals(new BigDecimal("40"), economy.getBalance(p2, GOLD));
+        assertAmountEquals(new BigDecimal("60.00"), economy.getVirtualBalance(p1, GOLD));
+        assertAmountEquals(new BigDecimal("40"), economy.getVirtualBalance(p2, GOLD));
     }
 
     @Test
@@ -108,7 +107,6 @@ class EconomyProviderImplTest {
     // -------------------------------------------------------------------------
 
     @Test
-    @Disabled("Pending I9 fix — deposit should reject negative amounts")
     void depositWithNegativeAmountShouldFail() {
         var player = UUID.randomUUID();
         economy.deposit(player, new BigDecimal("100"), GOLD);
@@ -116,11 +114,10 @@ class EconomyProviderImplTest {
         var result = economy.deposit(player, new BigDecimal("-50"), GOLD);
 
         assertFalse(result.successful(), "Deposit with negative amount should fail");
-        assertAmountEquals(new BigDecimal("100"), economy.getBalance(player, GOLD));
+        assertAmountEquals(new BigDecimal("100"), economy.getVirtualBalance(player, GOLD));
     }
 
     @Test
-    @Disabled("Pending I9 fix — withdraw should reject negative amounts")
     void withdrawWithNegativeAmountShouldFail() {
         var player = UUID.randomUUID();
         economy.deposit(player, new BigDecimal("100"), GOLD);
@@ -128,11 +125,10 @@ class EconomyProviderImplTest {
         var result = economy.withdraw(player, new BigDecimal("-50"), GOLD);
 
         assertFalse(result.successful(), "Withdraw with negative amount should fail");
-        assertAmountEquals(new BigDecimal("100"), economy.getBalance(player, GOLD));
+        assertAmountEquals(new BigDecimal("100"), economy.getVirtualBalance(player, GOLD));
     }
 
     @Test
-    @Disabled("Pending I9 fix — transfer should reject negative amounts")
     void transferWithNegativeAmountShouldFail() {
         var p1 = UUID.randomUUID();
         var p2 = UUID.randomUUID();
@@ -141,7 +137,7 @@ class EconomyProviderImplTest {
         var result = economy.transfer(p1, p2, new BigDecimal("-50"), GOLD);
 
         assertFalse(result.successful(), "Transfer with negative amount should fail");
-        assertAmountEquals(new BigDecimal("100"), economy.getBalance(p1, GOLD));
-        assertAmountEquals(BigDecimal.ZERO, economy.getBalance(p2, GOLD));
+        assertAmountEquals(new BigDecimal("100"), economy.getVirtualBalance(p1, GOLD));
+        assertAmountEquals(BigDecimal.ZERO, economy.getVirtualBalance(p2, GOLD));
     }
 }
