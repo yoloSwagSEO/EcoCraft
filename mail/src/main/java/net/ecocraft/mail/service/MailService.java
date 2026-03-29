@@ -360,6 +360,17 @@ public class MailService {
         storage.deleteMail(mailId);
     }
 
+    /**
+     * Admin: deletes all mails for a player (regardless of read/collected state).
+     *
+     * @return number of mails deleted
+     */
+    public int deleteAllMailsForPlayer(UUID playerUuid) {
+        int count = storage.deleteAllMailsForPlayer(playerUuid);
+        LOGGER.info("Admin deleted {} mail(s) for player {}", count, playerUuid);
+        return count;
+    }
+
     // -------------------------------------------------------------------------
     // Expiration
     // -------------------------------------------------------------------------

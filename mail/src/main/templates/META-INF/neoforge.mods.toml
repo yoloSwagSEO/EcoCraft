@@ -32,6 +32,13 @@ ordering="AFTER"
 side="BOTH"
 
 [[dependencies.${mod_id}]]
+modId="ecocraft_core"
+type="required"
+versionRange="[${mod_version},)"
+ordering="AFTER"
+side="BOTH"
+
+[[dependencies.${mod_id}]]
 modId="ecocraft_gui"
 type="required"
 versionRange="[${mod_version},)"

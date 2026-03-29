@@ -247,6 +247,27 @@ public class MailStorageProvider {
         }
     }
 
+    public synchronized int deleteAllMailsForPlayer(UUID playerUuid) {
+        // First get all mail IDs for the player so we can delete their items
+        List<String> mailIds = new ArrayList<>();
+        try (PreparedStatement ps = connection.prepareStatement(
+                "SELECT id FROM mails WHERE recipient_uuid = ?")) {
+            ps.setString(1, playerUuid.toString());
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                mailIds.add(rs.getString("id"));
+            }
+        } catch (SQLException e) {
+            LOGGER.error("Failed to get mail IDs for player {}", playerUuid, e);
+            return 0;
+        }
+
+        for (String mailId : mailIds) {
+            deleteMail(mailId);
+        }
+        return mailIds.size();
+    }
+
     public synchronized List<Mail> getExpiredCODMails() {
         String sql = "SELECT * FROM mails WHERE indestructible = 0 AND expires_at <= ? AND cod_amount > 0 AND collected = 0 AND returned = 0";
         long now = System.currentTimeMillis();
