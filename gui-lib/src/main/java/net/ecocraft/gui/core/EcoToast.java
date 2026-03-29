@@ -5,8 +5,12 @@ import net.ecocraft.gui.theme.Theme;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.network.chat.Component;
+import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.Nullable;
+
+import java.util.List;
 
 /**
  * A toast notification rendered as a global overlay (NOT part of the WidgetTree).
@@ -43,6 +47,10 @@ public final class EcoToast {
     private final boolean dismissOnClick;
 
     private final int height;
+
+    // Cached text lines (computed once in start() when width is known)
+    private String cachedTitle;
+    private List<FormattedCharSequence> cachedMessageLines;
 
     private long spawnTime = -1;
     private boolean dismissed = false;
@@ -119,9 +127,19 @@ public final class EcoToast {
     // Package-private lifecycle (used by EcoToastManager)
     // -------------------------------------------------------------------------
 
-    /** Start the toast — records the spawn time. */
+    /** Start the toast — records the spawn time and caches text layout. */
     void start() {
         this.spawnTime = System.currentTimeMillis();
+
+        // Cache text computations so they are not repeated every frame
+        Font font = Minecraft.getInstance().font;
+        int contentWidth = WIDTH - ACCENT_BAR_WIDTH - PADDING * 2 - (icon != null ? ICON_SIZE + PADDING : 0);
+        this.cachedTitle = DrawUtils.truncateText(font, title, contentWidth);
+        if (message != null && !message.isEmpty()) {
+            this.cachedMessageLines = font.split(Component.literal(message), contentWidth);
+        } else {
+            this.cachedMessageLines = List.of();
+        }
     }
 
     /** Trigger the dismiss/exit animation. */
@@ -256,21 +274,16 @@ public final class EcoToast {
             textX += ICON_SIZE + PADDING;
         }
 
-        int contentWidth = WIDTH - ACCENT_BAR_WIDTH - PADDING * 2 - (icon != null ? ICON_SIZE + PADDING : 0);
-
-        // Title
+        // Title (cached in start())
         int titleY = ry + PADDING;
-        String titleText = DrawUtils.truncateText(font, title, contentWidth);
-        graphics.drawString(font, titleText, textX, titleY, applyAlpha(theme.textWhite, alpha), false);
+        graphics.drawString(font, cachedTitle, textX, titleY, applyAlpha(theme.textWhite, alpha), false);
 
-        // Message (max 2 lines)
-        if (message != null && !message.isEmpty()) {
+        // Message (cached in start(), max 2 lines)
+        if (cachedMessageLines != null && !cachedMessageLines.isEmpty()) {
             int msgY = titleY + font.lineHeight + 2;
-            // Split message manually into at most 2 lines
-            var lines = font.split(net.minecraft.network.chat.Component.literal(message), contentWidth);
-            int maxLines = Math.min(2, lines.size());
+            int maxLines = Math.min(2, cachedMessageLines.size());
             for (int i = 0; i < maxLines; i++) {
-                graphics.drawString(font, lines.get(i), textX, msgY, applyAlpha(theme.textLight, alpha), false);
+                graphics.drawString(font, cachedMessageLines.get(i), textX, msgY, applyAlpha(theme.textLight, alpha), false);
                 msgY += font.lineHeight + 2;
             }
         }

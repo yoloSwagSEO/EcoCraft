@@ -14,6 +14,9 @@ public class CurrencyRegistryImpl implements CurrencyRegistry {
 
     @Override
     public void register(Currency currency) {
+        if (currencies.containsKey(currency.id())) {
+            throw new IllegalArgumentException("Currency already registered: " + currency.id());
+        }
         currencies.put(currency.id(), currency);
         if (defaultId == null) {
             defaultId = currency.id();

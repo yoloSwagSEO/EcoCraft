@@ -58,9 +58,8 @@ public class Theme {
         this.disabledBorder = builder.disabledBorder;
     }
 
-    /** Default WoW-inspired dark theme. */
-    public static Theme dark() {
-        return new Builder()
+    /** Singleton dark theme instance — immutable, safe to share. */
+    public static final Theme DARK = new Builder()
             .bgDarkest(0xFF0D0D1A).bgDark(0xFF12122A).bgMedium(0xFF1A1A2E)
             .bgLight(0xFF2A2A3E).bgRowAlt(0xFF0A0A18)
             .border(0xFF333333).borderLight(0xFF444444).borderAccent(0xFFFFD700)
@@ -75,6 +74,10 @@ public class Theme {
             .rarityRare(0xFF0070DD).rarityEpic(0xFFA335EE).rarityLegendary(0xFFFF8000)
             .disabledBg(0xFF1A1A1A).disabledText(0xFF555555).disabledBorder(0xFF2A2A2A)
             .build();
+
+    /** Default WoW-inspired dark theme. */
+    public static Theme dark() {
+        return DARK;
     }
 
     public static class Builder {

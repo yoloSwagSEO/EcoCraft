@@ -31,6 +31,7 @@ public class EcoGrid extends BaseWidget {
     private final List<EcoRow> rows = new ArrayList<>();
     private int gap;
     private int rowGap;
+    private boolean dirty = false;
 
     /**
      * Create a grid with the specified gap between columns and rows.
@@ -60,22 +61,22 @@ public class EcoGrid extends BaseWidget {
         return this;
     }
 
-    /** Add a new row to the grid. */
+    /** Add a new row to the grid. Layout is deferred until next render. */
     public EcoRow addRow() {
         EcoRow row = new EcoRow(gap);
         rows.add(row);
         addChild(row);
-        relayout();
+        dirty = true;
         return row;
     }
 
-    /** Add a new row with a fixed height. */
+    /** Add a new row with a fixed height. Layout is deferred until next render. */
     public EcoRow addRow(int height) {
         EcoRow row = new EcoRow(gap);
         row.height(height);
         rows.add(row);
         addChild(row);
-        relayout();
+        dirty = true;
         return row;
     }
 
@@ -93,6 +94,10 @@ public class EcoGrid extends BaseWidget {
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        if (dirty) {
+            relayout();
+            dirty = false;
+        }
         // Grid is invisible — just a layout container
     }
 

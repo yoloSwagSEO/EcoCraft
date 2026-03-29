@@ -19,7 +19,7 @@ public record Page<T>(
 
     public int currentPage() {
         if (limit <= 0) return 0;
-        return offset / limit;
+        return (offset / limit) + 1;
     }
 
     public boolean hasNext() {

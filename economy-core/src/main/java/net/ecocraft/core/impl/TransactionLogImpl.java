@@ -38,7 +38,7 @@ public class TransactionLogImpl implements TransactionLog {
             }
             return new Transaction(
                 r.id(), r.from(), r.to(), r.amount(), currency,
-                TransactionType.valueOf(r.type()), r.timestamp()
+                TransactionType.of(r.type()), r.timestamp()
             );
         }).toList();
 

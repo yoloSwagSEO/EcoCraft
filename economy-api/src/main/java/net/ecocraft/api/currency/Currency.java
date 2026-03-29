@@ -14,6 +14,12 @@ public record Currency(
         if (id == null || id.isBlank()) {
             throw new IllegalArgumentException("Currency id cannot be blank");
         }
+        if (name == null || name.isBlank()) {
+            throw new IllegalArgumentException("Currency name cannot be blank");
+        }
+        if (symbol == null || symbol.isBlank()) {
+            throw new IllegalArgumentException("Currency symbol cannot be blank");
+        }
         if (decimals < 0) {
             throw new IllegalArgumentException("Decimals cannot be negative");
         }

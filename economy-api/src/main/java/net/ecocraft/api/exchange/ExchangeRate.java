@@ -9,7 +9,7 @@ public record ExchangeRate(
         Currency from,
         Currency to,
         BigDecimal rate,
-        BigDecimal fee
+        BigDecimal feeRate
 ) {
     public ExchangeRate {
         if (from.id().equals(to.id())) {
@@ -18,15 +18,15 @@ public record ExchangeRate(
         if (rate.signum() <= 0) {
             throw new IllegalArgumentException("Rate must be positive");
         }
-        if (fee.signum() < 0) {
+        if (feeRate.signum() < 0) {
             throw new IllegalArgumentException("Fee cannot be negative");
         }
     }
 
     public BigDecimal convert(BigDecimal amount) {
         var converted = amount.multiply(rate);
-        if (fee.signum() > 0) {
-            var feeAmount = converted.multiply(fee);
+        if (feeRate.signum() > 0) {
+            var feeAmount = converted.multiply(feeRate);
             converted = converted.subtract(feeAmount);
         }
         converted = converted.setScale(to.decimals(), RoundingMode.HALF_UP);

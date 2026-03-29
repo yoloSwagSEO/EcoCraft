@@ -65,10 +65,11 @@ class TransactionTest {
         var from = Instant.parse("2026-01-01T00:00:00Z");
         var to = Instant.parse("2026-03-01T00:00:00Z");
 
-        var filter = new TransactionFilter(player, TransactionType.HDV_SALE, from, to, 0, 20);
+        var hdvSale = TransactionType.of("HDV_SALE");
+        var filter = new TransactionFilter(player, hdvSale, from, to, 0, 20);
 
         assertEquals(player, filter.player());
-        assertEquals(TransactionType.HDV_SALE, filter.type());
+        assertEquals(hdvSale, filter.type());
         assertEquals(0, filter.offset());
         assertEquals(20, filter.limit());
     }

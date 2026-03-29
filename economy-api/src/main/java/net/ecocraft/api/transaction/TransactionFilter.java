@@ -13,4 +13,12 @@ public record TransactionFilter(
         int offset,
         int limit
 ) {
+    public TransactionFilter {
+        if (offset < 0) {
+            throw new IllegalArgumentException("Offset cannot be negative");
+        }
+        if (limit <= 0) {
+            throw new IllegalArgumentException("Limit must be positive");
+        }
+    }
 }

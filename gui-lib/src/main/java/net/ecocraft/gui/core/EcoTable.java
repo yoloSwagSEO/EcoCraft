@@ -11,7 +11,9 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.IntConsumer;
 
 /**
@@ -67,6 +69,10 @@ public class EcoTable extends BaseWidget {
     private int[] cachedColX;
     private int[] cachedColW;
 
+    // Truncation cache: avoids per-frame string allocations in render loop.
+    // Keyed by "text\0maxWidth" → truncated result. Cleared when rows change.
+    private final Map<String, String> truncationCache = new HashMap<>();
+
     private EcoTable(int x, int y, int width, int height, List<TableColumn> columns, Theme theme,
                      Navigation navigation, int scrollLines, boolean showScrollbar,
                      int pageSize, boolean tooltipsEnabled) {
@@ -114,6 +120,7 @@ public class EcoTable extends BaseWidget {
         this.page = 0;
         this.scrollOffset = 0;
         this.hasIcon = rows.stream().anyMatch(r -> r.icon() != null);
+        this.truncationCache.clear();
         recomputeColumnLayout();
         updateScrollbar();
     }
@@ -143,6 +150,7 @@ public class EcoTable extends BaseWidget {
     public void setSize(int width, int height) {
         super.setSize(width, height);
         this.rowsPerPage = Math.max(1, (height - HEADER_HEIGHT) / ROW_HEIGHT);
+        this.truncationCache.clear();
         recomputeColumnLayout();
     }
 
@@ -324,7 +332,9 @@ public class EcoTable extends BaseWidget {
 
                 String rawText = cell.text().getString();
                 int maxTextWidth = cachedColW[c] - 8;
-                String truncated = DrawUtils.truncateText(font, rawText, maxTextWidth);
+                String cacheKey = rawText + '\0' + maxTextWidth;
+                String truncated = truncationCache.computeIfAbsent(cacheKey,
+                        k -> DrawUtils.truncateText(font, rawText, maxTextWidth));
                 Component displayText = truncated.equals(rawText)
                         ? cell.text()
                         : Component.literal(truncated);

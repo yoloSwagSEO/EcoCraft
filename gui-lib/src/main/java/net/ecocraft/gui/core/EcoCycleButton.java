@@ -99,6 +99,7 @@ public class EcoCycleButton extends BaseWidget {
 
     @Override
     public boolean onMouseClicked(double mouseX, double mouseY, int button) {
+        if (!isEnabled()) return false;
         if (options.isEmpty()) return false;
 
         if (button == 0) {
