@@ -89,6 +89,9 @@ public final class AHNetworkHandler {
                 ClientPayloadHandler::handleAHInstances
         );
 
+        registrar.playToClient(AHNotificationPayload.TYPE, AHNotificationPayload.STREAM_CODEC,
+                ClientPayloadHandler::handleNotification);
+
         // Client → Server
         registrar.playToServer(
                 RequestListingsPayload.TYPE,
