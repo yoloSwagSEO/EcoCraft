@@ -186,3 +186,16 @@ record BidEntry(String bidderName, long amount, long timestamp)
 ```
 
 `RequestBidHistoryPayload` is sent when clicking "Voir tout". Server responds with all bids for that listing.
+
+---
+
+## Cross-Cutting: Internationalization
+
+All user-facing strings MUST use the existing i18n system (`Component.translatable()` with keys in FR/EN/ES lang files). This includes:
+- Toast titles and messages (e.g., `ecocraft_ah.notification.outbid.title`)
+- Chat notification messages
+- Notification tab labels and dropdown options
+- Bid history UI labels ("Dernières enchères", "Voir tout", "Aucune enchère", etc.)
+- Dialog titles and row formatting
+
+No hardcoded French strings anywhere — everything goes through lang files.
