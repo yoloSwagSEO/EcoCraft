@@ -70,7 +70,7 @@ public class ScrollPane extends BaseWidget {
         // 3. Translate and render children
         graphics.pose().pushPose();
         graphics.pose().translate(0, -scrollOffset, 0);
-        renderChildren(graphics, mouseX, mouseY, partialTick);
+        renderChildrenInternal(graphics, mouseX, mouseY, partialTick);
         graphics.pose().popPose();
 
         // 4. Disable scissor
@@ -84,6 +84,11 @@ public class ScrollPane extends BaseWidget {
 
     @Override
     public void renderChildren(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        // No-op: children are rendered inside render() with scroll translate
+    }
+
+    /** Internal: render children inside the scroll translate. Called from render(). */
+    private void renderChildrenInternal(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         for (WidgetNode child : getChildren()) {
             if (child.isVisible()) {
                 child.render(graphics, mouseX, mouseY, partialTick);

@@ -90,6 +90,11 @@ public class EcoTable extends BaseWidget {
             int sbY = y + HEADER_HEIGHT + 1;
             int sbH = height - HEADER_HEIGHT - 2;
             this.scrollbar = new EcoScrollbar(sbX, sbY, sbH, theme);
+            this.scrollbar.setResponder(value -> {
+                int totalRows = rows.size();
+                int maxOffset = Math.max(0, totalRows - rowsPerPage);
+                this.scrollOffset = Math.round(value * maxOffset);
+            });
             addChild(this.scrollbar);
         }
 

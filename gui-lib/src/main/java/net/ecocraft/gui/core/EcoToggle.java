@@ -138,6 +138,7 @@ public class EcoToggle extends BaseWidget {
 
     @Override
     public boolean onMouseClicked(double mouseX, double mouseY, int button) {
+        if (!isEnabled()) return false;
         value = !value;
         if (responder != null) {
             responder.accept(value);

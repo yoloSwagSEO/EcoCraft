@@ -141,6 +141,7 @@ public class EcoCheckbox extends BaseWidget {
 
     @Override
     public boolean onMouseClicked(double mouseX, double mouseY, int button) {
+        if (!isEnabled()) return false;
         checked = !checked;
         if (responder != null) {
             responder.accept(checked);

@@ -3,6 +3,8 @@ package net.ecocraft.gui.core;
 import net.ecocraft.gui.theme.Theme;
 import net.minecraft.client.gui.GuiGraphics;
 
+import java.util.function.Consumer;
+
 /**
  * Vertical scrollbar widget extending BaseWidget.
  * Supports draggable thumb, click-to-jump on track, and mouse scroll.
@@ -17,6 +19,7 @@ public class EcoScrollbar extends BaseWidget {
     private float contentRatio = 1f;
     private boolean dragging = false;
     private double dragOffset = 0;
+    private Consumer<Float> responder;
 
     public EcoScrollbar(int x, int y, int height, Theme theme) {
         super(x, y, SCROLLBAR_WIDTH, height);
@@ -40,6 +43,19 @@ public class EcoScrollbar extends BaseWidget {
     /** Set scroll position, clamped to 0.0..1.0. */
     public void setScrollValue(float value) {
         this.scrollValue = Math.max(0f, Math.min(1f, value));
+    }
+
+    /** Set a listener called when the scrollbar value changes via user interaction (drag, click, scroll). */
+    public void setResponder(Consumer<Float> responder) {
+        this.responder = responder;
+    }
+
+    /** Set scroll position from user interaction, clamped to 0.0..1.0, and fire responder. */
+    private void setScrollValueAndNotify(float value) {
+        setScrollValue(value);
+        if (responder != null) {
+            responder.accept(scrollValue);
+        }
     }
 
     /** Returns true if scrollbar is needed (content exceeds visible area). */
@@ -83,7 +99,7 @@ public class EcoScrollbar extends BaseWidget {
         } else {
             // Click on track: jump scroll position
             float clickRatio = (float) (mouseY - getY() - thumbHeight / 2.0) / (getHeight() - thumbHeight);
-            setScrollValue(clickRatio);
+            setScrollValueAndNotify(clickRatio);
         }
         return true;
     }
@@ -97,7 +113,7 @@ public class EcoScrollbar extends BaseWidget {
         if (trackSpace <= 0) return false;
 
         float newValue = (float) (mouseY - getY() - dragOffset) / trackSpace;
-        setScrollValue(newValue);
+        setScrollValueAndNotify(newValue);
         return true;
     }
 
@@ -113,7 +129,7 @@ public class EcoScrollbar extends BaseWidget {
     @Override
     public boolean onMouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
         if (!needsScrollbar()) return false;
-        setScrollValue(scrollValue - (float) (scrollY * 0.05));
+        setScrollValueAndNotify(scrollValue - (float) (scrollY * 0.05));
         return true;
     }
 }
