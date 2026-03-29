@@ -1,0 +1,1 @@
+net.ecocraft.core.compat.kubejs.EcoKubeJSPlugin

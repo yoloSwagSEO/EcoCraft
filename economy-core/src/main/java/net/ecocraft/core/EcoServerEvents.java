@@ -63,6 +63,17 @@ public class EcoServerEvents {
         context = new EcoServerContext(storage, currencyRegistry, economyProvider,
                 exchangeService, transactionLog, permissions);
 
+        // Wire KubeJS event dispatcher if KubeJS is loaded
+        if (net.neoforged.fml.ModList.get().isLoaded("kubejs")) {
+            try {
+                var dispatcher = new net.ecocraft.core.compat.kubejs.EcoEventDispatcher(server);
+                economyProvider.setEventDispatcher(dispatcher);
+                LOGGER.info("KubeJS integration enabled for EcoCraft Economy");
+            } catch (Exception e) {
+                LOGGER.warn("Failed to initialize KubeJS integration: {}", e.getMessage());
+            }
+        }
+
         LOGGER.info("EcoCraft Economy Core initialized with currency: {} ({})",
                 defaultCurrency.name(), defaultCurrency.symbol());
     }
