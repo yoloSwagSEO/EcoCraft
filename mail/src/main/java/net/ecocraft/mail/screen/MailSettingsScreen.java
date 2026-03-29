@@ -35,7 +35,7 @@ public class MailSettingsScreen extends EcoScreen {
     private final List<EcoButton> sidebarButtons = new ArrayList<>();
 
     public MailSettingsScreen(Screen parent, boolean isAdmin) {
-        super(Component.literal("Parametres Mail"));
+        super(Component.translatable("ecocraft_mail.screen.settings_title"));
         this.parentScreen = parent;
         this.isAdmin = isAdmin;
     }
@@ -80,14 +80,14 @@ public class MailSettingsScreen extends EcoScreen {
         int y = guiTop + 8;
 
         // Tab 0: Notifications (always visible)
-        EcoButton notifBtn = createSidebarButton("Notifications", 0, btnX, y, btnW, btnH);
+        EcoButton notifBtn = createSidebarButton(Component.translatable("ecocraft_mail.settings.tab_notifications").getString(), 0, btnX, y, btnW, btnH);
         getTree().addChild(notifBtn);
         sidebarButtons.add(notifBtn);
         y += btnH + 4;
 
         if (isAdmin) {
             // Tab 1: General config (admin only)
-            EcoButton generalBtn = createSidebarButton("General", 1, btnX, y, btnW, btnH);
+            EcoButton generalBtn = createSidebarButton(Component.translatable("ecocraft_mail.settings.tab_general").getString(), 1, btnX, y, btnW, btnH);
             getTree().addChild(generalBtn);
             sidebarButtons.add(generalBtn);
         }
@@ -129,7 +129,12 @@ public class MailSettingsScreen extends EcoScreen {
     private void buildNotificationsTab(int x, int y, int w, int h) {
         Font font = Minecraft.getInstance().font;
 
-        List<String> channelLabels = List.of("Chat", "Toast", "Les deux", "Aucune");
+        List<String> channelLabels = List.of(
+                Component.translatable("ecocraft_mail.settings.channel_chat").getString(),
+                Component.translatable("ecocraft_mail.settings.channel_toast").getString(),
+                Component.translatable("ecocraft_mail.settings.channel_both").getString(),
+                Component.translatable("ecocraft_mail.settings.channel_none").getString()
+        );
         MailNotificationChannel[] channelOrder = {
                 MailNotificationChannel.CHAT, MailNotificationChannel.TOAST,
                 MailNotificationChannel.BOTH, MailNotificationChannel.NONE
@@ -140,7 +145,7 @@ public class MailSettingsScreen extends EcoScreen {
         int currentY = y + 8;
 
         // Title
-        Label title = new Label(font, contentX, currentY, Component.literal("Notifications"), THEME);
+        Label title = new Label(font, contentX, currentY, Component.translatable("ecocraft_mail.settings.notifications_title"), THEME);
         title.setColor(THEME.accent);
         getTree().addChild(title);
         currentY += font.lineHeight + 8;
@@ -176,9 +181,9 @@ public class MailSettingsScreen extends EcoScreen {
 
     private static String getEventLabel(MailNotificationEventType type) {
         return switch (type) {
-            case NEW_MAIL -> "Nouveau courrier";
-            case COD_RECEIVED -> "Paiement COD recu";
-            case MAIL_RETURNED -> "Courrier retourne";
+            case NEW_MAIL -> Component.translatable("ecocraft_mail.settings.event.new_mail").getString();
+            case COD_RECEIVED -> Component.translatable("ecocraft_mail.settings.event.cod_received").getString();
+            case MAIL_RETURNED -> Component.translatable("ecocraft_mail.settings.event.mail_returned").getString();
         };
     }
 
@@ -197,7 +202,7 @@ public class MailSettingsScreen extends EcoScreen {
         int currentY = y + 8;
 
         // Title
-        Label title = new Label(font, contentX, currentY, Component.literal("Configuration generale (Admin)"), THEME);
+        Label title = new Label(font, contentX, currentY, Component.translatable("ecocraft_mail.settings.general_title"), THEME);
         title.setColor(THEME.accent);
         getTree().addChild(title);
         currentY += font.lineHeight + 8;
@@ -205,26 +210,26 @@ public class MailSettingsScreen extends EcoScreen {
         // Info label — admin config is server-side, these are display-only indicators
         // Real config changes would require UpdateMailSettingsPayload (future enhancement)
         Label infoLabel = new Label(font, contentX, currentY,
-                Component.literal("La configuration serveur est modifiable dans le fichier de config."), THEME);
+                Component.translatable("ecocraft_mail.settings.general_info"), THEME);
         infoLabel.setColor(THEME.textDim);
         getTree().addChild(infoLabel);
         currentY += font.lineHeight + 12;
 
         // Display current config values as read-only labels
-        String[] configLabels = {
-                "Courrier entre joueurs: Actif",
-                "Pieces jointes (items): Actif",
-                "Pieces jointes (monnaie): Actif",
-                "Contre-remboursement: Actif",
-                "Max pieces jointes: 12",
-                "Expiration (jours): 30",
-                "Cout d'envoi: 0 Gold",
-                "Frais COD: 0%",
-                "Craft boite aux lettres: Actif"
+        String[] configKeys = {
+                "ecocraft_mail.settings.config.player_mail",
+                "ecocraft_mail.settings.config.item_attachments",
+                "ecocraft_mail.settings.config.currency_attachments",
+                "ecocraft_mail.settings.config.cod",
+                "ecocraft_mail.settings.config.max_attachments",
+                "ecocraft_mail.settings.config.expiry_days",
+                "ecocraft_mail.settings.config.send_cost",
+                "ecocraft_mail.settings.config.cod_fee",
+                "ecocraft_mail.settings.config.mailbox_craft"
         };
 
-        for (String text : configLabels) {
-            Label configLabel = new Label(font, contentX, currentY, Component.literal(text), THEME);
+        for (String key : configKeys) {
+            Label configLabel = new Label(font, contentX, currentY, Component.translatable(key), THEME);
             configLabel.setColor(THEME.textLight);
             getTree().addChild(configLabel);
             currentY += font.lineHeight + 6;
@@ -239,7 +244,7 @@ public class MailSettingsScreen extends EcoScreen {
         int btnY = guiTop + guiHeight - btnH - 8;
         int btnX = guiLeft + guiWidth - btnW - 8;
 
-        EcoButton closeBtn = EcoButton.ghost(THEME, Component.literal("Fermer"), this::onClose);
+        EcoButton closeBtn = EcoButton.ghost(THEME, Component.translatable("ecocraft_mail.button.close"), this::onClose);
         closeBtn.setBounds(btnX, btnY, btnW, btnH);
         getTree().addChild(closeBtn);
     }

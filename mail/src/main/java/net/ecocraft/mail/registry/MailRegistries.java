@@ -82,7 +82,7 @@ public class MailRegistries {
     public static final DeferredHolder<CreativeModeTab, CreativeModeTab> MAIL_TAB = CREATIVE_TABS.register(
             "mail_tab",
             () -> CreativeModeTab.builder()
-                    .title(Component.literal("EcoCraft Mail"))
+                    .title(Component.translatable("itemGroup.ecocraft_mail.mail_tab"))
                     .icon(() -> MAILBOX_ITEM.get().getDefaultInstance())
                     .displayItems((params, output) -> {
                         output.accept(MAILBOX_ITEM.get());

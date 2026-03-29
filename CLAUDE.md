@@ -2,11 +2,12 @@
 
 ## Project
 
-NeoForge mod suite for Minecraft 1.21.1. Mono-repo with 4 Gradle modules:
+NeoForge mod suite for Minecraft 1.21.1. Mono-repo with 5 Gradle modules:
 - `economy-api` — pure interfaces
 - `economy-core` — SQLite storage, commands, permissions, vault block
 - `gui-lib` — WoW-themed GUI widgets
 - `auction-house` — WoW-style Auction House (HDV)
+- `mail` — player-to-player mail system with mailbox block, postman NPC, attachments, COD
 
 ## Tech Stack
 
@@ -21,6 +22,7 @@ NeoForge mod suite for Minecraft 1.21.1. Mono-repo with 4 Gradle modules:
 ./gradlew clean build                    # Build all
 ./gradlew :economy-core:test             # Run economy tests
 ./gradlew :auction-house:test            # Run AH tests
+./gradlew :mail:test                     # Run mail tests
 
 # Deploy to Minecraft
 rm /home/florian/.minecraft/mods/ecocraft-*
@@ -28,6 +30,7 @@ cp economy-api/build/libs/*.jar /home/florian/.minecraft/mods/
 cp gui-lib/build/libs/*.jar /home/florian/.minecraft/mods/
 cp economy-core/build/libs/*.jar /home/florian/.minecraft/mods/
 cp auction-house/build/libs/*.jar /home/florian/.minecraft/mods/
+cp mail/build/libs/*.jar /home/florian/.minecraft/mods/
 ```
 
 ## In-Game Testing
@@ -36,7 +39,11 @@ cp auction-house/build/libs/*.jar /home/florian/.minecraft/mods/
 - `/ah` — open Auction House
 - `/ah sell <price>` — quick sell item in hand
 - `/summon ecocraft_ah:auctioneer` — spawn NPC (looks like a cow currently)
+- `/mail` — open Mailbox
+- `/mail send <player> <subject>` — send a text-only mail
+- `/summon ecocraft_mail:postman` — spawn Postman NPC
 - Creative tab "EcoCraft" has terminal block + spawn egg
+- Creative tab "EcoCraft Mail" has mailbox block + postman spawn egg
 
 ## Language
 

@@ -157,8 +157,8 @@ public class MailServerEvents {
         try {
             int mailCount = storageProvider.countAvailableMails(player.getUUID());
             if (mailCount > 0) {
-                player.sendSystemMessage(Component.literal(
-                        "\u00a7e\u2709 Vous avez " + mailCount + " mail(s) dans votre bo\u00eete aux lettres."
+                player.sendSystemMessage(Component.translatable(
+                        "ecocraft_mail.login.unread_mails", mailCount
                 ));
             }
         } catch (Exception e) {

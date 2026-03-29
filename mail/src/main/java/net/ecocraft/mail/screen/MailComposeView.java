@@ -59,42 +59,42 @@ public class MailComposeView extends BaseWidget {
         // --- Header ---
         Panel headerPanel = new Panel(x, y, w, 30, THEME);
         headerPanel.padding(6);
-        headerPanel.title(Component.literal("NOUVEAU COURRIER"), font);
+        headerPanel.title(Component.translatable("ecocraft_mail.compose.header"), font);
         headerPanel.titleUppercase(false);
         addChild(headerPanel);
 
-        cancelButton = EcoButton.ghost(THEME, Component.literal("< Annuler"), () -> screen.showListView());
+        cancelButton = EcoButton.ghost(THEME, Component.translatable("ecocraft_mail.button.cancel"), () -> screen.showListView());
         cancelButton.setBounds(innerX, y + 8, 70, 16);
         headerPanel.addChild(cancelButton);
 
         currentY = y + 34;
 
         // --- Destinataire ---
-        Label recipientLabel = new Label(font, innerX, currentY, Component.literal("Destinataire"), THEME);
+        Label recipientLabel = new Label(font, innerX, currentY, Component.translatable("ecocraft_mail.compose.recipient"), THEME);
         recipientLabel.setColor(THEME.textLight);
         addChild(recipientLabel);
         currentY += LABEL_HEIGHT + 2;
 
         recipientInput = new EcoTextInput(font, innerX, currentY, innerW, FIELD_HEIGHT,
-                Component.literal("Nom du joueur..."), THEME);
+                Component.translatable("ecocraft_mail.compose.recipient_placeholder"), THEME);
         recipientInput.setMaxLength(64);
         addChild(recipientInput);
         currentY += FIELD_HEIGHT + GAP;
 
         // --- Objet ---
-        Label subjectLabel = new Label(font, innerX, currentY, Component.literal("Objet"), THEME);
+        Label subjectLabel = new Label(font, innerX, currentY, Component.translatable("ecocraft_mail.compose.subject"), THEME);
         subjectLabel.setColor(THEME.textLight);
         addChild(subjectLabel);
         currentY += LABEL_HEIGHT + 2;
 
         subjectInput = new EcoTextInput(font, innerX, currentY, innerW, FIELD_HEIGHT,
-                Component.literal("Objet du mail..."), THEME);
+                Component.translatable("ecocraft_mail.compose.subject_placeholder"), THEME);
         subjectInput.setMaxLength(128);
         addChild(subjectInput);
         currentY += FIELD_HEIGHT + GAP;
 
         // --- Message ---
-        Label bodyLabel = new Label(font, innerX, currentY, Component.literal("Message"), THEME);
+        Label bodyLabel = new Label(font, innerX, currentY, Component.translatable("ecocraft_mail.compose.message"), THEME);
         bodyLabel.setColor(THEME.textLight);
         addChild(bodyLabel);
         currentY += LABEL_HEIGHT + 2;
@@ -109,7 +109,7 @@ public class MailComposeView extends BaseWidget {
         int halfW = (innerW - GAP) / 2;
 
         Label itemLabel = new Label(font, innerX, currentY,
-                Component.literal("Items en main a joindre (quantite)"), THEME);
+                Component.translatable("ecocraft_mail.compose.items_label"), THEME);
         itemLabel.setColor(THEME.textLight);
         addChild(itemLabel);
         currentY += LABEL_HEIGHT + 2;
@@ -121,7 +121,7 @@ public class MailComposeView extends BaseWidget {
         currentY += FIELD_HEIGHT + GAP;
 
         // --- Currency ---
-        Label currencyLabel = new Label(font, innerX, currentY, Component.literal("Montant (Gold)"), THEME);
+        Label currencyLabel = new Label(font, innerX, currentY, Component.translatable("ecocraft_mail.compose.currency_label"), THEME);
         currencyLabel.setColor(THEME.textLight);
         addChild(currencyLabel);
         currentY += LABEL_HEIGHT + 2;
@@ -133,7 +133,7 @@ public class MailComposeView extends BaseWidget {
         currentY += FIELD_HEIGHT + GAP;
 
         // --- COD toggle + amount ---
-        Label codLabel = new Label(font, innerX, currentY, Component.literal("Contre-remboursement"), THEME);
+        Label codLabel = new Label(font, innerX, currentY, Component.translatable("ecocraft_mail.compose.cod_label"), THEME);
         codLabel.setColor(THEME.textLight);
         addChild(codLabel);
         currentY += LABEL_HEIGHT + 2;
@@ -158,7 +158,7 @@ public class MailComposeView extends BaseWidget {
         currentY += FIELD_HEIGHT + GAP + 4;
 
         // --- Send button + status label ---
-        sendButton = EcoButton.success(THEME, Component.literal("Envoyer"), this::onSend);
+        sendButton = EcoButton.success(THEME, Component.translatable("ecocraft_mail.button.send"), this::onSend);
         sendButton.setBounds(innerX, currentY, 90, 20);
         addChild(sendButton);
 
@@ -174,11 +174,11 @@ public class MailComposeView extends BaseWidget {
 
         // Validation
         if (recipient.isEmpty()) {
-            showStatus("Destinataire requis !", THEME.danger);
+            showStatus(Component.translatable("ecocraft_mail.compose.error_recipient").getString(), THEME.danger);
             return;
         }
         if (subject.isEmpty()) {
-            showStatus("Objet requis !", THEME.danger);
+            showStatus(Component.translatable("ecocraft_mail.compose.error_subject").getString(), THEME.danger);
             return;
         }
 
@@ -198,7 +198,7 @@ public class MailComposeView extends BaseWidget {
             }
         }
 
-        showStatus("Envoi en cours...", THEME.textDim);
+        showStatus(Component.translatable("ecocraft_mail.compose.sending").getString(), THEME.textDim);
         sendButton.setEnabled(false);
 
         PacketDistributor.sendToServer(new SendMailPayload(
@@ -214,7 +214,7 @@ public class MailComposeView extends BaseWidget {
         if (payload.success()) {
             // Show success toast and return to list
             EcoToast toast = EcoToast.builder(THEME)
-                    .title("Courrier envoye")
+                    .title(Component.translatable("ecocraft_mail.compose.sent").getString())
                     .message(payload.message())
                     .level(net.ecocraft.gui.core.ToastLevel.SUCCESS)
                     .animation(net.ecocraft.gui.core.ToastAnimation.SLIDE_RIGHT)

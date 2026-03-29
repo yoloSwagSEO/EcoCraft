@@ -30,7 +30,7 @@ public final class MailCommand {
                     ServerPlayer player = ctx.getSource().getPlayerOrException();
                     // TODO: send OpenMailboxPayload to client (Task 6: network payloads)
                     ctx.getSource().sendSuccess(
-                            () -> Component.literal("\u00a7aOuverture de la bo\u00eete aux lettres..."),
+                            () -> Component.translatable("ecocraft_mail.command.opening"),
                             false);
                     return 1;
                 })
@@ -110,7 +110,7 @@ public final class MailCommand {
                                    Supplier<MailService> serviceSupplier) {
         MailService service = serviceSupplier.get();
         if (service == null) {
-            source.sendFailure(Component.literal("\u00a7cLe syst\u00e8me de mail n'est pas initialis\u00e9."));
+            source.sendFailure(Component.translatable("ecocraft_mail.command.error_not_initialized"));
             return 0;
         }
 
@@ -126,7 +126,7 @@ public final class MailCommand {
                     0, null   // no COD
             );
             source.sendSuccess(
-                    () -> Component.literal("\u00a7aMail envoy\u00e9 \u00e0 " + recipient.getName().getString() + " !"),
+                    () -> Component.translatable("ecocraft_mail.command.mail_sent", recipient.getName().getString()),
                     false);
             return 1;
         } catch (MailService.MailException e) {
@@ -140,7 +140,7 @@ public final class MailCommand {
                                          Supplier<MailService> serviceSupplier) {
         MailService service = serviceSupplier.get();
         if (service == null) {
-            source.sendFailure(Component.literal("\u00a7cLe syst\u00e8me de mail n'est pas initialis\u00e9."));
+            source.sendFailure(Component.translatable("ecocraft_mail.command.error_not_initialized"));
             return 0;
         }
 
@@ -156,7 +156,7 @@ public final class MailCommand {
                     0           // instant delivery
             );
             source.sendSuccess(
-                    () -> Component.literal("\u00a7aMail syst\u00e8me envoy\u00e9 \u00e0 " + recipient.getName().getString() + " !"),
+                    () -> Component.translatable("ecocraft_mail.command.system_mail_sent", recipient.getName().getString()),
                     false);
             return 1;
         } catch (MailService.MailException e) {
@@ -169,7 +169,7 @@ public final class MailCommand {
                                             Supplier<MailService> serviceSupplier) {
         MailService service = serviceSupplier.get();
         if (service == null) {
-            source.sendFailure(Component.literal("\u00a7cLe syst\u00e8me de mail n'est pas initialis\u00e9."));
+            source.sendFailure(Component.translatable("ecocraft_mail.command.error_not_initialized"));
             return 0;
         }
 
@@ -191,14 +191,14 @@ public final class MailCommand {
                 );
                 count++;
             } catch (MailService.MailException e) {
-                source.sendFailure(Component.literal(
-                        "\u00a7cErreur pour " + player.getName().getString() + " : " + e.getMessage()));
+                source.sendFailure(Component.translatable(
+                        "ecocraft_mail.command.error_player", player.getName().getString(), e.getMessage()));
             }
         }
 
         int finalCount = count;
         source.sendSuccess(
-                () -> Component.literal("\u00a7aMail syst\u00e8me envoy\u00e9 \u00e0 " + finalCount + " joueur(s) !"),
+                () -> Component.translatable("ecocraft_mail.command.system_mail_sent_all", finalCount),
                 true);
         return count;
     }
@@ -207,13 +207,13 @@ public final class MailCommand {
                                           Supplier<MailService> serviceSupplier) {
         MailService service = serviceSupplier.get();
         if (service == null) {
-            source.sendFailure(Component.literal("\u00a7cLe syst\u00e8me de mail n'est pas initialis\u00e9."));
+            source.sendFailure(Component.translatable("ecocraft_mail.command.error_not_initialized"));
             return 0;
         }
 
         int deleted = service.deleteAllMailsForPlayer(target.getUUID());
         source.sendSuccess(
-                () -> Component.literal("\u00a7a" + deleted + " mail(s) supprim\u00e9(s) pour " + target.getName().getString() + "."),
+                () -> Component.translatable("ecocraft_mail.command.mails_deleted", deleted, target.getName().getString()),
                 true);
         return deleted;
     }
@@ -222,13 +222,13 @@ public final class MailCommand {
                                           Supplier<MailService> serviceSupplier) {
         MailService service = serviceSupplier.get();
         if (service == null) {
-            source.sendFailure(Component.literal("\u00a7cLe syst\u00e8me de mail n'est pas initialis\u00e9."));
+            source.sendFailure(Component.translatable("ecocraft_mail.command.error_not_initialized"));
             return 0;
         }
 
         service.expireMails();
         source.sendSuccess(
-                () -> Component.literal("\u00a7aMails expir\u00e9s purg\u00e9s avec succ\u00e8s."),
+                () -> Component.translatable("ecocraft_mail.command.purge_success"),
                 true);
         return 1;
     }

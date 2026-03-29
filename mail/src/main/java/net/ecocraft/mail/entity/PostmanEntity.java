@@ -26,7 +26,7 @@ public class PostmanEntity extends Mob {
         super(type, level);
         this.setNoGravity(true);
         this.setInvulnerable(true);
-        this.setCustomName(Component.literal("\u00a76Facteur"));
+        this.setCustomName(Component.translatable("ecocraft_mail.entity.postman_name"));
         this.setCustomNameVisible(true);
     }
 
@@ -40,8 +40,7 @@ public class PostmanEntity extends Mob {
         if (!level().isClientSide && hand == InteractionHand.MAIN_HAND
                 && player instanceof ServerPlayer serverPlayer) {
             if (!PermissionAPI.getPermission(serverPlayer, MailPermissions.READ)) {
-                serverPlayer.sendSystemMessage(Component.literal(
-                        "\u00a7cVous n'avez pas la permission d'ouvrir la bo\u00eete aux lettres."));
+                serverPlayer.sendSystemMessage(Component.translatable("ecocraft_mail.error.no_permission"));
                 return InteractionResult.FAIL;
             }
             PacketDistributor.sendToPlayer(serverPlayer, new OpenMailboxPayload());

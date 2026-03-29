@@ -65,7 +65,7 @@ public class MailListView extends BaseWidget {
         // --- Header panel ---
         Panel headerPanel = new Panel(x, y, w, HEADER_HEIGHT, THEME);
         headerPanel.padding(6);
-        headerPanel.title(Component.literal("BOITE AUX LETTRES"), font);
+        headerPanel.title(Component.translatable("ecocraft_mail.screen.header"), font);
         headerPanel.titleUppercase(false);
         addChild(headerPanel);
 
@@ -75,22 +75,22 @@ public class MailListView extends BaseWidget {
         int cardY = y + 22;
 
         itemsToCollectCard = new EcoStatCard(x + 8, cardY, cardW, cardH,
-                Component.literal("Items"), Component.literal("0"), THEME.textLight, THEME);
+                Component.translatable("ecocraft_mail.stat.items"), Component.literal("0"), THEME.textLight, THEME);
         headerPanel.addChild(itemsToCollectCard);
 
         goldToCollectCard = new EcoStatCard(x + 8 + cardW + 8, cardY, cardW, cardH,
-                Component.literal("Gold"), Component.literal("0 G"), THEME.accent, THEME);
+                Component.translatable("ecocraft_mail.stat.gold"), Component.literal("0 G"), THEME.accent, THEME);
         headerPanel.addChild(goldToCollectCard);
 
         // Buttons (top-right of header)
         int btnY = y + 8;
         int btnH = 18;
 
-        newMailButton = EcoButton.primary(THEME, Component.literal("Nouveau mail"), () -> screen.showComposeView());
+        newMailButton = EcoButton.primary(THEME, Component.translatable("ecocraft_mail.button.new_mail"), () -> screen.showComposeView());
         newMailButton.setBounds(x + w - 200, btnY, 90, btnH);
         headerPanel.addChild(newMailButton);
 
-        collectAllButton = EcoButton.success(THEME, Component.literal("Tout collecter"), this::onCollectAll);
+        collectAllButton = EcoButton.success(THEME, Component.translatable("ecocraft_mail.button.collect_all"), this::onCollectAll);
         collectAllButton.setBounds(x + w - 105, btnY, 95, btnH);
         headerPanel.addChild(collectAllButton);
 
@@ -129,8 +129,8 @@ public class MailListView extends BaseWidget {
                 if (mail.hasCurrency()) goldTotal += mail.currencyAmount();
             }
         }
-        itemsToCollectCard.setValue(Component.literal(itemCount + " mail(s)"), THEME.textLight);
-        goldToCollectCard.setValue(Component.literal(goldTotal + " G"), THEME.accent);
+        itemsToCollectCard.setValue(Component.translatable("ecocraft_mail.stat.items_value", itemCount), THEME.textLight);
+        goldToCollectCard.setValue(Component.translatable("ecocraft_mail.stat.gold_value", goldTotal), THEME.accent);
     }
 
     private void rebuildMailRows() {
@@ -181,14 +181,14 @@ public class MailListView extends BaseWidget {
             boolean canDelete = mail.read() && (!hasAttachments || mail.collected());
 
             if (canDelete) {
-                deleteButton = EcoButton.danger(THEME, Component.literal("Supprimer"), () -> onDelete(mail.id()));
+                deleteButton = EcoButton.danger(THEME, Component.translatable("ecocraft_mail.button.delete"), () -> onDelete(mail.id()));
                 deleteButton.setBounds(rightEdge - btnW - 4, btnY, btnW, btnH);
                 addChild(deleteButton);
                 rightEdge -= (btnW + 8);
             }
 
             if (canCollect) {
-                collectButton = EcoButton.success(THEME, Component.literal("Collecter"), () -> onCollect(mail.id()));
+                collectButton = EcoButton.success(THEME, Component.translatable("ecocraft_mail.button.collect"), () -> onCollect(mail.id()));
                 collectButton.setBounds(rightEdge - btnW - 4, btnY, btnW, btnH);
                 addChild(collectButton);
             }
@@ -221,7 +221,7 @@ public class MailListView extends BaseWidget {
             graphics.drawString(font, subject, textX, y + 5, subjectColor, false);
 
             // Sender name (below subject)
-            String sender = "De: " + mail.senderName();
+            String sender = Component.translatable("ecocraft_mail.list.from", mail.senderName()).getString();
             graphics.drawString(font, sender, textX, y + 17, THEME.textDim, false);
 
             // Date (right side, above buttons area)
@@ -233,16 +233,18 @@ public class MailListView extends BaseWidget {
             int tagX = x + w - 200;
             int tagY = y + 17;
             if (mail.hasItems()) {
-                graphics.drawString(font, "[Items]", tagX, tagY, THEME.info, false);
-                tagX += font.width("[Items]") + 4;
+                String itemsTag = Component.translatable("ecocraft_mail.list.tag_items").getString();
+                graphics.drawString(font, itemsTag, tagX, tagY, THEME.info, false);
+                tagX += font.width(itemsTag) + 4;
             }
             if (mail.hasCurrency()) {
-                String goldTag = "[" + mail.currencyAmount() + " G]";
+                String goldTag = Component.translatable("ecocraft_mail.list.tag_gold", mail.currencyAmount()).getString();
                 graphics.drawString(font, goldTag, tagX, tagY, THEME.accent, false);
                 tagX += font.width(goldTag) + 4;
             }
             if (mail.hasCOD()) {
-                graphics.drawString(font, "[COD]", tagX, tagY, THEME.warning, false);
+                String codTag = Component.translatable("ecocraft_mail.list.tag_cod").getString();
+                graphics.drawString(font, codTag, tagX, tagY, THEME.warning, false);
             }
         }
 

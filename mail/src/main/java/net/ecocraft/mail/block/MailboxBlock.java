@@ -46,7 +46,7 @@ public class MailboxBlock extends BaseEntityBlock {
                                                 Player player, BlockHitResult hit) {
         if (!level.isClientSide && player instanceof ServerPlayer serverPlayer) {
             if (!PermissionAPI.getPermission(serverPlayer, MailPermissions.READ)) {
-                serverPlayer.sendSystemMessage(Component.literal("\u00a7cVous n'avez pas la permission d'ouvrir la bo\u00eete aux lettres."));
+                serverPlayer.sendSystemMessage(Component.translatable("ecocraft_mail.error.no_permission"));
                 return InteractionResult.FAIL;
             }
             PacketDistributor.sendToPlayer(serverPlayer, new OpenMailboxPayload());

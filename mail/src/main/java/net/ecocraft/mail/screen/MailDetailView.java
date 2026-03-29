@@ -73,7 +73,7 @@ public class MailDetailView extends BaseWidget {
         int currentY = y + padding;
 
         // --- Back button (top-left) ---
-        EcoButton backButton = EcoButton.ghost(THEME, Component.literal("< Retour"), () -> screen.showListView());
+        EcoButton backButton = EcoButton.ghost(THEME, Component.translatable("ecocraft_mail.button.back"), () -> screen.showListView());
         backButton.setBounds(innerX, currentY, 70, 16);
         addChild(backButton);
 
@@ -86,8 +86,7 @@ public class MailDetailView extends BaseWidget {
         currentY += 22;
 
         // --- Sender + date ---
-        String senderText = "De: " + detail.senderName();
-        Label senderLabel = new Label(font, innerX, currentY, Component.literal(senderText), THEME);
+        Label senderLabel = new Label(font, innerX, currentY, Component.translatable("ecocraft_mail.detail.from", detail.senderName()), THEME);
         senderLabel.setColor(THEME.textGrey);
         addChild(senderLabel);
 
@@ -165,9 +164,8 @@ public class MailDetailView extends BaseWidget {
 
             // Currency label
             if (detail.currencyAmount() > 0) {
-                String currText = detail.currencyAmount() + " Gold";
                 Label currLabel = new Label(font, slotX + 8, slotY + 6,
-                        Component.literal(currText), THEME);
+                        Component.translatable("ecocraft_mail.detail.currency", detail.currencyAmount()), THEME);
                 currLabel.setColor(THEME.accent);
                 attachPanel.addChild(currLabel);
             }
@@ -183,22 +181,21 @@ public class MailDetailView extends BaseWidget {
             codPanel.borderColor(THEME.warning);
             addChild(codPanel);
 
-            String codText = "Contre-remboursement: " + detail.codAmount() + " Gold";
             Label codLabel = new Label(font, innerX + 8, currentY + 6,
-                    Component.literal(codText), THEME);
+                    Component.translatable("ecocraft_mail.detail.cod_banner", detail.codAmount()), THEME);
             codLabel.setColor(THEME.warning);
             codPanel.addChild(codLabel);
 
             if (!detail.collected()) {
                 // Pay & Collect button
                 EcoButton payButton = EcoButton.success(THEME,
-                        Component.literal("Payer & Collecter"), this::onPayCOD);
+                        Component.translatable("ecocraft_mail.button.pay_collect"), this::onPayCOD);
                 payButton.setBounds(innerX + innerW - 230, currentY + 6, 110, 18);
                 codPanel.addChild(payButton);
 
                 // Return button
                 EcoButton returnButton = EcoButton.warning(THEME,
-                        Component.literal("Retourner"), this::onReturnCOD);
+                        Component.translatable("ecocraft_mail.button.return_cod"), this::onReturnCOD);
                 returnButton.setBounds(innerX + innerW - 110, currentY + 6, 80, 18);
                 codPanel.addChild(returnButton);
             }
@@ -214,7 +211,7 @@ public class MailDetailView extends BaseWidget {
         // Collect button (non-COD attachments, not yet collected)
         if (hasAttachments && !detail.collected() && !hasCOD) {
             EcoButton collectBtn = EcoButton.success(THEME,
-                    Component.literal("Collecter"), this::onCollect);
+                    Component.translatable("ecocraft_mail.button.collect"), this::onCollect);
             collectBtn.setBounds(btnX, btnY, 80, btnH);
             addChild(collectBtn);
             btnX += 88;
@@ -224,7 +221,7 @@ public class MailDetailView extends BaseWidget {
         boolean canDelete = detail.read() && (!hasAttachments || detail.collected());
         if (canDelete) {
             EcoButton deleteBtn = EcoButton.danger(THEME,
-                    Component.literal("Supprimer"), this::onDelete);
+                    Component.translatable("ecocraft_mail.button.delete"), this::onDelete);
             deleteBtn.setBounds(btnX, btnY, 80, btnH);
             addChild(deleteBtn);
         }

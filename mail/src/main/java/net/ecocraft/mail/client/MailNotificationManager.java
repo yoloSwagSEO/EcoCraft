@@ -20,7 +20,7 @@ public class MailNotificationManager {
         if (channel == MailNotificationChannel.NONE) return;
 
         String title = getTitleForEvent(eventType);
-        String message = payload.subject() + " - de " + payload.senderName();
+        String message = Component.translatable("ecocraft_mail.notification.message", payload.subject(), payload.senderName()).getString();
 
         if (channel == MailNotificationChannel.CHAT || channel == MailNotificationChannel.BOTH) {
             sendChat(message);
@@ -32,9 +32,9 @@ public class MailNotificationManager {
 
     private static String getTitleForEvent(MailNotificationEventType eventType) {
         return switch (eventType) {
-            case NEW_MAIL -> "Nouveau courrier";
-            case COD_RECEIVED -> "Paiement COD recu";
-            case MAIL_RETURNED -> "Courrier retourne";
+            case NEW_MAIL -> Component.translatable("ecocraft_mail.notification.new_mail").getString();
+            case COD_RECEIVED -> Component.translatable("ecocraft_mail.notification.cod_received").getString();
+            case MAIL_RETURNED -> Component.translatable("ecocraft_mail.notification.mail_returned").getString();
         };
     }
 
@@ -42,7 +42,7 @@ public class MailNotificationManager {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player != null) {
             mc.player.displayClientMessage(
-                    Component.literal("[Mail] ").append(Component.literal(message)),
+                    Component.translatable("ecocraft_mail.notification.chat_prefix").append(Component.literal(message)),
                     false
             );
         }

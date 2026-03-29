@@ -36,7 +36,7 @@ public class MailboxScreen extends EcoScreen {
     private EcoButton settingsButton;
 
     public MailboxScreen() {
-        super(Component.literal("Boite aux lettres"));
+        super(Component.translatable("ecocraft_mail.screen.title"));
     }
 
     @Override

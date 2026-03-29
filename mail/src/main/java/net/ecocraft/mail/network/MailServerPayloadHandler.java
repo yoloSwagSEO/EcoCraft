@@ -12,6 +12,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.TagParser;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
@@ -141,19 +142,20 @@ public final class MailServerPayloadHandler {
                     // Deliver items for all collected mails is handled by the service via ItemDeliverer
                     context.reply(new CollectMailResultPayload(
                             true,
-                            count > 0 ? count + " mail(s) collecte(s)" : "Aucun mail a collecter",
+                            count > 0 ? Component.translatable("ecocraft_mail.server.collect_all_result", count).getString()
+                                      : Component.translatable("ecocraft_mail.server.collect_none").getString(),
                             count,
                             0
                     ));
                 } else {
                     service.collectMail(player.getUUID(), payload.mailId());
-                    context.reply(new CollectMailResultPayload(true, "Mail collecte", 1, 0));
+                    context.reply(new CollectMailResultPayload(true, Component.translatable("ecocraft_mail.server.collect_one").getString(), 1, 0));
                 }
             } catch (MailService.MailException e) {
                 context.reply(new CollectMailResultPayload(false, e.getMessage(), 0, 0));
             } catch (Exception e) {
                 LOGGER.error("Error handling CollectMail", e);
-                context.reply(new CollectMailResultPayload(false, "Erreur interne", 0, 0));
+                context.reply(new CollectMailResultPayload(false, Component.translatable("ecocraft_mail.server.error_internal").getString(), 0, 0));
             }
         });
     }
@@ -171,35 +173,35 @@ public final class MailServerPayloadHandler {
 
                 // Permission checks
                 if (!PermissionAPI.getPermission(player, MailPermissions.SEND)) {
-                    context.reply(new SendMailResultPayload(false, "Permission refusee"));
+                    context.reply(new SendMailResultPayload(false, Component.translatable("ecocraft_mail.server.permission_denied").getString()));
                     return;
                 }
 
                 if (!config.allowPlayerMail.get()) {
-                    context.reply(new SendMailResultPayload(false, "L'envoi de mails est desactive"));
+                    context.reply(new SendMailResultPayload(false, Component.translatable("ecocraft_mail.server.mail_disabled").getString()));
                     return;
                 }
 
                 // Validate subject
                 if (payload.subject() == null || payload.subject().isBlank()) {
-                    context.reply(new SendMailResultPayload(false, "Le sujet est obligatoire"));
+                    context.reply(new SendMailResultPayload(false, Component.translatable("ecocraft_mail.server.subject_required").getString()));
                     return;
                 }
 
                 // Item attachment permission check
                 if (!payload.inventorySlots().isEmpty()) {
                     if (!config.allowItemAttachments.get()) {
-                        context.reply(new SendMailResultPayload(false, "Les pieces jointes sont desactivees"));
+                        context.reply(new SendMailResultPayload(false, Component.translatable("ecocraft_mail.server.attachments_disabled").getString()));
                         return;
                     }
                     if (!PermissionAPI.getPermission(player, MailPermissions.ATTACH_ITEMS)) {
-                        context.reply(new SendMailResultPayload(false, "Permission refusee pour les pieces jointes"));
+                        context.reply(new SendMailResultPayload(false, Component.translatable("ecocraft_mail.server.attachments_no_permission").getString()));
                         return;
                     }
                     int maxAttachments = config.maxItemAttachments.get();
                     if (payload.inventorySlots().size() > maxAttachments) {
                         context.reply(new SendMailResultPayload(false,
-                                "Maximum " + maxAttachments + " pieces jointes"));
+                                Component.translatable("ecocraft_mail.server.attachments_max", maxAttachments).getString()));
                         return;
                     }
                 }
@@ -207,11 +209,11 @@ public final class MailServerPayloadHandler {
                 // Currency attachment permission check
                 if (payload.currencyAmount() > 0) {
                     if (!config.allowCurrencyAttachments.get()) {
-                        context.reply(new SendMailResultPayload(false, "L'envoi de monnaie est desactive"));
+                        context.reply(new SendMailResultPayload(false, Component.translatable("ecocraft_mail.server.currency_disabled").getString()));
                         return;
                     }
                     if (!PermissionAPI.getPermission(player, MailPermissions.ATTACH_CURRENCY)) {
-                        context.reply(new SendMailResultPayload(false, "Permission refusee pour la monnaie"));
+                        context.reply(new SendMailResultPayload(false, Component.translatable("ecocraft_mail.server.currency_no_permission").getString()));
                         return;
                     }
                 }
@@ -219,11 +221,11 @@ public final class MailServerPayloadHandler {
                 // COD permission check
                 if (payload.codAmount() > 0) {
                     if (!config.allowCOD.get()) {
-                        context.reply(new SendMailResultPayload(false, "Le contre-remboursement est desactive"));
+                        context.reply(new SendMailResultPayload(false, Component.translatable("ecocraft_mail.server.cod_disabled").getString()));
                         return;
                     }
                     if (!PermissionAPI.getPermission(player, MailPermissions.COD)) {
-                        context.reply(new SendMailResultPayload(false, "Permission refusee pour le contre-remboursement"));
+                        context.reply(new SendMailResultPayload(false, Component.translatable("ecocraft_mail.server.cod_no_permission").getString()));
                         return;
                     }
                 }
@@ -231,7 +233,7 @@ public final class MailServerPayloadHandler {
                 // Resolve recipient name to UUID
                 var server = player.getServer();
                 if (server == null) {
-                    context.reply(new SendMailResultPayload(false, "Erreur serveur"));
+                    context.reply(new SendMailResultPayload(false, Component.translatable("ecocraft_mail.server.error_server").getString()));
                     return;
                 }
 
@@ -253,13 +255,13 @@ public final class MailServerPayloadHandler {
                 }
 
                 if (recipientUuid == null) {
-                    context.reply(new SendMailResultPayload(false, "Joueur introuvable : " + payload.recipientName()));
+                    context.reply(new SendMailResultPayload(false, Component.translatable("ecocraft_mail.server.player_not_found", payload.recipientName()).getString()));
                     return;
                 }
 
                 // Cannot send mail to yourself
                 if (recipientUuid.equals(player.getUUID())) {
-                    context.reply(new SendMailResultPayload(false, "Vous ne pouvez pas vous envoyer un mail"));
+                    context.reply(new SendMailResultPayload(false, Component.translatable("ecocraft_mail.server.cannot_self_send").getString()));
                     return;
                 }
 
@@ -312,7 +314,7 @@ public final class MailServerPayloadHandler {
                         codCurrencyId
                 );
 
-                context.reply(new SendMailResultPayload(true, "Mail envoye !"));
+                context.reply(new SendMailResultPayload(true, Component.translatable("ecocraft_mail.server.mail_sent_success").getString()));
 
                 // Send notification to recipient if online
                 if (onlineRecipient != null) {
@@ -326,7 +328,7 @@ public final class MailServerPayloadHandler {
                 context.reply(new SendMailResultPayload(false, e.getMessage()));
             } catch (Exception e) {
                 LOGGER.error("Error handling SendMail", e);
-                context.reply(new SendMailResultPayload(false, "Erreur interne"));
+                context.reply(new SendMailResultPayload(false, Component.translatable("ecocraft_mail.server.error_internal").getString()));
             }
         });
     }
@@ -377,12 +379,12 @@ public final class MailServerPayloadHandler {
                 MailService service = requireService();
                 ServerPlayer player = (ServerPlayer) context.player();
                 service.payCOD(player.getUUID(), payload.mailId());
-                context.reply(new CollectMailResultPayload(true, "COD paye et mail collecte", 1, 0));
+                context.reply(new CollectMailResultPayload(true, Component.translatable("ecocraft_mail.server.cod_paid").getString(), 1, 0));
             } catch (MailService.MailException e) {
                 context.reply(new CollectMailResultPayload(false, e.getMessage(), 0, 0));
             } catch (Exception e) {
                 LOGGER.error("Error handling PayCOD", e);
-                context.reply(new CollectMailResultPayload(false, "Erreur interne", 0, 0));
+                context.reply(new CollectMailResultPayload(false, Component.translatable("ecocraft_mail.server.error_internal").getString(), 0, 0));
             }
         });
     }
