@@ -220,6 +220,6 @@
   "ecocraft_ah.bid_history.title": "Bid History",
   "ecocraft_ah.bid_history.no_bids": "No bids",
   "ecocraft_ah.bid_history.recent": "Recent Bids",
-  "ecocraft_ah.bid_history.see_all": "See all (%d)",
+  "ecocraft_ah.bid_history.see_all": "See all",
   "ecocraft_ah.bid_history.ago": "%s ago"
 }

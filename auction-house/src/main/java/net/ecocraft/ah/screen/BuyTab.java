@@ -696,7 +696,7 @@ public class BuyTab extends BaseWidget {
         // "Voir tout" button for bid history (auction only)
         int seeAllY = btnY + 24;
         panelSeeAllBidsButton = EcoButton.builder(
-                        Component.translatable("ecocraft_ah.bid_history.see_all", 0),
+                        Component.translatable("ecocraft_ah.bid_history.see_all"),
                         this::onSeeAllBids)
                 .theme(THEME).bounds(px + 8, seeAllY, pw - 16, 14)
                 .bgColor(THEME.bgMedium).borderColor(THEME.borderLight)
@@ -749,7 +749,7 @@ public class BuyTab extends BaseWidget {
                 panelSeeAllBidsButton.setVisible(showSeeAll);
                 if (showSeeAll) {
                     panelSeeAllBidsButton.setLabel(
-                            Component.translatable("ecocraft_ah.bid_history.see_all", recentBids.size()));
+                            Component.translatable("ecocraft_ah.bid_history.see_all"));
                 }
             }
         } else {
@@ -803,21 +803,91 @@ public class BuyTab extends BaseWidget {
     }
 
     private void showBidHistoryDialog(List<BidHistoryResponsePayload.BidEntry> bids) {
-        String title = Component.translatable("ecocraft_ah.bid_history.title").getString();
-        StringBuilder content = new StringBuilder();
+        var mc = Minecraft.getInstance();
+        int sw = mc.getWindow().getGuiScaledWidth();
+        int sh = mc.getWindow().getGuiScaledHeight();
+
+        int dialogW = 320;
+        int dialogH = Math.min(sh - 40, 260);
+        int dialogX = (sw - dialogW) / 2;
+        int dialogY = (sh - dialogH) / 2;
+        int padding = 12;
+
+        // Modal container
+        BaseWidget dialog = new BaseWidget(0, 0, sw, sh) {
+            @Override
+            public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+                graphics.fill(0, 0, sw, sh, 0x80000000);
+                DrawUtils.drawPanel(graphics, dialogX, dialogY, dialogW, dialogH,
+                        THEME.bgDark, THEME.borderAccent);
+                Font font = Minecraft.getInstance().font;
+                String title = Component.translatable("ecocraft_ah.bid_history.title").getString();
+                graphics.drawString(font, title, dialogX + padding, dialogY + padding, THEME.accent, false);
+                DrawUtils.drawAccentSeparator(graphics, dialogX + padding, dialogY + padding + 12 + 4,
+                        dialogW - padding * 2, THEME);
+            }
+
+            @Override public boolean onMouseClicked(double mx, double my, int btn) { return true; }
+            @Override public boolean onMouseScrolled(double mx, double my, double sx, double sy) { return true; }
+            @Override
+            public boolean onKeyPressed(int keyCode, int scanCode, int modifiers) {
+                if (keyCode == 256) {
+                    setVisible(false);
+                    parent.getTree().removePortal(this);
+                    return true;
+                }
+                return false;
+            }
+        };
+        dialog.setModal(true);
+
+        // EcoTable with scroll
+        int tableY = dialogY + padding + 12 + 4 + 2 + 8;
+        int btnH = 22;
+        int tableH = dialogY + dialogH - padding - btnH - 8 - tableY;
+        int tableW = dialogW - padding * 2;
+
+        List<TableColumn> columns = List.of(
+                TableColumn.left(Component.literal("#"), 0.12f),
+                TableColumn.left(Component.translatable("ecocraft_ah.column.seller"), 0.32f),
+                TableColumn.right(Component.translatable("ecocraft_ah.label.bid_amount"), 0.28f),
+                TableColumn.right(Component.translatable("ecocraft_ah.column.date"), 0.28f)
+        );
+
+        EcoTable table = EcoTable.builder()
+                .columns(columns)
+                .theme(THEME)
+                .navigation(EcoTable.Navigation.SCROLL)
+                .scrollLines(3)
+                .showScrollbar(true)
+                .tooltips(false)
+                .build(dialogX + padding, tableY, tableW, tableH);
+
+        List<TableRow> rows = new ArrayList<>();
         int rank = 1;
         for (BidHistoryResponsePayload.BidEntry bid : bids) {
-            content.append("#").append(rank++).append(" ")
-                    .append(bid.bidderName()).append(" — ")
-                    .append(formatPrice(bid.amount())).append(" — ")
-                    .append(formatTimestamp(bid.timestamp())).append("\n");
+            int color = rank == 1 ? THEME.accent : THEME.textLight;
+            rows.add(TableRow.of(List.of(
+                    TableRow.Cell.of(Component.literal("#" + rank), color),
+                    TableRow.Cell.of(Component.literal(bid.bidderName()), color),
+                    TableRow.Cell.of(Component.literal(formatPrice(bid.amount())), color),
+                    TableRow.Cell.of(Component.literal(formatTimestamp(bid.timestamp())), THEME.textDim)
+            ), null));
+            rank++;
         }
-        String body = content.toString().trim();
-        EcoDialog dialog = EcoDialog.alert(THEME,
-                Component.literal(title),
-                Component.literal(body.isEmpty() ?
-                        Component.translatable("ecocraft_ah.bid_history.no_bids").getString() : body),
-                () -> {});
+        table.setRows(rows);
+        dialog.addChild(table);
+
+        // OK button
+        int btnW = 80;
+        EcoButton okBtn = EcoButton.primary(THEME, Component.literal("OK"), () -> {
+            dialog.setVisible(false);
+            parent.getTree().removePortal(dialog);
+        });
+        okBtn.setPosition(dialogX + (dialogW - btnW) / 2, dialogY + dialogH - padding - btnH);
+        okBtn.setSize(btnW, btnH);
+        dialog.addChild(okBtn);
+
         parent.getTree().addPortal(dialog);
     }
 

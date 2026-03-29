@@ -220,6 +220,6 @@
   "ecocraft_ah.bid_history.title": "Historique des enchères",
   "ecocraft_ah.bid_history.no_bids": "Aucune enchère",
   "ecocraft_ah.bid_history.recent": "Dernières enchères",
-  "ecocraft_ah.bid_history.see_all": "Voir tout (%d)",
+  "ecocraft_ah.bid_history.see_all": "Voir tout",
   "ecocraft_ah.bid_history.ago": "il y a %s"
 }

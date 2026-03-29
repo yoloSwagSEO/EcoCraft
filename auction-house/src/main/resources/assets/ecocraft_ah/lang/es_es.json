@@ -220,6 +220,6 @@
   "ecocraft_ah.bid_history.title": "Historial de pujas",
   "ecocraft_ah.bid_history.no_bids": "Sin pujas",
   "ecocraft_ah.bid_history.recent": "Pujas recientes",
-  "ecocraft_ah.bid_history.see_all": "Ver todo (%d)",
+  "ecocraft_ah.bid_history.see_all": "Ver todo",
   "ecocraft_ah.bid_history.ago": "hace %s"
 }
