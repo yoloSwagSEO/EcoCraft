@@ -35,13 +35,8 @@ class AuctionServiceTest {
         }
 
         @Override
-        public BigDecimal getBalance(UUID player, Currency currency) {
-            return balances.getOrDefault(key(player, currency), BigDecimal.ZERO);
-        }
-
-        @Override
         public BigDecimal getVirtualBalance(UUID player, Currency currency) {
-            return getBalance(player, currency);
+            return balances.getOrDefault(key(player, currency), BigDecimal.ZERO);
         }
 
         @Override
@@ -56,7 +51,7 @@ class AuctionServiceTest {
 
         @Override
         public TransactionResult withdraw(UUID player, BigDecimal amount, Currency currency) {
-            BigDecimal current = getBalance(player, currency);
+            BigDecimal current = getVirtualBalance(player, currency);
             if (current.compareTo(amount) < 0) {
                 return TransactionResult.failure("Insufficient funds");
             }
@@ -66,7 +61,7 @@ class AuctionServiceTest {
 
         @Override
         public TransactionResult deposit(UUID player, BigDecimal amount, Currency currency) {
-            BigDecimal current = getBalance(player, currency);
+            BigDecimal current = getVirtualBalance(player, currency);
             balances.put(key(player, currency), current.add(amount));
             return TransactionResult.success(null);
         }
@@ -80,7 +75,7 @@ class AuctionServiceTest {
 
         @Override
         public boolean canAfford(UUID player, BigDecimal amount, Currency currency) {
-            return getBalance(player, currency).compareTo(amount) >= 0;
+            return getVirtualBalance(player, currency).compareTo(amount) >= 0;
         }
     }
 
@@ -186,7 +181,7 @@ class AuctionServiceTest {
 
         // Deposit = 2% of 100 = 2.00
         BigDecimal expectedBalance = new BigDecimal("1000.00").subtract(new BigDecimal("2.00"));
-        assertEquals(expectedBalance, economy.getBalance(seller, GOLD));
+        assertEquals(expectedBalance, economy.getVirtualBalance(seller, GOLD));
     }
 
     @Test
@@ -263,10 +258,10 @@ class AuctionServiceTest {
         assertEquals(ListingStatus.SOLD, storage.getListingById(listing.id()).status());
 
         // Buyer should have 500 - 100 = 400
-        assertEquals(new BigDecimal("400.00"), economy.getBalance(buyer, GOLD));
+        assertEquals(new BigDecimal("400.00"), economy.getVirtualBalance(buyer, GOLD));
 
         // Seller: 1000 - deposit(2) + (100 - tax(5)) = 1000 - 2 + 95 = 1093
-        assertEquals(new BigDecimal("1093.00"), economy.getBalance(seller, GOLD));
+        assertEquals(new BigDecimal("1093.00"), economy.getVirtualBalance(seller, GOLD));
 
         // Item parcel for buyer
         List<AuctionParcel> buyerParcels = storage.getUncollectedParcels(buyer);
@@ -352,7 +347,7 @@ class AuctionServiceTest {
         service.placeBid(bidder, "Bidder", listing.id(), new BigDecimal("60.00"));
 
         // Bidder should have 500 - 60 = 440
-        assertEquals(new BigDecimal("440.00"), economy.getBalance(bidder, GOLD));
+        assertEquals(new BigDecimal("440.00"), economy.getVirtualBalance(bidder, GOLD));
         // Listing should have updated bid
         AuctionListing updated = storage.getListingById(listing.id());
         assertNotNull(updated);
@@ -382,8 +377,8 @@ class AuctionServiceTest {
         // bidder2 has 500 - 30 = 470
         // bidder1 should be refunded 20 → back to 500
 
-        assertEquals(new BigDecimal("500.00"), economy.getBalance(bidder1, GOLD));
-        assertEquals(new BigDecimal("470.00"), economy.getBalance(bidder2, GOLD));
+        assertEquals(new BigDecimal("500.00"), economy.getVirtualBalance(bidder1, GOLD));
+        assertEquals(new BigDecimal("470.00"), economy.getVirtualBalance(bidder2, GOLD));
     }
 
     @Test
@@ -515,7 +510,7 @@ class AuctionServiceTest {
                 ItemCategory.TOOLS, past, ListingStatus.ACTIVE, 0L, past - 86_400_000L, null, null);
         storage.createListing(listing);
 
-        BigDecimal sellerBalanceBefore = economy.getBalance(seller, GOLD);
+        BigDecimal sellerBalanceBefore = economy.getVirtualBalance(seller, GOLD);
 
         service.expireListings();
 
@@ -526,7 +521,7 @@ class AuctionServiceTest {
         long sellerGain = finalBid - expectedTax; // 100 - 5 = 95
         BigDecimal expectedBalance = sellerBalanceBefore.add(
                 AuctionService.fromSmallestUnit(sellerGain, GOLD));
-        assertEquals(expectedBalance, economy.getBalance(seller, GOLD),
+        assertEquals(expectedBalance, economy.getVirtualBalance(seller, GOLD),
                 "Seller should receive final bid minus tax calculated on final bid");
 
         // Verify listing is marked as sold
@@ -555,7 +550,7 @@ class AuctionServiceTest {
                 ItemCategory.WEAPONS, past, ListingStatus.ACTIVE, 400L, past - 86_400_000L, null, null);
         storage.createListing(listing);
 
-        BigDecimal sellerBalanceBefore = economy.getBalance(seller, GOLD);
+        BigDecimal sellerBalanceBefore = economy.getVirtualBalance(seller, GOLD);
 
         service.expireListings();
 
@@ -564,7 +559,7 @@ class AuctionServiceTest {
         // Seller should receive bid (80.00) - tax (4.00) = 76.00
         // Note: tax in listing is 400 units = 4.00, bid is 8000 units = 80.00
         BigDecimal expectedSellerGain = AuctionService.fromSmallestUnit(8000L - 400L, GOLD);
-        assertEquals(sellerBalanceBefore.add(expectedSellerGain), economy.getBalance(seller, GOLD));
+        assertEquals(sellerBalanceBefore.add(expectedSellerGain), economy.getVirtualBalance(seller, GOLD));
 
         // Winner should have item parcel
         List<AuctionParcel> winnerParcels = storage.getUncollectedParcels(winner);
@@ -589,7 +584,7 @@ class AuctionServiceTest {
         service.collectParcels(player);
 
         // Should be credited 50
-        assertEquals(0, new BigDecimal("50").compareTo(economy.getBalance(player, GOLD)));
+        assertEquals(0, new BigDecimal("50").compareTo(economy.getVirtualBalance(player, GOLD)));
         assertEquals(0, storage.countUncollectedParcels(player));
     }
 

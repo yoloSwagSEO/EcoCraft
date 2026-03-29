@@ -694,7 +694,7 @@ public class AuctionService {
     /** Returns the player's balance in the default currency (as smallest units). */
     public long getPlayerBalance(UUID playerUuid) {
         Currency currency = currencies.getDefault();
-        BigDecimal balance = economy.getBalance(playerUuid, currency);
+        BigDecimal balance = economy.getVirtualBalance(playerUuid, currency);
         return toSmallestUnit(balance, currency);
     }
 

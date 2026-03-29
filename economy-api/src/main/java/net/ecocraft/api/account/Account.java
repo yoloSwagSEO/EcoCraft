@@ -3,6 +3,7 @@ package net.ecocraft.api.account;
 import net.ecocraft.api.currency.Currency;
 
 import java.math.BigDecimal;
+import java.util.Objects;
 import java.util.UUID;
 
 public record Account(
@@ -12,6 +13,8 @@ public record Account(
         BigDecimal vaultBalance
 ) {
     public Account {
+        Objects.requireNonNull(owner, "owner");
+        Objects.requireNonNull(currency, "currency");
         if (virtualBalance.signum() < 0) {
             throw new IllegalArgumentException("Virtual balance cannot be negative");
         }

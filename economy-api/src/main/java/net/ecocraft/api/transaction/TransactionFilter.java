@@ -6,7 +6,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 public record TransactionFilter(
-        UUID player,
+        @Nullable UUID player,
         @Nullable TransactionType type,
         @Nullable Instant from,
         @Nullable Instant to,

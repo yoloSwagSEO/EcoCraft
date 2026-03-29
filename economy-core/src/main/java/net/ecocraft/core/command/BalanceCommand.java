@@ -60,7 +60,7 @@ public class BalanceCommand {
         }
 
         Currency currency = currencies.getDefault();
-        var balance = economy.getBalance(player.getUUID(), currency);
+        var balance = economy.getVirtualBalance(player.getUUID(), currency);
         source.sendSuccess(() -> Component.translatable("ecocraft_core.command.balance.self",
                 balance.toPlainString(), currency.symbol()), false);
         return Command.SINGLE_SUCCESS;
@@ -102,7 +102,7 @@ public class BalanceCommand {
         ServerPlayer online = server.getPlayerList().getPlayerByName(playerName);
         if (online != null) {
             Currency currency = currencies.getDefault();
-            var balance = economy.getBalance(online.getUUID(), currency);
+            var balance = economy.getVirtualBalance(online.getUUID(), currency);
             source.sendSuccess(() -> Component.translatable("ecocraft_core.command.balance.other",
                     online.getName().getString(), balance.toPlainString(), currency.symbol()), false);
             return Command.SINGLE_SUCCESS;
@@ -115,7 +115,7 @@ public class BalanceCommand {
             if (profile.isPresent()) {
                 UUID uuid = profile.get().getId();
                 Currency currency = currencies.getDefault();
-                var balance = economy.getBalance(uuid, currency);
+                var balance = economy.getVirtualBalance(uuid, currency);
                 source.sendSuccess(() -> Component.translatable("ecocraft_core.command.balance.other",
                         playerName, balance.toPlainString(), currency.symbol()), false);
                 return Command.SINGLE_SUCCESS;

@@ -28,11 +28,11 @@ public interface DatabaseProvider {
     void logTransaction(UUID txId, @Nullable UUID from, @Nullable UUID to,
                         BigDecimal amount, String currencyId, String type, Instant timestamp);
 
-    List<TransactionRecord> getTransactionHistory(UUID player, @Nullable String type,
+    List<TransactionRecord> getTransactionHistory(@Nullable UUID player, @Nullable String type,
                                                    @Nullable Instant from, @Nullable Instant to,
                                                    int offset, int limit);
 
-    long getTransactionCount(UUID player, @Nullable String type,
+    long getTransactionCount(@Nullable UUID player, @Nullable String type,
                              @Nullable Instant from, @Nullable Instant to);
 
     record TransactionRecord(

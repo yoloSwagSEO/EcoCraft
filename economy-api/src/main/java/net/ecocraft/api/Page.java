@@ -8,6 +8,10 @@ public record Page<T>(
         int limit,
         long totalCount
 ) {
+    public Page {
+        items = List.copyOf(items);
+    }
+
     public int totalPages() {
         if (limit <= 0) return 0;
         return (int) Math.ceil((double) totalCount / limit);

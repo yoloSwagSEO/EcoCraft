@@ -135,7 +135,7 @@ public final class AHTestCommand {
         // Give all fake sellers a large balance
         for (String seller : SELLERS) {
             UUID uuid = fakeUuid(seller);
-            BigDecimal balance = economy.getBalance(uuid, currency);
+            BigDecimal balance = economy.getVirtualBalance(uuid, currency);
             if (balance.compareTo(BigDecimal.valueOf(100_000)) < 0) {
                 economy.deposit(uuid, BigDecimal.valueOf(100_000), currency);
             }
@@ -241,7 +241,7 @@ public final class AHTestCommand {
             }
         }
 
-        BigDecimal newBalance = economy.getBalance(player.getUUID(), currency);
+        BigDecimal newBalance = economy.getVirtualBalance(player.getUUID(), currency);
         int finalBought = bought;
         source.sendSuccess(() -> Component.literal(
             "§a[HDV] " + finalBought + " achats simulés. Nouveau solde: "
