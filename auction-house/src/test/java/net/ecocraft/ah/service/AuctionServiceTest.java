@@ -139,7 +139,7 @@ class AuctionServiceTest {
         return service.createListing(
                 seller, "Seller", "minecraft:diamond_sword", "Diamond Sword", null,
                 1, ListingType.BUYOUT, new BigDecimal("100.00"),
-                24, "gold", ItemCategory.WEAPONS, null, null);
+                24, "gold", ItemCategory.WEAPONS, null, null, -1, -1);
     }
 
     // -------------------------------------------------------------------------
@@ -177,7 +177,7 @@ class AuctionServiceTest {
         economy.setBalance(seller, GOLD, new BigDecimal("1000.00"));
 
         service.createListing(seller, "Seller", "minecraft:diamond", "Diamond", null,
-                1, ListingType.BUYOUT, new BigDecimal("100.00"), 24, "gold", ItemCategory.MISC, null, null);
+                1, ListingType.BUYOUT, new BigDecimal("100.00"), 24, "gold", ItemCategory.MISC, null, null, -1, -1);
 
         // Deposit = 2% of 100 = 2.00
         BigDecimal expectedBalance = new BigDecimal("1000.00").subtract(new BigDecimal("2.00"));
@@ -191,7 +191,7 @@ class AuctionServiceTest {
 
         AuctionListing listing = service.createListing(
                 seller, "Seller", "minecraft:emerald", "Emerald", null,
-                1, ListingType.BUYOUT, new BigDecimal("50.00"), 12, "gold", ItemCategory.MISC, null, null);
+                1, ListingType.BUYOUT, new BigDecimal("50.00"), 12, "gold", ItemCategory.MISC, null, null, -1, -1);
 
         assertNotNull(storage.getListingById(listing.id()));
         assertEquals(ListingStatus.ACTIVE, storage.getListingById(listing.id()).status());
@@ -204,7 +204,7 @@ class AuctionServiceTest {
 
         assertThrows(AuctionService.AuctionException.class, () ->
                 service.createListing(seller, "Seller", "minecraft:diamond", "Diamond", null,
-                        1, ListingType.BUYOUT, new BigDecimal("100.00"), 24, "gold", ItemCategory.MISC, null, null));
+                        1, ListingType.BUYOUT, new BigDecimal("100.00"), 24, "gold", ItemCategory.MISC, null, null, -1, -1));
     }
 
     @Test
@@ -214,7 +214,7 @@ class AuctionServiceTest {
 
         assertThrows(AuctionService.AuctionException.class, () ->
                 service.createListing(seller, "Seller", "minecraft:diamond", "Diamond", null,
-                        1, ListingType.BUYOUT, BigDecimal.ZERO, 24, "gold", ItemCategory.MISC, null, null));
+                        1, ListingType.BUYOUT, BigDecimal.ZERO, 24, "gold", ItemCategory.MISC, null, null, -1, -1));
     }
 
     @Test
@@ -222,7 +222,7 @@ class AuctionServiceTest {
         UUID seller = UUID.randomUUID();
         assertThrows(AuctionService.AuctionException.class, () ->
                 service.createListing(seller, "Seller", "minecraft:diamond", "Diamond", null,
-                        1, ListingType.BUYOUT, new BigDecimal("10.00"), 24, "unknown_coin", ItemCategory.MISC, null, null));
+                        1, ListingType.BUYOUT, new BigDecimal("10.00"), 24, "unknown_coin", ItemCategory.MISC, null, null, -1, -1));
     }
 
     @Test
@@ -232,7 +232,7 @@ class AuctionServiceTest {
 
         AuctionListing listing = service.createListing(
                 seller, "Seller", "minecraft:bow", "Bow", null,
-                1, ListingType.AUCTION, new BigDecimal("20.00"), 24, "gold", ItemCategory.WEAPONS, null, null);
+                1, ListingType.AUCTION, new BigDecimal("20.00"), 24, "gold", ItemCategory.WEAPONS, null, null, -1, -1);
 
         assertEquals(0L, listing.buyoutPrice());
         assertEquals(20L, listing.startingBid()); // 20.00 stored as-is = 20 units
@@ -252,7 +252,7 @@ class AuctionServiceTest {
 
         AuctionListing listing = createSword(seller);
 
-        service.buyListing(buyer, "Buyer", listing.id(), 1);
+        service.buyListing(buyer, "Buyer", listing.id(), 1, -1);
 
         // Listing should be SOLD
         assertEquals(ListingStatus.SOLD, storage.getListingById(listing.id()).status());
@@ -281,7 +281,7 @@ class AuctionServiceTest {
         AuctionListing listing = createSword(seller);
 
         assertThrows(AuctionService.AuctionException.class, () ->
-                service.buyListing(buyer, "Buyer", listing.id(), 1));
+                service.buyListing(buyer, "Buyer", listing.id(), 1, -1));
     }
 
     @Test
@@ -291,7 +291,7 @@ class AuctionServiceTest {
         AuctionListing listing = createSword(seller);
 
         assertThrows(AuctionService.AuctionException.class, () ->
-                service.buyListing(seller, "Seller", listing.id(), 1));
+                service.buyListing(seller, "Seller", listing.id(), 1, -1));
     }
 
     @Test
@@ -305,10 +305,10 @@ class AuctionServiceTest {
         economy.setBalance(buyer2, GOLD, new BigDecimal("500.00"));
 
         AuctionListing listing = createSword(seller);
-        service.buyListing(buyer1, "Buyer1", listing.id(), 1);
+        service.buyListing(buyer1, "Buyer1", listing.id(), 1, -1);
 
         assertThrows(AuctionService.AuctionException.class, () ->
-                service.buyListing(buyer2, "Buyer2", listing.id(), 1));
+                service.buyListing(buyer2, "Buyer2", listing.id(), 1, -1));
     }
 
     @Test
@@ -319,7 +319,7 @@ class AuctionServiceTest {
         economy.setBalance(buyer, GOLD, new BigDecimal("500.00"));
 
         AuctionListing listing = createSword(seller);
-        service.buyListing(buyer, "Buyer", listing.id(), 1);
+        service.buyListing(buyer, "Buyer", listing.id(), 1, -1);
 
         AuctionStorageProvider.PriceStats stats = storage.getPriceHistory(
                 "minecraft:diamond_sword", "gold", 86_400_000L);
@@ -342,7 +342,7 @@ class AuctionServiceTest {
         AuctionListing listing = service.createListing(
                 seller, "Seller", "minecraft:elytra", "Elytra", null,
                 1, ListingType.AUCTION, new BigDecimal("50.00"),
-                24, "gold", ItemCategory.MISC, null, null);
+                24, "gold", ItemCategory.MISC, null, null, -1, -1);
 
         service.placeBid(bidder, "Bidder", listing.id(), new BigDecimal("60.00"));
 
@@ -368,7 +368,7 @@ class AuctionServiceTest {
         AuctionListing listing = service.createListing(
                 seller, "Seller", "minecraft:shulker_box", "Shulker Box", null,
                 1, ListingType.AUCTION, new BigDecimal("10.00"),
-                24, "gold", ItemCategory.MISC, null, null);
+                24, "gold", ItemCategory.MISC, null, null, -1, -1);
 
         service.placeBid(bidder1, "Bidder1", listing.id(), new BigDecimal("20.00"));
         // bidder1 has 500 - 20 = 480
@@ -392,7 +392,7 @@ class AuctionServiceTest {
         AuctionListing listing = service.createListing(
                 seller, "Seller", "minecraft:beacon", "Beacon", null,
                 1, ListingType.AUCTION, new BigDecimal("100.00"),
-                24, "gold", ItemCategory.MISC, null, null);
+                24, "gold", ItemCategory.MISC, null, null, -1, -1);
 
         assertThrows(AuctionService.AuctionException.class, () ->
                 service.placeBid(bidder, "Bidder", listing.id(), new BigDecimal("50.00")));
@@ -453,7 +453,7 @@ class AuctionServiceTest {
         AuctionListing listing = service.createListing(
                 seller, "Seller", "minecraft:shulker_box", "Shulker Box", null,
                 1, ListingType.AUCTION, new BigDecimal("10.00"),
-                24, "gold", ItemCategory.MISC, null, null);
+                24, "gold", ItemCategory.MISC, null, null, -1, -1);
 
         service.placeBid(bidder, "Bidder", listing.id(), new BigDecimal("15.00"));
 
@@ -617,11 +617,11 @@ class AuctionServiceTest {
         economy.setBalance(seller, GOLD, new BigDecimal("1000.00"));
 
         service.createListing(seller, "Seller", "minecraft:diamond", "Diamond", null,
-                1, ListingType.BUYOUT, new BigDecimal("50.00"), 24, "gold", ItemCategory.MISC, null, null);
+                1, ListingType.BUYOUT, new BigDecimal("50.00"), 24, "gold", ItemCategory.MISC, null, null, -1, -1);
         service.createListing(seller, "Seller", "minecraft:diamond", "Diamond", null,
-                5, ListingType.BUYOUT, new BigDecimal("45.00"), 24, "gold", ItemCategory.MISC, null, null);
+                5, ListingType.BUYOUT, new BigDecimal("45.00"), 24, "gold", ItemCategory.MISC, null, null, -1, -1);
         service.createListing(seller, "Seller", "minecraft:emerald", "Emerald", null,
-                1, ListingType.BUYOUT, new BigDecimal("80.00"), 24, "gold", ItemCategory.MISC, null, null);
+                1, ListingType.BUYOUT, new BigDecimal("80.00"), 24, "gold", ItemCategory.MISC, null, null, -1, -1);
 
         List<AuctionStorageProvider.ListingGroupSummary> results = service.searchListings(AHInstance.DEFAULT_ID, null, null, 0, 10);
         assertEquals(2, results.size()); // diamond and emerald grouped
@@ -633,9 +633,9 @@ class AuctionServiceTest {
         economy.setBalance(seller, GOLD, new BigDecimal("1000.00"));
 
         service.createListing(seller, "Seller", "minecraft:iron_ingot", "Iron Ingot", null,
-                1, ListingType.BUYOUT, new BigDecimal("5.00"), 24, "gold", ItemCategory.MISC, null, null);
+                1, ListingType.BUYOUT, new BigDecimal("5.00"), 24, "gold", ItemCategory.MISC, null, null, -1, -1);
         service.createListing(seller, "Seller", "minecraft:iron_ingot", "Iron Ingot", null,
-                10, ListingType.BUYOUT, new BigDecimal("4.50"), 24, "gold", ItemCategory.MISC, null, null);
+                10, ListingType.BUYOUT, new BigDecimal("4.50"), 24, "gold", ItemCategory.MISC, null, null, -1, -1);
 
         List<AuctionListing> detail = service.getListingDetail(AHInstance.DEFAULT_ID, "minecraft:iron_ingot");
         assertEquals(2, detail.size());

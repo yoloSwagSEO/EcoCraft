@@ -154,7 +154,8 @@ public final class AHTestCommand {
                     item.id, item.name, null, qty,
                     ListingType.BUYOUT, BigDecimal.valueOf(price),
                     hours, currency.id(), item.cat,
-                    item.id, AHInstance.DEFAULT_ID
+                    item.id, AHInstance.DEFAULT_ID,
+                    -1, -1
                 );
                 created++;
             } catch (Exception e) {
@@ -221,7 +222,7 @@ public final class AHTestCommand {
             economy.deposit(buyerUuid, BigDecimal.valueOf(listing.buyoutPrice() + 1000), currency);
 
             try {
-                service.buyListing(buyerUuid, buyerName, listing.id(), listing.quantity());
+                service.buyListing(buyerUuid, buyerName, listing.id(), listing.quantity(), -1);
 
                 long sellerAmount = listing.buyoutPrice() - listing.taxAmount();
                 source.sendSystemMessage(Component.literal(

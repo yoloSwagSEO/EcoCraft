@@ -189,7 +189,7 @@ public class AHServerEvents {
                         net.ecocraft.ah.data.AHInstance.DEFAULT_NAME,
                         config.saleRate.get(), config.depositRate.get(),
                         new java.util.ArrayList<>(config.durations.get()),
-                        true, true, "");
+                        true, true, "", false);
                 storageProvider.createAHInstance(newDefault);
             } else if (defaultAh.saleRate() == net.ecocraft.ah.data.AHInstance.DEFAULT_SALE_RATE
                     && defaultAh.depositRate() == net.ecocraft.ah.data.AHInstance.DEFAULT_DEPOSIT_RATE

@@ -34,19 +34,31 @@ public class AuctionService {
     /** Default deposit rate deducted from the seller at listing creation (2%). Refunded if sold. */
     public static final double DEFAULT_DEPOSIT_RATE = 0.02;
 
-    private double getTaxRate(String ahId) {
+    private double getTaxRate(String ahId, int permOverride) {
         try {
             AHInstance ah = storage.getAHInstance(ahId);
-            if (ah != null) return ah.saleRate() / 100.0;
+            if (ah != null) {
+                double ahRate = ah.saleRate() / 100.0;
+                if (ah.overridePermTax()) return ahRate;
+                if (permOverride >= 0) return permOverride / 100.0;
+                return ahRate;
+            }
         } catch (Exception ignored) {}
+        if (permOverride >= 0) return permOverride / 100.0;
         return DEFAULT_TAX_RATE;
     }
 
-    private double getDepositRate(String ahId) {
+    private double getDepositRate(String ahId, int permOverride) {
         try {
             AHInstance ah = storage.getAHInstance(ahId);
-            if (ah != null) return ah.depositRate() / 100.0;
+            if (ah != null) {
+                double ahRate = ah.depositRate() / 100.0;
+                if (ah.overridePermTax()) return ahRate;
+                if (permOverride >= 0) return permOverride / 100.0;
+                return ahRate;
+            }
         } catch (Exception ignored) {}
+        if (permOverride >= 0) return permOverride / 100.0;
         return DEFAULT_DEPOSIT_RATE;
     }
 
@@ -203,7 +215,9 @@ public class AuctionService {
             String currencyId,
             ItemCategory category,
             @Nullable String fingerprint,
-            @Nullable String ahId) {
+            @Nullable String ahId,
+            int taxPermOverride,
+            int depositPermOverride) {
 
         // --- Validation ---
         if (quantity <= 0) throw new AuctionException("La quantité doit être positive");
@@ -217,8 +231,8 @@ public class AuctionService {
         long priceUnits = toSmallestUnit(price, currency);
         long totalPrice = priceUnits * quantity;
         String effectiveAhId = ahId != null ? ahId : AHInstance.DEFAULT_ID;
-        long depositUnits = Math.max(1, (long) (totalPrice * getDepositRate(effectiveAhId)));
-        long taxUnits = Math.max(1, (long) (totalPrice * getTaxRate(effectiveAhId)));
+        long depositUnits = Math.max(1, (long) (totalPrice * getDepositRate(effectiveAhId, depositPermOverride)));
+        long taxUnits = Math.max(1, (long) (totalPrice * getTaxRate(effectiveAhId, taxPermOverride)));
 
         LOGGER.info("CREATE LISTING: seller={} item={} qty={} unitPrice={} totalPrice={} deposit={} tax={}",
                 sellerName, itemName, quantity, priceUnits, totalPrice, depositUnits, taxUnits);
@@ -313,7 +327,7 @@ public class AuctionService {
      * @param buyerName   Display name of the buyer
      * @param listingId   The listing to purchase
      */
-    public void buyListing(UUID buyerUuid, String buyerName, String listingId, int buyQuantity) {
+    public void buyListing(UUID buyerUuid, String buyerName, String listingId, int buyQuantity, int taxPermOverride) {
         AuctionListing listing = requireActiveListingById(listingId);
         if (listing.buyoutPrice() <= 0)
             throw new AuctionException("L'annonce n'a pas de prix d'achat immédiat");
@@ -345,7 +359,7 @@ public class AuctionService {
 
         // Credit seller (total price - proportional tax)
         String effectiveAhId = listing.ahId() != null ? listing.ahId() : AHInstance.DEFAULT_ID;
-        long proportionalTax = Math.max(1, (long) (totalPrice * getTaxRate(effectiveAhId)));
+        long proportionalTax = Math.max(1, (long) (totalPrice * getTaxRate(effectiveAhId, taxPermOverride)));
         long sellerAmountUnits = totalPrice - proportionalTax;
         BigDecimal sellerAmountBD = fromSmallestUnit(sellerAmountUnits, currency);
         if (sellerAmountBD.compareTo(BigDecimal.ZERO) > 0) {
@@ -608,8 +622,9 @@ public class AuctionService {
         if (currency == null) return;
 
         // Credit seller (final bid - recalculated tax based on final bid, not starting bid)
+        // Use -1 for permission override since the buyer may be offline during auction expiry
         String effectiveAhId = listing.ahId() != null ? listing.ahId() : AHInstance.DEFAULT_ID;
-        long proportionalTax = Math.max(1, (long) (listing.currentBid() * getTaxRate(effectiveAhId)));
+        long proportionalTax = Math.max(1, (long) (listing.currentBid() * getTaxRate(effectiveAhId, -1)));
         long sellerAmount = listing.currentBid() - proportionalTax;
         if (sellerAmount > 0) {
             economy.deposit(listing.sellerUuid(), fromSmallestUnit(sellerAmount, currency), currency);

@@ -22,6 +22,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.network.PacketDistributor;
+import net.neoforged.neoforge.server.permission.PermissionAPI;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -296,6 +297,8 @@ public final class AHCommand {
             String currencyId = net.ecocraft.core.EcoServerEvents.getCurrencyRegistry().getDefault().id();
             String fingerprint = net.ecocraft.ah.data.ItemFingerprint.compute(held);
             net.ecocraft.ah.data.ItemCategory category = net.ecocraft.ah.data.ItemCategoryDetector.detect(held);
+            int taxPerm = PermissionAPI.getPermission(player, AHPermissions.TAX_RATE);
+            int depositPerm = PermissionAPI.getPermission(player, AHPermissions.DEPOSIT_RATE);
             service.createListing(
                     player.getUUID(),
                     player.getName().getString(),
@@ -309,7 +312,9 @@ public final class AHCommand {
                     currencyId,
                     category,
                     fingerprint,
-                    AHInstance.DEFAULT_ID
+                    AHInstance.DEFAULT_ID,
+                    taxPerm,
+                    depositPerm
             );
 
             // Remove item from hand

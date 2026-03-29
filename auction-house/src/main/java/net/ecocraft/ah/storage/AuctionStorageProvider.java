@@ -221,6 +221,12 @@ public class AuctionStorageProvider {
                 }
             });
 
+            migrator.addMigration(8, "Add override_perm_tax column to ah_instances", conn -> {
+                try (Statement stmt = conn.createStatement()) {
+                    stmt.execute("ALTER TABLE ah_instances ADD COLUMN override_perm_tax INTEGER NOT NULL DEFAULT 0");
+                }
+            });
+
             migrator.migrate(connection);
         } catch (SQLException e) {
             throw new RuntimeException("Failed to initialize auction-house database", e);
@@ -282,7 +288,7 @@ public class AuctionStorageProvider {
 
     public void createAHInstance(AHInstance ah) {
         try (PreparedStatement ps = connection.prepareStatement(
-                "INSERT INTO ah_instances (id, slug, name, sale_rate, deposit_rate, durations, allow_buyout, allow_auction, tax_recipient) VALUES (?,?,?,?,?,?,?,?,?)")) {
+                "INSERT INTO ah_instances (id, slug, name, sale_rate, deposit_rate, durations, allow_buyout, allow_auction, tax_recipient, override_perm_tax) VALUES (?,?,?,?,?,?,?,?,?,?)")) {
             ps.setString(1, ah.id());
             ps.setString(2, ah.slug());
             ps.setString(3, ah.name());
@@ -292,6 +298,7 @@ public class AuctionStorageProvider {
             ps.setInt(7, ah.allowBuyout() ? 1 : 0);
             ps.setInt(8, ah.allowAuction() ? 1 : 0);
             ps.setString(9, ah.taxRecipient() != null ? ah.taxRecipient() : "");
+            ps.setInt(10, ah.overridePermTax() ? 1 : 0);
             ps.executeUpdate();
         } catch (SQLException e) {
             throw new RuntimeException("Failed to create AH instance", e);
@@ -300,7 +307,7 @@ public class AuctionStorageProvider {
 
     public void updateAHInstance(AHInstance ah) {
         try (PreparedStatement ps = connection.prepareStatement(
-                "UPDATE ah_instances SET slug = ?, name = ?, sale_rate = ?, deposit_rate = ?, durations = ?, allow_buyout = ?, allow_auction = ?, tax_recipient = ? WHERE id = ?")) {
+                "UPDATE ah_instances SET slug = ?, name = ?, sale_rate = ?, deposit_rate = ?, durations = ?, allow_buyout = ?, allow_auction = ?, tax_recipient = ?, override_perm_tax = ? WHERE id = ?")) {
             ps.setString(1, ah.slug());
             ps.setString(2, ah.name());
             ps.setInt(3, ah.saleRate());
@@ -309,7 +316,8 @@ public class AuctionStorageProvider {
             ps.setInt(6, ah.allowBuyout() ? 1 : 0);
             ps.setInt(7, ah.allowAuction() ? 1 : 0);
             ps.setString(8, ah.taxRecipient() != null ? ah.taxRecipient() : "");
-            ps.setString(9, ah.id());
+            ps.setInt(9, ah.overridePermTax() ? 1 : 0);
+            ps.setString(10, ah.id());
             ps.executeUpdate();
         } catch (SQLException e) {
             throw new RuntimeException("Failed to update AH instance", e);
@@ -379,11 +387,13 @@ public class AuctionStorageProvider {
         try { allowAuction = rs.getInt("allow_auction") != 0; } catch (SQLException ignored) {}
         String taxRecipient = "";
         try { taxRecipient = rs.getString("tax_recipient"); if (taxRecipient == null) taxRecipient = ""; } catch (SQLException ignored) {}
+        boolean overridePermTax = false;
+        try { overridePermTax = rs.getInt("override_perm_tax") != 0; } catch (SQLException ignored) {}
         return new AHInstance(
                 rs.getString("id"), rs.getString("slug"), rs.getString("name"),
                 rs.getInt("sale_rate"), rs.getInt("deposit_rate"),
                 parseDurationsJson(rs.getString("durations")),
-                allowBuyout, allowAuction, taxRecipient);
+                allowBuyout, allowAuction, taxRecipient, overridePermTax);
     }
 
     private String durationsToJson(List<Integer> durations) {

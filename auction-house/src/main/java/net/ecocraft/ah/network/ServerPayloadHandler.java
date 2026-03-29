@@ -225,6 +225,8 @@ public final class ServerPayloadHandler {
 
                 String currencyId = service.getDefaultCurrencyId();
                 ItemCategory category = ItemCategoryDetector.detect(itemToSell);
+                int taxPerm = PermissionAPI.getPermission(player, AHPermissions.TAX_RATE);
+                int depositPerm = PermissionAPI.getPermission(player, AHPermissions.DEPOSIT_RATE);
                 AuctionListing listing = service.createListing(
                         player.getUUID(),
                         player.getName().getString(),
@@ -238,7 +240,9 @@ public final class ServerPayloadHandler {
                         currencyId,
                         category,
                         fingerprint,
-                        payload.ahId()
+                        payload.ahId(),
+                        taxPerm,
+                        depositPerm
                 );
 
                 // Index enchantments for server-side filtering
@@ -276,7 +280,8 @@ public final class ServerPayloadHandler {
                     return;
                 }
 
-                service.buyListing(player.getUUID(), player.getName().getString(), payload.listingId(), payload.quantity());
+                int taxPerm = PermissionAPI.getPermission(player, AHPermissions.TAX_RATE);
+                service.buyListing(player.getUUID(), player.getName().getString(), payload.listingId(), payload.quantity(), taxPerm);
                 context.reply(new AHActionResultPayload(true, Component.translatable("ecocraft_ah.message.purchase_success").getString()));
                 sendBalanceUpdate(player);
             } catch (AuctionService.AuctionException e) {
