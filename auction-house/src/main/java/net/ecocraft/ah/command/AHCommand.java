@@ -5,6 +5,8 @@ import com.mojang.brigadier.arguments.DoubleArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import net.ecocraft.ah.AHServerEvents;
 import net.ecocraft.ah.data.AHInstance;
+import net.ecocraft.ah.data.AuctionBid;
+import net.ecocraft.ah.data.AuctionListing;
 import net.ecocraft.ah.data.ItemCategory;
 import net.ecocraft.ah.data.ListingType;
 import net.ecocraft.ah.network.ServerPayloadHandler;
@@ -22,6 +24,7 @@ import net.neoforged.neoforge.network.PacketDistributor;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.UUID;
 import java.util.function.Supplier;
 
 /**
@@ -198,10 +201,75 @@ public final class AHCommand {
                             return 1;
                         })
                 )
+
+                // /ah testbids — injects fake bids on the first active AUCTION listing
+                .then(Commands.literal("testbids")
+                        .requires(s -> s.hasPermission(2))
+                        .executes(ctx -> {
+                            return executeTestBids(ctx.getSource(), serviceSupplier);
+                        })
+                )
         );
 
         // Test data commands (/ah populate, /ah simulate)
         AHTestCommand.register(dispatcher, serviceSupplier);
+    }
+
+    private static int executeTestBids(CommandSourceStack source, Supplier<AuctionService> serviceSupplier) {
+        AuctionService service = serviceSupplier.get();
+        if (service == null) {
+            source.sendFailure(Component.literal("Service non disponible"));
+            return 0;
+        }
+        AuctionStorageProvider storage = AHServerEvents.getStorage();
+        if (storage == null) {
+            source.sendFailure(Component.literal("Storage non disponible"));
+            return 0;
+        }
+
+        // Find first active AUCTION listing
+        List<AuctionListing> listings = storage.getActiveListingsForAH(AHInstance.DEFAULT_ID);
+        AuctionListing auction = null;
+        for (AuctionListing l : listings) {
+            if (l.listingType() == ListingType.AUCTION) {
+                auction = l;
+                break;
+            }
+        }
+        if (auction == null) {
+            source.sendFailure(Component.literal("Aucun listing AUCTION actif. Créez-en un d'abord avec /ah sell."));
+            return 0;
+        }
+
+        // Inject 5 fake bids with increasing amounts and varying timestamps
+        String[] fakeNames = {"Grimald", "Thoria", "Keldorn", "Sylvanas", "Brakk"};
+        long baseAmount = auction.startingBid() > 0 ? auction.startingBid() : 10;
+        long now = System.currentTimeMillis();
+
+        for (int i = 0; i < fakeNames.length; i++) {
+            long bidAmount = baseAmount + (i + 1) * 5;
+            long timestamp = now - (fakeNames.length - i) * 3600_000L; // staggered hours ago
+            AuctionBid bid = new AuctionBid(
+                    UUID.randomUUID().toString(),
+                    auction.id(),
+                    UUID.randomUUID(), // fake UUID
+                    fakeNames[i],
+                    bidAmount,
+                    timestamp
+            );
+            storage.placeBid(bid);
+        }
+
+        // Update the listing's current bid to the highest
+        long highestBid = baseAmount + fakeNames.length * 5;
+        storage.updateListingBid(auction.id(), highestBid, UUID.randomUUID());
+
+        String itemName = auction.itemName();
+        String shortId = auction.id().substring(0, 8);
+        source.sendSuccess(() -> Component.literal(
+                "5 enchères injectées sur '" + itemName + "' (ID: " + shortId + ")"),
+                false);
+        return 1;
     }
 
     private static int executeSell(CommandSourceStack source, ServerPlayer player, double price,
