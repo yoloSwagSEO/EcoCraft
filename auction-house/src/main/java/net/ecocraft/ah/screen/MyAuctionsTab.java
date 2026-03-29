@@ -40,6 +40,7 @@ public class MyAuctionsTab extends BaseWidget {
     private long taxesPaid7d = 0;
     private int parcelsToCollect = 0;
     private String deliveryMode = "DIRECT";
+    private boolean dataReceived = false;
 
     // Multi-AH state
     private boolean multiAH = false;
@@ -85,20 +86,22 @@ public class MyAuctionsTab extends BaseWidget {
         subTabTags.setActiveTag(activeSubTab);
         addChild(subTabTags);
 
-        // Collect parcels button — hidden in MAILBOX mode
-        if ("MAILBOX".equals(deliveryMode)) {
-            Label mailboxNotice = new Label(Minecraft.getInstance().font,
-                    tabX + tabW - 200, tabY + 4,
-                    Component.translatable("ecocraft_ah.my_auctions.mailbox_notice"), THEME);
-            mailboxNotice.setColor(THEME.textGrey);
-            addChild(mailboxNotice);
-            collectBtn = null;
-        } else {
-            collectBtn = EcoButton.success(THEME, Component.translatable("ecocraft_ah.collect_button", parcelsToCollect),
-                    this::onCollectClicked);
-            collectBtn.setPosition(tabX + tabW - 80, tabY);
-            collectBtn.setSize(78, 18);
-            addChild(collectBtn);
+        // Collect parcels button — hidden in MAILBOX mode, hidden until data is received
+        collectBtn = null;
+        if (dataReceived) {
+            if ("MAILBOX".equals(deliveryMode)) {
+                Label mailboxNotice = new Label(Minecraft.getInstance().font,
+                        tabX + tabW - 200, tabY + 4,
+                        Component.translatable("ecocraft_ah.my_auctions.mailbox_notice"), THEME);
+                mailboxNotice.setColor(THEME.textGrey);
+                addChild(mailboxNotice);
+            } else {
+                collectBtn = EcoButton.success(THEME, Component.translatable("ecocraft_ah.collect_button", parcelsToCollect),
+                        this::onCollectClicked);
+                collectBtn.setPosition(tabX + tabW - 80, tabY);
+                collectBtn.setSize(78, 18);
+                addChild(collectBtn);
+            }
         }
 
         // Footer stat cards
@@ -234,6 +237,8 @@ public class MyAuctionsTab extends BaseWidget {
     }
 
     public void onReceiveMyListings(MyListingsResponsePayload payload) {
+        boolean wasFirstReceive = !this.dataReceived;
+        this.dataReceived = true;
         this.entries = payload.entries();
         this.revenue7d = payload.revenue7d();
         this.taxesPaid7d = payload.taxesPaid7d();
@@ -260,7 +265,8 @@ public class MyAuctionsTab extends BaseWidget {
             ahNamesList.add(ahIdToName.getOrDefault(id, id));
         }
 
-        if (this.multiAH != wasMultiAH) {
+        boolean deliveryModeChanged = !oldDeliveryMode.equals(this.deliveryMode);
+        if (this.multiAH != wasMultiAH || deliveryModeChanged || wasFirstReceive) {
             activeAHFilter = 0;
             buildWidgets();
         } else {

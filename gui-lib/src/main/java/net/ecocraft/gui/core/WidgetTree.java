@@ -242,6 +242,10 @@ public class WidgetTree {
         if (!node.isVisible()) return null;
         if (!node.containsPoint(mx, my)) return null;
 
+        // Nodes that clip children (e.g. ScrollPane) handle their own event dispatch
+        // with coordinate adjustments — don't recurse into their children here.
+        if (node.isClipChildren()) return node;
+
         // Check children in reverse order (last child = rendered on top = tested first)
         List<WidgetNode> children = node.getChildren();
         for (int i = children.size() - 1; i >= 0; i--) {
