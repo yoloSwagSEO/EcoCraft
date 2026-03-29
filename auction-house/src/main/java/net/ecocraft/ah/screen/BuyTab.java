@@ -65,7 +65,11 @@ public class BuyTab extends BaseWidget {
     private EcoNumberInput panelBidInput;
     private EcoButton panelBuyButton;
     private EcoButton panelBidButton;
+    private EcoButton panelSeeAllBidsButton;
     private static final int PANEL_WIDTH_RATIO = 35;
+
+    // Bid history state
+    private List<BidHistoryResponsePayload.BidEntry> recentBids = List.of();
 
     // Detail mode filter state
     private List<ItemStack> detailStacks = new ArrayList<>();
@@ -371,6 +375,30 @@ public class BuyTab extends BaseWidget {
                 graphics.drawString(font, Component.translatable("ecocraft_ah.label.expires"), labelX, panelY + 134, THEME.textGrey, false);
                 String expire = formatTimeRemaining(entry.expiresInMs());
                 graphics.drawString(font, expire, valueX - font.width(expire), panelY + 134, THEME.textGrey, false);
+
+                // Recent bids section (below bid button area)
+                int bidHistoryY = panelY + 178;
+                DrawUtils.drawAccentSeparator(graphics, panelX + 4, bidHistoryY, panelW - 8, THEME);
+                bidHistoryY += 6;
+                graphics.drawString(font, Component.translatable("ecocraft_ah.bid_history.recent"),
+                        labelX, bidHistoryY, THEME.textGrey, false);
+                bidHistoryY += 12;
+
+                if (recentBids.isEmpty()) {
+                    graphics.drawString(font,
+                            Component.translatable("ecocraft_ah.bid_history.no_bids"),
+                            labelX, bidHistoryY, THEME.textDim, false);
+                } else {
+                    for (BidHistoryResponsePayload.BidEntry bidEntry : recentBids) {
+                        String bidderAndAmount = DrawUtils.truncateText(font,
+                                bidEntry.bidderName() + " — " + formatPrice(bidEntry.amount()),
+                                panelW - 40);
+                        graphics.drawString(font, bidderAndAmount, labelX, bidHistoryY, THEME.textLight, false);
+                        String timeAgo = formatTimeAgo(bidEntry.timestamp());
+                        graphics.drawString(font, timeAgo, valueX - font.width(timeAgo), bidHistoryY, THEME.textDim, false);
+                        bidHistoryY += 11;
+                    }
+                }
             } else {
                 graphics.drawString(font, Component.translatable("ecocraft_ah.label.unit_price"), labelX, panelY + 80, THEME.textGrey, false);
                 String price = formatPrice(entry.unitPrice());
@@ -521,7 +549,7 @@ public class BuyTab extends BaseWidget {
     }
 
     public void onReceiveBidHistory(BidHistoryResponsePayload payload) {
-        // TODO Task 15: display full bid history panel
+        showBidHistoryDialog(payload.bids());
     }
 
     public void onReceiveListingDetail(ListingDetailResponsePayload payload) {
@@ -530,6 +558,7 @@ public class BuyTab extends BaseWidget {
         this.detailRarityColor = payload.rarityColor();
         this.detailEntries = payload.entries();
         this.detailPriceInfo = payload.priceInfo();
+        this.recentBids = payload.recentBids();
 
         this.availableEnchantments = new ArrayList<>(payload.availableEnchantments());
 
@@ -664,6 +693,17 @@ public class BuyTab extends BaseWidget {
         panelBidButton.setVisible(false);
         addChild(panelBidButton);
 
+        // "Voir tout" button for bid history (auction only)
+        int seeAllY = btnY + 24;
+        panelSeeAllBidsButton = EcoButton.builder(
+                        Component.translatable("ecocraft_ah.bid_history.see_all", 0),
+                        this::onSeeAllBids)
+                .theme(THEME).bounds(px + 8, seeAllY, pw - 16, 14)
+                .bgColor(THEME.bgMedium).borderColor(THEME.borderLight)
+                .textColor(THEME.textGrey).hoverBg(THEME.bgLight).build();
+        panelSeeAllBidsButton.setVisible(false);
+        addChild(panelSeeAllBidsButton);
+
         // Apply initial selection
         updatePurchasePanel();
     }
@@ -703,6 +743,15 @@ public class BuyTab extends BaseWidget {
             }
             if (panelBuyButton != null) panelBuyButton.setVisible(false);
             if (panelBidButton != null) panelBidButton.setVisible(true);
+            // Show "Voir tout" button only if we have 3+ recent bids
+            if (panelSeeAllBidsButton != null) {
+                boolean showSeeAll = recentBids.size() >= 3;
+                panelSeeAllBidsButton.setVisible(showSeeAll);
+                if (showSeeAll) {
+                    panelSeeAllBidsButton.setLabel(
+                            Component.translatable("ecocraft_ah.bid_history.see_all", recentBids.size()));
+                }
+            }
         } else {
             if (panelQuantityInput != null) {
                 panelQuantityInput.setVisible(true);
@@ -712,6 +761,7 @@ public class BuyTab extends BaseWidget {
             if (panelBidInput != null) panelBidInput.setVisible(false);
             if (panelBuyButton != null) panelBuyButton.setVisible(true);
             if (panelBidButton != null) panelBidButton.setVisible(false);
+            if (panelSeeAllBidsButton != null) panelSeeAllBidsButton.setVisible(false);
         }
     }
 
@@ -741,6 +791,56 @@ public class BuyTab extends BaseWidget {
             }
         }
         return true;
+    }
+
+    // --- Bid history helpers ---
+
+    private void onSeeAllBids() {
+        var filtered = getFilteredEntries();
+        if (selectedEntryIndex < 0 || selectedEntryIndex >= filtered.size()) return;
+        var entry = filtered.get(selectedEntryIndex);
+        PacketDistributor.sendToServer(new RequestBidHistoryPayload(entry.listingId()));
+    }
+
+    private void showBidHistoryDialog(List<BidHistoryResponsePayload.BidEntry> bids) {
+        String title = Component.translatable("ecocraft_ah.bid_history.title").getString();
+        StringBuilder content = new StringBuilder();
+        int rank = 1;
+        for (BidHistoryResponsePayload.BidEntry bid : bids) {
+            content.append("#").append(rank++).append(" ")
+                    .append(bid.bidderName()).append(" — ")
+                    .append(formatPrice(bid.amount())).append(" — ")
+                    .append(formatTimestamp(bid.timestamp())).append("\n");
+        }
+        String body = content.toString().trim();
+        EcoDialog dialog = EcoDialog.alert(THEME,
+                Component.literal(title),
+                Component.literal(body.isEmpty() ?
+                        Component.translatable("ecocraft_ah.bid_history.no_bids").getString() : body),
+                () -> {});
+        parent.getTree().addPortal(dialog);
+    }
+
+    private static String formatTimeAgo(long timestamp) {
+        long elapsed = System.currentTimeMillis() - timestamp;
+        long minutes = elapsed / 60000;
+        if (minutes < 60) {
+            return Component.translatable("ecocraft_ah.bid_history.ago", minutes + "m").getString();
+        }
+        long hours = minutes / 60;
+        if (hours < 24) {
+            return Component.translatable("ecocraft_ah.bid_history.ago", hours + "h").getString();
+        }
+        long days = hours / 24;
+        return Component.translatable("ecocraft_ah.bid_history.ago", days + "j").getString();
+    }
+
+    private static String formatTimestamp(long timestamp) {
+        java.time.LocalDateTime dt = java.time.Instant.ofEpochMilli(timestamp)
+                .atZone(java.time.ZoneId.systemDefault()).toLocalDateTime();
+        return String.format("%02d/%02d/%04d %02d:%02d",
+                dt.getDayOfMonth(), dt.getMonthValue(), dt.getYear(),
+                dt.getHour(), dt.getMinute());
     }
 
     // --- Formatting helpers ---
