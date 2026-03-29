@@ -3,6 +3,7 @@ package net.ecocraft.api.exchange;
 import net.ecocraft.api.currency.Currency;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 
 public record ExchangeRate(
         Currency from,
@@ -28,6 +29,7 @@ public record ExchangeRate(
             var feeAmount = converted.multiply(fee);
             converted = converted.subtract(feeAmount);
         }
+        converted = converted.setScale(to.decimals(), RoundingMode.HALF_UP);
         return converted;
     }
 }
