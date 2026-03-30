@@ -30,6 +30,8 @@ public class AuctionStorageProvider {
 
     public void initialize() {
         try {
+            // Explicitly load SQLite JDBC driver for NeoForge module system compatibility
+            try { Class.forName("org.sqlite.JDBC"); } catch (ClassNotFoundException ignored) {}
             connection = DriverManager.getConnection("jdbc:sqlite:" + dbPath.toAbsolutePath());
             connection.setAutoCommit(true);
             try (Statement stmt = connection.createStatement()) {

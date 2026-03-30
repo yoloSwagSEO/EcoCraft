@@ -64,7 +64,7 @@ public class EcoCurrencyInput extends BaseWidget {
 
         if (composite) {
             buildCompositeLayout(x, y, width);
-        } else {
+        } else if (font != null) {
             buildSimpleLayout(x, y, width);
         }
     }

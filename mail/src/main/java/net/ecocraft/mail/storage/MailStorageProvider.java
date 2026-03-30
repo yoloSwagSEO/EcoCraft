@@ -26,6 +26,8 @@ public class MailStorageProvider {
 
     public MailStorageProvider(Path dbPath) {
         try {
+            // Explicitly load SQLite JDBC driver for NeoForge module system compatibility
+            try { Class.forName("org.sqlite.JDBC"); } catch (ClassNotFoundException ignored) {}
             connection = DriverManager.getConnection("jdbc:sqlite:" + dbPath.toAbsolutePath());
             try (Statement stmt = connection.createStatement()) {
                 stmt.execute("PRAGMA journal_mode=WAL");
