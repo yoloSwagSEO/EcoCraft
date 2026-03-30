@@ -66,15 +66,24 @@ record Currency(
     String id,
     String name,
     String symbol,
-    int decimals,           // pour devises simples (0 si composite)
+    int decimals,             // pour devises simples (0 si composite)
     boolean physical,
     @Nullable String itemId,
     @Nullable Icon icon,
-    List<SubUnit> subUnits, // vide si devise simple
-    boolean exchangeable,   // autorise le change
-    double referenceRate    // taux vers la devise de référence (1.0 = référence)
+    List<SubUnit> subUnits,   // vide si devise simple
+    boolean exchangeable,     // autorise le change
+    BigDecimal referenceRate  // taux vers la devise de référence (1.0 = référence)
 )
 ```
+
+**Note :** `referenceRate` utilise `BigDecimal` pour éviter les erreurs d'arrondi sur les gros montants. Le calcul de conversion se fait en `BigDecimal`, tronqué en `long` à la fin.
+
+### 1.5 Devise de référence
+
+- La devise de référence est **toujours** la devise par défaut d'EcoCraft (`referenceCurrency` dans la config)
+- Son `referenceRate` est toujours `1.0`
+- Elle ne peut pas être changée dynamiquement — c'est l'étalon du système
+- Même si les admins/moddeurs ne l'utilisent pas directement, elle sert de pivot pour tous les calculs de change
 
 ### 1.5 Formatage
 
@@ -163,7 +172,21 @@ interface ExternalCurrencyAdapter {
 | Autres | Via API publique | Les devs s'intègrent eux-mêmes |
 | KubeJS | Via bindings | Les modpackers créent des devises custom |
 
-### 3.4 API publique
+### 3.4 Source de vérité
+
+**Règle fondamentale** : l'adaptateur ne duplique JAMAIS le solde dans notre SQLite. Il **délègue** toujours au mod tiers.
+
+- `getBalance()` → appelle l'API du mod
+- `withdraw()` → appelle l'API du mod
+- `deposit()` → appelle l'API du mod
+
+Notre `EconomyProvider` détecte la devise et route vers le bon backend :
+- Devise native → SQLite interne
+- Devise externe → `ExternalCurrencyAdapter` du mod
+
+Chaque adaptateur est du **cas par cas** — chaque mod a sa propre API, ses propres contraintes. L'interface `ExternalCurrencyAdapter` est le contrat commun.
+
+### 3.5 API publique
 
 Les mods tiers peuvent s'intégrer sans qu'on les connaisse :
 
@@ -179,7 +202,7 @@ EcoCraftAPI.registerCurrencyAdapter(new MyModCurrencyAdapter());
 ### 4.1 Double fonction
 
 - **Terminal bancaire** : UI avec boutons dépôt/retrait pour chaque devise
-- **Inventaire physique** : slots pour déposer/retirer des items-devises
+- **Inventaire physique** : slots pour déposer/retirer des items-devises valorisés
 
 ### 4.2 Multi-devises
 
@@ -189,11 +212,68 @@ EcoCraftAPI.registerCurrencyAdapter(new MyModCurrencyAdapter());
   - Devise externe → `ExternalCurrencyAdapter`
 - Items physiques : détecte la devise liée à l'item, convertit automatiquement
 
-### 4.3 UI
+### 4.3 Items acceptés dans le vault
 
-- Liste des devises avec solde pour chacune
+Le vault est une **banque**, pas un coffre. Seuls 3 types d'items sont acceptés :
+
+| Type | Description | Exemple |
+|------|-------------|---------|
+| **Item monnaie** | Item dont l'ID correspond au `itemId` d'une `SubUnit` | Pièce d'or (ecocraft:gold_coin) |
+| **Item dans le registry de valeurs** | Valeur fixe définie en config/BDD | `minecraft:diamond = 100 PO` |
+| **Item avec tag `ecocraft:value`** | Valeur portée par le composant NBT de l'item | Tableau d'art tagué à 1000 PO |
+
+**Tout autre item est refusé** — il rebondit dans l'inventaire du joueur.
+
+Priorité de résolution : tag `ecocraft:value` > registry de valeurs > item monnaie.
+
+### 4.4 Dépôt d'items
+
+- L'item est identifié (monnaie, registry, ou tag)
+- Sa valeur est calculée en unité de base de la devise concernée
+- L'item est retiré de l'inventaire du joueur
+- Le solde est crédité
+
+### 4.5 Retrait (ordre de priorité)
+
+Quand le joueur dépense ou retire du solde, le système choisit **quoi retirer** :
+
+```
+1. Solde virtuel pur (pas de pièces physiques à toucher)
+2. Pièces physiques : plus petites d'abord (PC → PA → PO → PP)
+3. Items valorisés (registry/tag) : moins cher d'abord
+4. JAMAIS un item valorisé si sa valeur > montant restant à retirer
+```
+
+**Rendu de monnaie** : si un item de 1000 doit être retiré pour payer 900, le système :
+1. Retire l'item (1000)
+2. Crée des pièces physiques pour la différence (100)
+3. Les pièces sont ajoutées au vault
+
+**Prérequis** : une devise physique avec `SubUnit` doit exposer au minimum une unité de base (pièce de valeur 1) pour pouvoir rendre la monnaie. Sinon le retrait est refusé si le montant exact ne peut pas être atteint.
+
+### 4.6 Registry de valeurs d'items
+
+Table en BDD (ou config TOML) :
+
+```toml
+[vault.itemValues]
+"minecraft:diamond" = { currency = "gold", value = 100 }
+"minecraft:emerald" = { currency = "gold", value = 50 }
+"minecraft:netherite_ingot" = { currency = "gold", value = 1000 }
+```
+
+Aussi modifiable par KubeJS :
+```js
+EcoEconomy.setItemValue("minecraft:diamond", "gold", 100);
+```
+
+### 4.7 UI
+
+- Onglets par devise (une tab par devise disponible)
+- Solde affiché avec `CurrencyFormatter` (composite/icônes)
 - Boutons dépôt/retrait avec `EcoCurrencyInput`
-- Slots d'inventaire pour items physiques
+- Zone de dépôt d'items (slots) — les items non acceptés sont rejetés
+- Inventaire du vault : affiche les items valorisés stockés
 - Propriétaire du vault (UUID, posé par un joueur)
 
 ---
@@ -223,11 +303,33 @@ EcoCraftAPI.registerCurrencyAdapter(new MyModCurrencyAdapter());
 - Persistés en base de données
 - Pas de fluctuation automatique (extensible via addon futur)
 
-### 5.4 Commandes
+### 5.4 Historique de change
+
+- Chaque conversion est loggée dans le `TransactionLog` avec le type `EXCHANGE`
+- Champs : joueur, montant source, devise source, montant cible, devise cible, taux appliqué, frais
+- Consultable via `/currency history` (admin) et future UI
+
+### 5.5 Limites de change (configurable)
+
+- **Montant minimum** par conversion (évite le spam micro-conversions)
+- **Montant maximum** par conversion
+- **Limite journalière** par joueur (reset à minuit serveur)
+- Toutes désactivables (0 = pas de limite)
+
+```toml
+[exchange]
+globalFeePercent = 2
+minAmount = 0
+maxAmount = 0          # 0 = illimité
+dailyLimitPerPlayer = 0  # 0 = illimité
+```
+
+### 5.6 Commandes
 
 - `/currency convert <montant> <de> <vers>` — effectue un change
 - `/currency rate <devise>` — affiche le taux
 - `/currency setrate <devise> <taux>` — modifie le taux (admin)
+- `/currency history` — historique des conversions (admin)
 
 ---
 
