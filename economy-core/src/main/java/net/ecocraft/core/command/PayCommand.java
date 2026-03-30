@@ -3,8 +3,11 @@ package net.ecocraft.core.command;
 import com.mojang.brigadier.Command;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.DoubleArgumentType;
+import com.mojang.brigadier.arguments.StringArgumentType;
+import com.mojang.brigadier.context.CommandContext;
 import net.ecocraft.api.EconomyProvider;
 import net.ecocraft.api.currency.Currency;
+import net.ecocraft.api.currency.CurrencyFormatter;
 import net.ecocraft.api.currency.CurrencyRegistry;
 import net.ecocraft.core.permission.EcoPermissions;
 import net.minecraft.commands.CommandSourceStack;
@@ -22,22 +25,32 @@ public class PayCommand {
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher,
                                 Supplier<EconomyProvider> economy,
                                 Supplier<CurrencyRegistry> currencies) {
+        var currSuggestions = EcoCommands.currencySuggestions(currencies);
+
         dispatcher.register(Commands.literal("pay")
             .then(Commands.argument("player", EntityArgument.player())
                 .then(Commands.argument("amount", DoubleArgumentType.doubleArg(0.01))
-                    .executes(ctx -> {
-                        ServerPlayer sender = ctx.getSource().getPlayerOrException();
-                        ServerPlayer target = EntityArgument.getPlayer(ctx, "player");
-                        double amount = DoubleArgumentType.getDouble(ctx, "amount");
-                        return pay(ctx.getSource(), sender, target, amount, economy.get(), currencies.get());
-                    })
+                    .executes(ctx -> executePay(ctx, economy.get(), currencies.get()))
+                    .then(Commands.argument("currency", StringArgumentType.word())
+                        .suggests(currSuggestions)
+                        .executes(ctx -> executePay(ctx, economy.get(), currencies.get()))
+                    )
                 )
             )
         );
     }
 
+    private static int executePay(CommandContext<CommandSourceStack> ctx,
+                                  EconomyProvider economy, CurrencyRegistry currencies) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
+        ServerPlayer sender = ctx.getSource().getPlayerOrException();
+        ServerPlayer target = EntityArgument.getPlayer(ctx, "player");
+        double amount = DoubleArgumentType.getDouble(ctx, "amount");
+        Currency currency = EcoCommands.resolveCurrency(ctx, currencies);
+        return pay(ctx.getSource(), sender, target, amount, economy, currency);
+    }
+
     private static int pay(CommandSourceStack source, ServerPlayer sender, ServerPlayer target,
-                           double amount, EconomyProvider economy, CurrencyRegistry currencies) {
+                           double amount, EconomyProvider economy, Currency currency) {
         if (!PermissionAPI.getPermission(sender, EcoPermissions.PAY)) {
             source.sendFailure(Component.translatable("ecocraft_core.command.pay.no_permission"));
             return 0;
@@ -48,16 +61,16 @@ public class PayCommand {
             return 0;
         }
 
-        Currency currency = currencies.getDefault();
         var result = economy.transfer(sender.getUUID(), target.getUUID(),
             BigDecimal.valueOf(amount), currency);
 
         if (result.successful()) {
+            String formatted = CurrencyFormatter.format(BigDecimal.valueOf(amount).longValue(), currency);
             source.sendSuccess(() -> Component.translatable(
-                "ecocraft_core.command.pay.sent", amount, currency.symbol(), target.getName().getString()
+                "ecocraft_core.command.pay.sent", formatted, target.getName().getString()
             ), false);
             target.sendSystemMessage(Component.translatable(
-                "ecocraft_core.command.pay.received", amount, currency.symbol(), sender.getName().getString()
+                "ecocraft_core.command.pay.received", formatted, sender.getName().getString()
             ));
             return Command.SINGLE_SUCCESS;
         } else {

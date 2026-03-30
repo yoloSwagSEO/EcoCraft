@@ -1,9 +1,11 @@
 package net.ecocraft.core.impl;
 
+import net.ecocraft.api.EcoCraftCurrencyApi;
 import net.ecocraft.api.EconomyProvider;
 import net.ecocraft.api.account.Account;
 import net.ecocraft.api.currency.Currency;
 import net.ecocraft.api.currency.CurrencyRegistry;
+import net.ecocraft.api.currency.ExternalCurrencyAdapter;
 import net.ecocraft.api.transaction.Transaction;
 import net.ecocraft.api.transaction.TransactionResult;
 import net.ecocraft.api.transaction.TransactionType;
@@ -46,12 +48,21 @@ public class EconomyProviderImpl implements EconomyProvider {
 
     @Override
     public Account getAccount(UUID player, Currency currency) {
+        ExternalCurrencyAdapter adapter = EcoCraftCurrencyApi.getAdapterForCurrency(currency.id());
+        if (adapter != null) {
+            BigDecimal balance = BigDecimal.valueOf(adapter.getBalance(player));
+            return new Account(player, currency, balance, BigDecimal.ZERO);
+        }
         BigDecimal virtual = db.getVirtualBalance(player, currency.id());
         return new Account(player, currency, virtual, BigDecimal.ZERO);
     }
 
     @Override
     public BigDecimal getVirtualBalance(UUID player, Currency currency) {
+        ExternalCurrencyAdapter adapter = EcoCraftCurrencyApi.getAdapterForCurrency(currency.id());
+        if (adapter != null) {
+            return BigDecimal.valueOf(adapter.getBalance(player));
+        }
         return db.getVirtualBalance(player, currency.id());
     }
 
@@ -65,6 +76,36 @@ public class EconomyProviderImpl implements EconomyProvider {
         synchronized (db) {
             if (amount.signum() <= 0) {
                 return TransactionResult.failure("Amount must be positive");
+            }
+
+            ExternalCurrencyAdapter adapter = EcoCraftCurrencyApi.getAdapterForCurrency(currency.id());
+            if (adapter != null) {
+                // PRE event — cancellable
+                if (eventDispatcher != null &&
+                    !eventDispatcher.firePreTransaction(player, amount, currency, TransactionType.WITHDRAWAL, null)) {
+                    return TransactionResult.failure("Operation cancelled");
+                }
+
+                long oldBal = adapter.getBalance(player);
+                boolean success = adapter.withdraw(player, amount.longValue());
+                if (!success) {
+                    if (eventDispatcher != null) {
+                        eventDispatcher.firePostTransaction(player, amount, currency, TransactionType.WITHDRAWAL, null, false);
+                    }
+                    return TransactionResult.failure("Insufficient funds");
+                }
+
+                var tx = new Transaction(UUID.randomUUID(), player, null, amount, currency,
+                    TransactionType.WITHDRAWAL, Instant.now());
+                db.logTransaction(tx.id(), tx.from(), tx.to(), tx.amount(),
+                    currency.id(), tx.type().name(), tx.timestamp());
+
+                if (eventDispatcher != null) {
+                    long newBal = adapter.getBalance(player);
+                    eventDispatcher.firePostTransaction(player, amount, currency, TransactionType.WITHDRAWAL, null, true);
+                    eventDispatcher.fireBalanceChanged(player, oldBal, newBal, currency, "WITHDRAWAL");
+                }
+                return TransactionResult.success(tx);
             }
 
             // PRE event — cancellable
@@ -107,6 +148,36 @@ public class EconomyProviderImpl implements EconomyProvider {
                 return TransactionResult.failure("Amount must be positive");
             }
 
+            ExternalCurrencyAdapter adapter = EcoCraftCurrencyApi.getAdapterForCurrency(currency.id());
+            if (adapter != null) {
+                // PRE event — cancellable
+                if (eventDispatcher != null &&
+                    !eventDispatcher.firePreTransaction(player, amount, currency, TransactionType.DEPOSIT, null)) {
+                    return TransactionResult.failure("Operation cancelled");
+                }
+
+                long oldBal = adapter.getBalance(player);
+                boolean success = adapter.deposit(player, amount.longValue());
+                if (!success) {
+                    if (eventDispatcher != null) {
+                        eventDispatcher.firePostTransaction(player, amount, currency, TransactionType.DEPOSIT, null, false);
+                    }
+                    return TransactionResult.failure("Deposit failed");
+                }
+
+                var tx = new Transaction(UUID.randomUUID(), null, player, amount, currency,
+                    TransactionType.DEPOSIT, Instant.now());
+                db.logTransaction(tx.id(), tx.from(), tx.to(), tx.amount(),
+                    currency.id(), tx.type().name(), tx.timestamp());
+
+                if (eventDispatcher != null) {
+                    long newBal = adapter.getBalance(player);
+                    eventDispatcher.firePostTransaction(player, amount, currency, TransactionType.DEPOSIT, null, true);
+                    eventDispatcher.fireBalanceChanged(player, oldBal, newBal, currency, "DEPOSIT");
+                }
+                return TransactionResult.success(tx);
+            }
+
             // PRE event — cancellable
             if (eventDispatcher != null &&
                 !eventDispatcher.firePreTransaction(player, amount, currency, TransactionType.DEPOSIT, null)) {
@@ -139,6 +210,41 @@ public class EconomyProviderImpl implements EconomyProvider {
         synchronized (db) {
             if (amount.signum() <= 0) {
                 return TransactionResult.failure("Amount must be positive");
+            }
+
+            ExternalCurrencyAdapter adapter = EcoCraftCurrencyApi.getAdapterForCurrency(currency.id());
+            if (adapter != null) {
+                // PRE event — cancellable
+                if (eventDispatcher != null &&
+                    !eventDispatcher.firePreTransaction(from, amount, currency, TransactionType.TRANSFER, to)) {
+                    return TransactionResult.failure("Operation cancelled");
+                }
+
+                long oldSender = adapter.getBalance(from);
+                long oldReceiver = adapter.getBalance(to);
+
+                boolean withdrawn = adapter.withdraw(from, amount.longValue());
+                if (!withdrawn) {
+                    if (eventDispatcher != null) {
+                        eventDispatcher.firePostTransaction(from, amount, currency, TransactionType.TRANSFER, to, false);
+                    }
+                    return TransactionResult.failure("Insufficient funds");
+                }
+                adapter.deposit(to, amount.longValue());
+
+                var tx = new Transaction(UUID.randomUUID(), from, to, amount, currency,
+                    TransactionType.PAYMENT, Instant.now());
+                db.logTransaction(tx.id(), tx.from(), tx.to(), tx.amount(),
+                    currency.id(), tx.type().name(), tx.timestamp());
+
+                if (eventDispatcher != null) {
+                    long newSender = adapter.getBalance(from);
+                    long newReceiver = adapter.getBalance(to);
+                    eventDispatcher.firePostTransaction(from, amount, currency, TransactionType.TRANSFER, to, true);
+                    eventDispatcher.fireBalanceChanged(from, oldSender, newSender, currency, "TRANSFER");
+                    eventDispatcher.fireBalanceChanged(to, oldReceiver, newReceiver, currency, "TRANSFER");
+                }
+                return TransactionResult.success(tx);
             }
 
             // PRE event — cancellable
@@ -203,6 +309,10 @@ public class EconomyProviderImpl implements EconomyProvider {
 
     @Override
     public boolean canAfford(UUID player, BigDecimal amount, Currency currency) {
+        ExternalCurrencyAdapter adapter = EcoCraftCurrencyApi.getAdapterForCurrency(currency.id());
+        if (adapter != null) {
+            return adapter.canAfford(player, amount.longValue());
+        }
         return db.getVirtualBalance(player, currency.id()).compareTo(amount) >= 0;
     }
 }

@@ -98,7 +98,8 @@ public class EcoServerEvents {
         EcoCommands.register(event.getDispatcher(),
                 () -> context != null ? context.getEconomyProvider() : null,
                 () -> context != null ? context.getCurrencyRegistry() : null,
-                () -> context != null ? context.getExchangeService() : null);
+                () -> context != null ? context.getExchangeService() : null,
+                () -> context != null ? context.getTransactionLog() : null);
         LOGGER.info("EcoCraft Economy commands registered.");
     }
 
