@@ -1,5 +1,7 @@
 package net.ecocraft.api.currency;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
 import java.util.StringJoiner;
 
@@ -58,6 +60,26 @@ public final class CurrencyFormatter {
             total += parts[i] * units.get(i).multiplier();
         }
         return total;
+    }
+
+    /**
+     * Converts a display-level BigDecimal amount to the smallest storage unit.
+     * E.g. with decimals=2: 150.50 → 15050
+     */
+    public static long toSmallestUnit(BigDecimal displayAmount, Currency currency) {
+        return displayAmount.movePointRight(currency.decimals())
+                .setScale(0, RoundingMode.DOWN)
+                .longValueExact();
+    }
+
+    /**
+     * Converts a smallest-unit long back to a display-level BigDecimal.
+     * E.g. with decimals=2: 15050 → 150.50
+     */
+    public static BigDecimal fromSmallestUnit(long smallestUnit, Currency currency) {
+        return BigDecimal.valueOf(smallestUnit)
+                .movePointLeft(currency.decimals())
+                .setScale(currency.decimals(), RoundingMode.DOWN);
     }
 
     // ---- internals ----

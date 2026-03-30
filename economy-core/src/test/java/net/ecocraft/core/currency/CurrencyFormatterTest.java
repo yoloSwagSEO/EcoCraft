@@ -5,6 +5,7 @@ import net.ecocraft.api.currency.CurrencyFormatter;
 import net.ecocraft.api.currency.SubUnit;
 import org.junit.jupiter.api.Test;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -94,5 +95,40 @@ class CurrencyFormatterTest {
     @Test
     void combineComposite() {
         assertEquals(1500, CurrencyFormatter.combine(new long[]{1, 5, 0, 0}, wow));
+    }
+
+    // ---- toSmallestUnit / fromSmallestUnit ----
+
+    @Test
+    void toSmallestUnitWithDecimals() {
+        assertEquals(15000, CurrencyFormatter.toSmallestUnit(new BigDecimal("150.00"), gold2dec));
+        assertEquals(15050, CurrencyFormatter.toSmallestUnit(new BigDecimal("150.50"), gold2dec));
+        assertEquals(100, CurrencyFormatter.toSmallestUnit(new BigDecimal("1.00"), gold2dec));
+        assertEquals(1, CurrencyFormatter.toSmallestUnit(new BigDecimal("0.01"), gold2dec));
+    }
+
+    @Test
+    void fromSmallestUnitWithDecimals() {
+        assertEquals(new BigDecimal("150.00"), CurrencyFormatter.fromSmallestUnit(15000, gold2dec));
+        assertEquals(new BigDecimal("150.50"), CurrencyFormatter.fromSmallestUnit(15050, gold2dec));
+        assertEquals(new BigDecimal("0.01"), CurrencyFormatter.fromSmallestUnit(1, gold2dec));
+    }
+
+    @Test
+    void toSmallestUnitNoDecimals() {
+        assertEquals(150, CurrencyFormatter.toSmallestUnit(new BigDecimal("150"), gold0dec));
+    }
+
+    @Test
+    void fromSmallestUnitNoDecimals() {
+        assertEquals(new BigDecimal("150"), CurrencyFormatter.fromSmallestUnit(150, gold0dec));
+    }
+
+    @Test
+    void roundTripConversion() {
+        BigDecimal original = new BigDecimal("123.45");
+        long smallest = CurrencyFormatter.toSmallestUnit(original, gold2dec);
+        BigDecimal back = CurrencyFormatter.fromSmallestUnit(smallest, gold2dec);
+        assertEquals(original, back);
     }
 }
