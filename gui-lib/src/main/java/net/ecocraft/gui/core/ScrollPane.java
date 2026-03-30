@@ -24,6 +24,10 @@ public class ScrollPane extends BaseWidget {
     private double dragStartY;
     private int dragStartOffset;
 
+    // Track the last focusable widget clicked inside this ScrollPane
+    // so the WidgetTree can set focus on it after dispatch
+    private @org.jetbrains.annotations.Nullable WidgetNode lastClickedFocusable = null;
+
     /**
      * Thread-local render offset tracking. Widgets that use enableScissor
      * should call ScrollPane.getRenderOffsetY() to adjust their scissor coordinates.
@@ -55,6 +59,11 @@ public class ScrollPane extends BaseWidget {
 
     public int getScrollOffset() {
         return scrollOffset;
+    }
+
+    /** Returns the last focusable widget clicked inside this ScrollPane (for WidgetTree focus). */
+    public @org.jetbrains.annotations.Nullable WidgetNode getLastClickedFocusable() {
+        return lastClickedFocusable;
     }
 
     public void setScrollOffset(int offset) {
@@ -231,8 +240,13 @@ public class ScrollPane extends BaseWidget {
 
         // Adjust Y for scroll offset and forward to deepest matching child
         double adjustedY = my + scrollOffset;
+        lastClickedFocusable = null;
         WidgetNode deepest = deepHitTest(this, mx, adjustedY);
         if (deepest != null && deepest != this) {
+            // Track focusable target for WidgetTree
+            if (deepest.isFocusable()) {
+                lastClickedFocusable = deepest;
+            }
             // Bubble up from deepest widget to this ScrollPane
             WidgetNode node = deepest;
             while (node != null && node != this) {

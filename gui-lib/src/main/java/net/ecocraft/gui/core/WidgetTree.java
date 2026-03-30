@@ -171,8 +171,14 @@ public class WidgetTree {
         WidgetNode target = hitTest(root, mx, my);
         if (target != null && target != root) {
             boolean consumed = bubbleMouseClicked(target, mx, my, button);
-            if (target.isFocusable()) setFocused(target);
-            else setFocused(null);
+            // If target is a ScrollPane, check if it focused an inner widget
+            if (target instanceof ScrollPane scrollPane && scrollPane.getLastClickedFocusable() != null) {
+                setFocused(scrollPane.getLastClickedFocusable());
+            } else if (target.isFocusable()) {
+                setFocused(target);
+            } else {
+                setFocused(null);
+            }
             return consumed;
         }
 
