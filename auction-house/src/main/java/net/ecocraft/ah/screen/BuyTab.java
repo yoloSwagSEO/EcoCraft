@@ -3,6 +3,7 @@ package net.ecocraft.ah.screen;
 import net.ecocraft.ah.data.ItemCategory;
 import net.ecocraft.ah.data.ItemStackSerializer;
 import net.ecocraft.ah.network.payload.*;
+import net.ecocraft.api.currency.CurrencyFormatter;
 import net.ecocraft.gui.core.*;
 import net.ecocraft.gui.table.TableColumn;
 import net.ecocraft.gui.table.TableRow;
@@ -810,6 +811,10 @@ public class BuyTab extends BaseWidget {
 
     // --- Formatting helpers ---
 
+    /**
+     * @deprecated Use {@link CurrencyFormatter#format(long, net.ecocraft.api.currency.Currency)} instead.
+     */
+    @Deprecated
     public static String formatPrice(long price, String currencySymbol) {
         String symbol = (currencySymbol != null && !currencySymbol.isEmpty()) ? currencySymbol : "G";
         if (price <= 0) return "0 " + symbol;
@@ -817,7 +822,7 @@ public class BuyTab extends BaseWidget {
     }
 
     private String fmtPrice(long price) {
-        return formatPrice(price, parent.getCurrencySymbol());
+        return CurrencyFormatter.format(price, parent.getCurrency());
     }
 
     static String formatTimeRemaining(long expiresInMs) {

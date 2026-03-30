@@ -1,6 +1,7 @@
 package net.ecocraft.mail.screen;
 
 import com.mojang.logging.LogUtils;
+import net.ecocraft.api.currency.Currency;
 import net.ecocraft.gui.core.EcoButton;
 import net.ecocraft.gui.core.EcoScreen;
 import net.ecocraft.gui.theme.DrawUtils;
@@ -30,6 +31,7 @@ public class MailboxScreen extends EcoScreen {
     int guiTop;
 
     String currencySymbol = "G";
+    Currency currency = Currency.virtual("gold", "Gold", "G", 2);
     int maxItemAttachments = 12;
     long sendCost = 0;
     long sendCostPerItem = 0;
@@ -158,6 +160,7 @@ public class MailboxScreen extends EcoScreen {
     public static void receiveMailList(MailListResponsePayload payload) {
         if (Minecraft.getInstance().screen instanceof MailboxScreen screen) {
             screen.currencySymbol = payload.currencySymbol();
+            screen.currency = Currency.virtual("gold", "Gold", payload.currencySymbol(), 2);
             screen.maxItemAttachments = payload.maxItemAttachments();
             screen.sendCost = payload.sendCost();
             screen.sendCostPerItem = payload.sendCostPerItem();

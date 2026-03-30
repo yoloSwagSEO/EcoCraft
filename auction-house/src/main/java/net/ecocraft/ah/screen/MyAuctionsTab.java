@@ -6,6 +6,7 @@ import net.ecocraft.ah.network.payload.CancelListingPayload;
 import net.ecocraft.ah.network.payload.CollectParcelsPayload;
 import net.ecocraft.ah.network.payload.MyListingsResponsePayload;
 import net.ecocraft.ah.network.payload.RequestMyListingsPayload;
+import net.ecocraft.api.currency.CurrencyFormatter;
 import net.ecocraft.gui.core.*;
 import net.ecocraft.gui.table.TableColumn;
 import net.ecocraft.gui.table.TableRow;
@@ -107,13 +108,13 @@ public class MyAuctionsTab extends BaseWidget {
 
         revenueCard = new EcoStatCard(tabX, footerY, cardW, cardH,
                 Component.translatable("ecocraft_ah.stat.revenue_7d"),
-                Component.literal(BuyTab.formatPrice(revenue7d, parent.getCurrencySymbol())),
+                Component.literal(CurrencyFormatter.format(revenue7d, parent.getCurrency())),
                 THEME.success, THEME);
         addChild(revenueCard);
 
         taxCard = new EcoStatCard(tabX + cardW + 4, footerY, cardW, cardH,
                 Component.translatable("ecocraft_ah.stat.taxes_7d"),
-                Component.literal(BuyTab.formatPrice(taxesPaid7d, parent.getCurrencySymbol())),
+                Component.literal(CurrencyFormatter.format(taxesPaid7d, parent.getCurrency())),
                 THEME.danger, THEME);
         addChild(taxCard);
 
@@ -324,7 +325,7 @@ public class MyAuctionsTab extends BaseWidget {
 
             List<TableRow.Cell> cells = new ArrayList<>();
             cells.add(TableRow.Cell.of(Component.literal(entry.itemName()), entry.rarityColor(), entry.itemName()));
-            cells.add(TableRow.Cell.of(Component.literal(BuyTab.formatPrice(entry.price(), parent.getCurrencySymbol())), THEME.accent, entry.price()));
+            cells.add(TableRow.Cell.of(Component.literal(CurrencyFormatter.format(entry.price(), parent.getCurrency())), THEME.accent, entry.price()));
             cells.add(TableRow.Cell.of(Component.translatable("AUCTION".equals(entry.type()) ? "ecocraft_ah.type.auction_short" : "ecocraft_ah.type.buyout_short"),
                     "AUCTION".equals(entry.type()) ? THEME.warning : THEME.success));
             cells.add(TableRow.Cell.of(Component.literal(translateStatus(entry.status())), statusColor));
@@ -343,10 +344,10 @@ public class MyAuctionsTab extends BaseWidget {
 
     private void updateStats() {
         if (revenueCard != null) {
-            revenueCard.setValue(Component.literal(BuyTab.formatPrice(revenue7d, parent.getCurrencySymbol())), THEME.success);
+            revenueCard.setValue(Component.literal(CurrencyFormatter.format(revenue7d, parent.getCurrency())), THEME.success);
         }
         if (taxCard != null) {
-            taxCard.setValue(Component.literal(BuyTab.formatPrice(taxesPaid7d, parent.getCurrencySymbol())), THEME.danger);
+            taxCard.setValue(Component.literal(CurrencyFormatter.format(taxesPaid7d, parent.getCurrency())), THEME.danger);
         }
         if (parcelsCard != null) {
             parcelsCard.setValue(Component.literal(String.valueOf(parcelsToCollect)), THEME.info);

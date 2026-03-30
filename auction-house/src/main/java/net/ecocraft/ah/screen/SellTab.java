@@ -2,6 +2,7 @@ package net.ecocraft.ah.screen;
 
 import net.ecocraft.ah.network.payload.AHActionResultPayload;
 import net.ecocraft.ah.network.payload.CreateListingPayload;
+import net.ecocraft.api.currency.CurrencyFormatter;
 import net.ecocraft.gui.core.*;
 import net.ecocraft.gui.theme.DrawUtils;
 import net.ecocraft.gui.theme.Theme;
@@ -254,13 +255,13 @@ public class SellTab extends BaseWidget {
             int labelX = panelX + 8;
             int valueX = panelX + panelW - 8;
 
-            String cs = parent.getCurrencySymbol();
-            drawSummaryLine(graphics, font, Component.translatable("ecocraft_ah.sell.unit_price_label").getString(), BuyTab.formatPrice(unitPrice, cs), labelX, valueX, panelY + 4, THEME.textGrey, THEME.textLight);
-            drawSummaryLine(graphics, font, Component.translatable("ecocraft_ah.sell.total_price_label").getString(), BuyTab.formatPrice(totalPrice, cs), labelX, valueX, panelY + 16, THEME.textLight, THEME.accent);
-            drawSummaryLine(graphics, font, Component.translatable("ecocraft_ah.sell.tax_label", Math.round(activeTaxRate * 100)).getString(), "-" + BuyTab.formatPrice(tax, cs), labelX, valueX, panelY + 28, THEME.textGrey, THEME.danger);
-            drawSummaryLine(graphics, font, Component.translatable("ecocraft_ah.sell.deposit_label", Math.round(activeDepositRate * 100)).getString(), "-" + BuyTab.formatPrice(deposit, cs), labelX, valueX, panelY + 40, THEME.textGrey, THEME.warning);
+            var curr = parent.getCurrency();
+            drawSummaryLine(graphics, font, Component.translatable("ecocraft_ah.sell.unit_price_label").getString(), CurrencyFormatter.format(unitPrice, curr), labelX, valueX, panelY + 4, THEME.textGrey, THEME.textLight);
+            drawSummaryLine(graphics, font, Component.translatable("ecocraft_ah.sell.total_price_label").getString(), CurrencyFormatter.format(totalPrice, curr), labelX, valueX, panelY + 16, THEME.textLight, THEME.accent);
+            drawSummaryLine(graphics, font, Component.translatable("ecocraft_ah.sell.tax_label", Math.round(activeTaxRate * 100)).getString(), "-" + CurrencyFormatter.format(tax, curr), labelX, valueX, panelY + 28, THEME.textGrey, THEME.danger);
+            drawSummaryLine(graphics, font, Component.translatable("ecocraft_ah.sell.deposit_label", Math.round(activeDepositRate * 100)).getString(), "-" + CurrencyFormatter.format(deposit, curr), labelX, valueX, panelY + 40, THEME.textGrey, THEME.warning);
             DrawUtils.drawAccentSeparator(graphics, panelX + 4, panelY + 51, panelW - 8, THEME);
-            drawSummaryLine(graphics, font, Component.translatable("ecocraft_ah.sell.net_label").getString(), BuyTab.formatPrice(net, cs), labelX, valueX, panelY + 56, THEME.textLight, THEME.success);
+            drawSummaryLine(graphics, font, Component.translatable("ecocraft_ah.sell.net_label").getString(), CurrencyFormatter.format(net, curr), labelX, valueX, panelY + 56, THEME.textLight, THEME.success);
         } else {
             DrawUtils.drawPanel(graphics, panelX, panelY, panelW, panelH, THEME);
             Component placeholder = Component.translatable("ecocraft_ah.sell.enter_price_summary");

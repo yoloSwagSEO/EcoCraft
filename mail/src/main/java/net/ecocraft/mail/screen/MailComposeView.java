@@ -1,5 +1,6 @@
 package net.ecocraft.mail.screen;
 
+import net.ecocraft.api.currency.CurrencyFormatter;
 import net.ecocraft.gui.core.*;
 import net.ecocraft.gui.theme.DrawUtils;
 import net.ecocraft.gui.theme.Theme;
@@ -196,9 +197,7 @@ public class MailComposeView extends BaseWidget {
         if (screen.allowReadReceipt) {
             String receiptLabel = Component.translatable("ecocraft_mail.compose.read_receipt").getString();
             if (screen.readReceiptCost > 0) {
-                receiptLabel += " " + String.format(
-                        Component.translatable("ecocraft_mail.compose.read_receipt_cost").getString(),
-                        screen.readReceiptCost, screen.currencySymbol);
+                receiptLabel += " (" + CurrencyFormatter.format(screen.readReceiptCost, screen.currency) + ")";
             }
             Label readReceiptLabel = new Label(font, leftX, currentY + 2,
                     Component.literal(receiptLabel), THEME);
@@ -392,9 +391,8 @@ public class MailComposeView extends BaseWidget {
         // Dynamic total cost display
         long totalCost = computeTotalCost();
         if (totalCost > 0) {
-            String costText = String.format(
-                    Component.translatable("ecocraft_mail.compose.total_cost").getString(),
-                    totalCost, screen.currencySymbol);
+            String costText = Component.translatable("ecocraft_mail.compose.total_cost_prefix").getString()
+                    + CurrencyFormatter.format(totalCost, screen.currency);
             int costTextW = font.width(costText);
             int costX = getX() + (getWidth() - costTextW) / 2;
             int costY = footerSepY + 3;

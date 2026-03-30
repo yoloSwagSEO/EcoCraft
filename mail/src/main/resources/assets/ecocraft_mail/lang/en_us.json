@@ -29,6 +29,7 @@
   "ecocraft_mail.detail.from": "From: %s",
   "ecocraft_mail.detail.currency": "%d %s",
   "ecocraft_mail.detail.cod_banner": "Cash on Delivery: %d %s",
+  "ecocraft_mail.detail.cod_banner_prefix": "Cash on Delivery: ",
 
   "ecocraft_mail.list.from": "From: %s",
   "ecocraft_mail.list.tag_items": "[Items]",
@@ -52,6 +53,7 @@
   "ecocraft_mail.compose.read_receipt": "Read receipt",
   "ecocraft_mail.compose.read_receipt_cost": "(cost: %d %s)",
   "ecocraft_mail.compose.total_cost": "Total cost: %d %s",
+  "ecocraft_mail.compose.total_cost_prefix": "Total cost: ",
   "ecocraft_mail.compose.send_cost": "Send cost: %d %s",
   "ecocraft_mail.compose.confirm_send": "Confirm?",
 

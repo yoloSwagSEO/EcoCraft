@@ -1,5 +1,6 @@
 package net.ecocraft.mail.screen;
 
+import net.ecocraft.api.currency.CurrencyFormatter;
 import net.ecocraft.gui.core.*;
 import net.ecocraft.gui.theme.DrawUtils;
 import net.ecocraft.gui.theme.Theme;
@@ -293,7 +294,7 @@ public class MailListView extends BaseWidget {
             sb.append(" \u2022 ").append(itemCount).append(" item(s)");
         }
         if (goldTotal > 0) {
-            sb.append(" \u2022 ").append(goldTotal).append(" ").append(screen.currencySymbol);
+            sb.append(" \u2022 ").append(CurrencyFormatter.format(goldTotal, screen.currency));
         }
         this.statsLine = sb.toString();
     }
@@ -471,7 +472,7 @@ public class MailListView extends BaseWidget {
                 tagRightEdge -= 4;
             }
             if (mail.hasCurrency()) {
-                String goldTag = Component.translatable("ecocraft_mail.list.tag_gold", mail.currencyAmount(), screen.currencySymbol).getString();
+                String goldTag = "[" + CurrencyFormatter.format(mail.currencyAmount(), screen.currency) + "]";
                 int goldW = font.width(goldTag);
                 tagRightEdge -= goldW;
                 graphics.drawString(font, goldTag, tagRightEdge, lineY2, THEME.accent, false);

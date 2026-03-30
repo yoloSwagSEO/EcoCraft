@@ -1,5 +1,6 @@
 package net.ecocraft.mail.screen;
 
+import net.ecocraft.api.currency.CurrencyFormatter;
 import net.ecocraft.gui.core.*;
 import net.ecocraft.gui.theme.DrawUtils;
 import net.ecocraft.gui.theme.Theme;
@@ -165,7 +166,7 @@ public class MailDetailView extends BaseWidget {
             // Currency label
             if (detail.currencyAmount() > 0) {
                 Label currLabel = new Label(font, slotX + 8, slotY + 6,
-                        Component.translatable("ecocraft_mail.detail.currency", detail.currencyAmount(), screen.currencySymbol), THEME);
+                        Component.literal(CurrencyFormatter.format(detail.currencyAmount(), screen.currency)), THEME);
                 currLabel.setColor(THEME.accent);
                 attachPanel.addChild(currLabel);
             }
@@ -182,7 +183,8 @@ public class MailDetailView extends BaseWidget {
             addChild(codPanel);
 
             Label codLabel = new Label(font, innerX + 8, currentY + 6,
-                    Component.translatable("ecocraft_mail.detail.cod_banner", detail.codAmount(), screen.currencySymbol), THEME);
+                    Component.literal(Component.translatable("ecocraft_mail.detail.cod_banner_prefix").getString()
+                            + CurrencyFormatter.format(detail.codAmount(), screen.currency)), THEME);
             codLabel.setColor(THEME.warning);
             codPanel.addChild(codLabel);
 

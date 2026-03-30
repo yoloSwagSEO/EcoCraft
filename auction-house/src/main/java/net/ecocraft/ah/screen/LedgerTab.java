@@ -2,6 +2,7 @@ package net.ecocraft.ah.screen;
 
 import net.ecocraft.ah.network.payload.LedgerResponsePayload;
 import net.ecocraft.ah.network.payload.RequestLedgerPayload;
+import net.ecocraft.api.currency.CurrencyFormatter;
 import net.ecocraft.gui.core.*;
 import net.ecocraft.gui.table.TableColumn;
 import net.ecocraft.gui.table.TableRow;
@@ -266,7 +267,7 @@ public class LedgerTab extends BaseWidget {
             List<TableRow.Cell> cells = new ArrayList<>();
             cells.add(TableRow.Cell.of(Component.literal(entry.itemName()), entry.rarityColor(), entry.itemName()));
             cells.add(TableRow.Cell.of(Component.literal(translateType(entry.type())), typeColor));
-            cells.add(TableRow.Cell.of(Component.literal((isIncome ? "+" : "-") + BuyTab.formatPrice(entry.amount(), parent.getCurrencySymbol())),
+            cells.add(TableRow.Cell.of(Component.literal((isIncome ? "+" : "-") + CurrencyFormatter.format(entry.amount(), parent.getCurrency())),
                     isIncome ? THEME.success : THEME.danger, isIncome ? entry.amount() : -entry.amount()));
             cells.add(TableRow.Cell.of(Component.literal(entry.counterparty()), THEME.textLight));
             if (multiAH) {
@@ -300,8 +301,7 @@ public class LedgerTab extends BaseWidget {
     // --- Helpers ---
 
     private String formatStatPrice(long price) {
-        if (price == 0) return "0 " + parent.getCurrencySymbol();
-        return BuyTab.formatPrice(price, parent.getCurrencySymbol());
+        return CurrencyFormatter.format(price, parent.getCurrency());
     }
 
     private int getTypeColor(String type) {

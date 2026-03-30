@@ -29,6 +29,7 @@
   "ecocraft_mail.detail.from": "De: %s",
   "ecocraft_mail.detail.currency": "%d %s",
   "ecocraft_mail.detail.cod_banner": "Contre-remboursement: %d %s",
+  "ecocraft_mail.detail.cod_banner_prefix": "Contre-remboursement : ",
 
   "ecocraft_mail.list.from": "De: %s",
   "ecocraft_mail.list.tag_items": "[Items]",
@@ -52,6 +53,7 @@
   "ecocraft_mail.compose.read_receipt": "Accusé de réception",
   "ecocraft_mail.compose.read_receipt_cost": "(coût: %d %s)",
   "ecocraft_mail.compose.total_cost": "Coût total : %d %s",
+  "ecocraft_mail.compose.total_cost_prefix": "Coût total : ",
   "ecocraft_mail.compose.send_cost": "Coût d'envoi : %d %s",
   "ecocraft_mail.compose.confirm_send": "Confirmer ?",
 
