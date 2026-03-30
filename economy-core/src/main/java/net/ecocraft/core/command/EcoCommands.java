@@ -22,7 +22,7 @@ public class EcoCommands {
                                 Supplier<TransactionLog> transactionLog) {
         BalanceCommand.register(dispatcher, economy, currencies);
         PayCommand.register(dispatcher, economy, currencies);
-        CurrencyCommand.register(dispatcher, currencies, exchange);
+        CurrencyCommand.register(dispatcher, currencies, exchange, transactionLog);
         EcoAdminCommand.register(dispatcher, economy, currencies);
     }
 
