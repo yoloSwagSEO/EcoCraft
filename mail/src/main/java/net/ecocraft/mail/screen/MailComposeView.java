@@ -42,9 +42,9 @@ public class MailComposeView extends BaseWidget {
     private EcoTextInput recipientInput;
     private EcoTextInput subjectInput;
     private EcoTextArea bodyArea;
-    private EcoNumberInput currencyInput;
+    private EcoCurrencyInput currencyInput;
     private EcoToggle codToggle;
-    private EcoNumberInput codAmountInput;
+    private EcoCurrencyInput codAmountInput;
     private EcoToggle readReceiptToggle;
 
     // Inventory
@@ -162,8 +162,8 @@ public class MailComposeView extends BaseWidget {
         addChild(currencyLabel);
         currentY += LABEL_HEIGHT + 2;
 
-        currencyInput = new EcoNumberInput(font, leftX, currentY, halfLeftW, FIELD_HEIGHT, THEME);
-        currencyInput.min(0).max(999999999).step(1).showButtons(true);
+        currencyInput = new EcoCurrencyInput(font, leftX, currentY, halfLeftW, screen.currency, THEME);
+        currencyInput.min(0).max(999999999);
         currencyInput.setValue(0);
         addChild(currencyInput);
         currentY += FIELD_HEIGHT + GAP;
@@ -186,8 +186,8 @@ public class MailComposeView extends BaseWidget {
         addChild(codToggle);
 
         int codInputW = Math.max(60, halfLeftW - toggleW - GAP);
-        codAmountInput = new EcoNumberInput(font, leftX + toggleW + GAP, currentY, codInputW, FIELD_HEIGHT, THEME);
-        codAmountInput.min(0).max(999999999).step(1).showButtons(true);
+        codAmountInput = new EcoCurrencyInput(font, leftX + toggleW + GAP, currentY, codInputW, screen.currency, THEME);
+        codAmountInput.min(0).max(999999999);
         codAmountInput.setValue(0);
         codAmountInput.setEnabled(false);
         addChild(codAmountInput);

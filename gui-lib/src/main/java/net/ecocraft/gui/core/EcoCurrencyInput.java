@@ -74,7 +74,8 @@ public class EcoCurrencyInput extends BaseWidget {
     public EcoCurrencyInput min(long min) {
         this.min = min;
         if (!composite && simpleInput != null) {
-            simpleInput.min(min);
+            long divisor = pow10(currency.decimals());
+            simpleInput.min(min / divisor);
         }
         return this;
     }
@@ -82,7 +83,8 @@ public class EcoCurrencyInput extends BaseWidget {
     public EcoCurrencyInput max(long max) {
         this.max = max;
         if (!composite && simpleInput != null) {
-            simpleInput.max(max);
+            long divisor = pow10(currency.decimals());
+            simpleInput.max(max / divisor);
         }
         return this;
     }
@@ -99,7 +101,9 @@ public class EcoCurrencyInput extends BaseWidget {
     public void setValue(long value) {
         this.value = clamp(value);
         if (!composite && simpleInput != null) {
-            simpleInput.setValue(this.value);
+            // Display in whole units
+            long divisor = pow10(currency.decimals());
+            simpleInput.setValue(this.value / divisor);
         }
         notifyResponder();
     }
@@ -114,14 +118,23 @@ public class EcoCurrencyInput extends BaseWidget {
     private void buildSimpleLayout(int x, int y, int width) {
         int symbolWidth = font.width(currency.symbol()) + 6;
         int inputWidth = width - symbolWidth;
+        long divisor = pow10(currency.decimals());
 
         simpleInput = new EcoNumberInput(font, x, y, inputWidth, SIMPLE_HEIGHT, theme);
-        simpleInput.min(min).max(max).step(1);
-        simpleInput.responder(val -> {
-            this.value = val;
+        // Display values in whole units, step by 1 whole unit
+        simpleInput.min(min / divisor).max(max / divisor).step(1);
+        simpleInput.responder(displayVal -> {
+            // Convert display value back to smallest unit
+            this.value = clamp(displayVal * divisor);
             notifyResponder();
         });
         addChild(simpleInput);
+    }
+
+    private static long pow10(int exp) {
+        long result = 1;
+        for (int i = 0; i < exp; i++) result *= 10;
+        return result;
     }
 
     private void buildCompositeLayout(int x, int y, int width) {

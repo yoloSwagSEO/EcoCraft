@@ -152,7 +152,7 @@ public class MailboxScreen extends EcoScreen {
         if (mc.player != null) {
             isAdmin = mc.player.hasPermissions(2);
         }
-        mc.setScreen(new MailSettingsScreen(this, isAdmin, postmanEntityId, postmanSkinName));
+        mc.setScreen(new MailSettingsScreen(this, isAdmin, postmanEntityId, postmanSkinName, currency));
     }
 
     // --- Static payload receivers (called from MailClientPayloadHandler) ---

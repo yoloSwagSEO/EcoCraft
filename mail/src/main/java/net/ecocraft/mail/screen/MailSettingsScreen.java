@@ -1,5 +1,6 @@
 package net.ecocraft.mail.screen;
 
+import net.ecocraft.api.currency.Currency;
 import net.ecocraft.gui.core.*;
 import net.ecocraft.gui.theme.DrawUtils;
 import net.ecocraft.gui.theme.Theme;
@@ -37,6 +38,7 @@ public class MailSettingsScreen extends EcoScreen {
     private final Screen parentScreen;
     private final boolean isAdmin;
     private final int postmanEntityId;
+    private final Currency currency;
     private String skinPlayerName;
     private int selectedTab = 0;
     private final List<EcoButton> sidebarButtons = new ArrayList<>();
@@ -55,11 +57,12 @@ public class MailSettingsScreen extends EcoScreen {
     private long editReadReceiptCost;
     private long editSendCostPerItem;
 
-    public MailSettingsScreen(Screen parent, boolean isAdmin, int postmanEntityId, String skinPlayerName) {
+    public MailSettingsScreen(Screen parent, boolean isAdmin, int postmanEntityId, String skinPlayerName, Currency currency) {
         super(Component.translatable("ecocraft_mail.screen.settings_title"));
         this.parentScreen = parent;
         this.isAdmin = isAdmin;
         this.postmanEntityId = postmanEntityId;
+        this.currency = currency;
         this.skinPlayerName = skinPlayerName != null ? skinPlayerName : "";
         // Initialize from current config values
         var config = MailConfig.CONFIG;
@@ -366,8 +369,9 @@ public class MailSettingsScreen extends EcoScreen {
         scrollPane.addChild(sendCostLabel);
         cy += font.lineHeight + 4;
 
-        EcoNumberInput sendCostInput = new EcoNumberInput(font, cx, cy, halfW, 16, THEME);
-        sendCostInput.min(0).max(999999).step(1).showButtons(true).setValue((int) editSendCost);
+        EcoCurrencyInput sendCostInput = new EcoCurrencyInput(font, cx, cy, halfW, currency, THEME);
+        sendCostInput.min(0).max(999999);
+        sendCostInput.setValue(editSendCost);
         sendCostInput.responder(val -> editSendCost = val);
         scrollPane.addChild(sendCostInput);
         cy += 16 + 8;
@@ -385,8 +389,9 @@ public class MailSettingsScreen extends EcoScreen {
             scrollPane.addChild(maxAttachLabel);
             cy += font.lineHeight + 4;
 
-            EcoNumberInput costPerItemInput = new EcoNumberInput(font, cx, cy, halfW, 16, THEME);
-            costPerItemInput.min(0).max(999999).step(1).showButtons(true).setValue((int) editSendCostPerItem);
+            EcoCurrencyInput costPerItemInput = new EcoCurrencyInput(font, cx, cy, halfW, currency, THEME);
+            costPerItemInput.min(0).max(999999);
+            costPerItemInput.setValue(editSendCostPerItem);
             costPerItemInput.responder(val -> editSendCostPerItem = val);
             scrollPane.addChild(costPerItemInput);
 
@@ -421,8 +426,9 @@ public class MailSettingsScreen extends EcoScreen {
             scrollPane.addChild(receiptCostLabel);
             cy += font.lineHeight + 4;
 
-            EcoNumberInput receiptCostInput = new EcoNumberInput(font, cx, cy, halfW, 16, THEME);
-            receiptCostInput.min(0).max(999999).step(1).showButtons(true).setValue((int) editReadReceiptCost);
+            EcoCurrencyInput receiptCostInput = new EcoCurrencyInput(font, cx, cy, halfW, currency, THEME);
+            receiptCostInput.min(0).max(999999);
+            receiptCostInput.setValue(editReadReceiptCost);
             receiptCostInput.responder(val -> editReadReceiptCost = val);
             scrollPane.addChild(receiptCostInput);
             cy += 16 + 8;

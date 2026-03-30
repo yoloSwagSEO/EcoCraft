@@ -63,7 +63,7 @@ public class BuyTab extends BaseWidget {
     private int selectedEntryIndex = 0;
     private EcoItemSlot panelItemSlot;
     private EcoNumberInput panelQuantityInput;
-    private EcoNumberInput panelBidInput;
+    private EcoCurrencyInput panelBidInput;
     private EcoButton panelBuyButton;
     private EcoButton panelBidButton;
     private EcoTable panelBidHistoryTable;
@@ -660,8 +660,8 @@ public class BuyTab extends BaseWidget {
         addChild(panelQuantityInput);
 
         // Bid input (for AUCTION -- overlaps quantity, only one visible at a time)
-        panelBidInput = new EcoNumberInput(font, px + 8, inputY, pw - 16, 18, THEME);
-        panelBidInput.min(1).max(Long.MAX_VALUE).step(1);
+        panelBidInput = new EcoCurrencyInput(font, px + 8, inputY, pw - 16, parent.getCurrency(), THEME);
+        panelBidInput.min(1).max(Long.MAX_VALUE);
         panelBidInput.setValue(1);
         panelBidInput.setVisible(false);
         addChild(panelBidInput);
