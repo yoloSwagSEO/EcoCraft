@@ -170,6 +170,22 @@ public class ScrollPane extends BaseWidget {
         if (scrollOffset > max) scrollOffset = max;
     }
 
+    /** Recursively find the deepest visible widget containing (mx, my). */
+    private WidgetNode deepHitTest(WidgetNode node, double mx, double my) {
+        if (!node.isVisible()) return null;
+        if (!node.containsPoint(mx, my)) return null;
+
+        // Don't recurse into nested ScrollPanes — they handle their own dispatch
+        if (node != this && node.isClipChildren()) return node;
+
+        java.util.List<WidgetNode> children = node.getChildren();
+        for (int i = children.size() - 1; i >= 0; i--) {
+            WidgetNode result = deepHitTest(children.get(i), mx, my);
+            if (result != null) return result;
+        }
+        return node;
+    }
+
     // --- Mouse events ---
 
     @Override
@@ -213,12 +229,15 @@ public class ScrollPane extends BaseWidget {
             return true;
         }
 
-        // Adjust Y for scroll offset and forward to children
+        // Adjust Y for scroll offset and forward to deepest matching child
         double adjustedY = my + scrollOffset;
-        for (int i = getChildren().size() - 1; i >= 0; i--) {
-            WidgetNode child = getChildren().get(i);
-            if (child.isVisible() && child.containsPoint(mx, adjustedY)) {
-                if (child.onMouseClicked(mx, adjustedY, button)) return true;
+        WidgetNode deepest = deepHitTest(this, mx, adjustedY);
+        if (deepest != null && deepest != this) {
+            // Bubble up from deepest widget to this ScrollPane
+            WidgetNode node = deepest;
+            while (node != null && node != this) {
+                if (node.onMouseClicked(mx, adjustedY, button)) return true;
+                node = node.getParent();
             }
         }
         return false;

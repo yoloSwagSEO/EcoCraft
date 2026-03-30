@@ -176,6 +176,12 @@ public class EcoEditBox extends BaseWidget {
     public boolean onMouseClicked(double mouseX, double mouseY, int button) {
         if (button != 0) return false;
 
+        // Self-focus when clicked (needed when dispatched by ScrollPane
+        // which bypasses WidgetTree's focus management)
+        if (!focused) {
+            onFocusGained();
+        }
+
         long now = System.currentTimeMillis();
         int clickCharIndex = getCharIndexAtX(mouseX);
 
