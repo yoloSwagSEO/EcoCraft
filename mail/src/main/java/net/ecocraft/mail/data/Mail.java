@@ -21,6 +21,7 @@ public record Mail(
     boolean collected,
     boolean indestructible,
     boolean returned,
+    boolean readReceipt,
     long createdAt,
     long availableAt,
     long expiresAt
@@ -31,5 +32,5 @@ public record Mail(
     public boolean hasAttachments() { return hasItems() || hasCurrency(); }
     public boolean isAvailable() { return availableAt <= System.currentTimeMillis(); }
     public boolean isExpired() { return !indestructible && expiresAt <= System.currentTimeMillis(); }
-    public boolean canDelete() { return read && (!hasAttachments() || collected); }
+    public boolean canDelete() { return read && (!hasAttachments() || collected || returned); }
 }

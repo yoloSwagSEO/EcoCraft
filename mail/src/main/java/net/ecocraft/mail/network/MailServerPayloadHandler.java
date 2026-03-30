@@ -8,6 +8,7 @@ import net.ecocraft.mail.data.MailItemAttachment;
 import net.ecocraft.mail.network.payload.*;
 import net.ecocraft.mail.permission.MailPermissions;
 import net.ecocraft.mail.service.MailService;
+import net.ecocraft.mail.entity.PostmanEntity;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
@@ -15,6 +16,7 @@ import net.minecraft.nbt.TagParser;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
+import net.neoforged.neoforge.network.PacketDistributor;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import net.neoforged.neoforge.server.permission.PermissionAPI;
 import org.slf4j.Logger;
@@ -53,6 +55,7 @@ public final class MailServerPayloadHandler {
                             mail.subject(),
                             mail.read(),
                             mail.collected(),
+                            mail.returned(),
                             mail.hasItems(),
                             mail.hasCurrency(),
                             mail.hasCOD(),
@@ -62,10 +65,52 @@ public final class MailServerPayloadHandler {
                     ));
                 }
 
-                context.reply(new MailListResponsePayload(summaries));
+                String symbol = service.getDefaultCurrencySymbol();
+                int maxAttach = MailConfig.CONFIG.maxItemAttachments.get();
+                long sendCost = MailConfig.CONFIG.sendCost.get();
+                List<MailListResponsePayload.MailSummary> sentSummaries = new ArrayList<>();
+                List<Mail> sentMails = service.getSentMailsForPlayer(player.getUUID());
+                var server = player.getServer();
+                for (Mail mail : sentMails) {
+                    // Resolve recipient name from UUID for display in sent view
+                    String recipientName = mail.recipientUuid().toString();
+                    if (server != null) {
+                        ServerPlayer onlineRecip = server.getPlayerList().getPlayer(mail.recipientUuid());
+                        if (onlineRecip != null) {
+                            recipientName = onlineRecip.getName().getString();
+                        } else {
+                            var profileCache = server.getProfileCache();
+                            if (profileCache != null) {
+                                var profile = profileCache.get(mail.recipientUuid());
+                                if (profile.isPresent()) {
+                                    recipientName = profile.get().getName();
+                                }
+                            }
+                        }
+                    }
+                    sentSummaries.add(new MailListResponsePayload.MailSummary(
+                            mail.id(),
+                            recipientName,
+                            mail.subject(),
+                            mail.read(),
+                            mail.collected(),
+                            mail.returned(),
+                            mail.hasItems(),
+                            mail.hasCurrency(),
+                            mail.hasCOD(),
+                            mail.codAmount(),
+                            mail.currencyAmount(),
+                            mail.createdAt()
+                    ));
+                }
+                long sendCostPerItem = MailConfig.CONFIG.sendCostPerItem.get();
+                boolean allowReadReceipt = MailConfig.CONFIG.allowReadReceipt.get();
+                long readReceiptCost = MailConfig.CONFIG.readReceiptCost.get();
+                int codFeePercent = MailConfig.CONFIG.codFeePercent.get();
+                context.reply(new MailListResponsePayload(summaries, sentSummaries, symbol, maxAttach, sendCost, sendCostPerItem, allowReadReceipt, readReceiptCost, codFeePercent));
             } catch (Exception e) {
                 LOGGER.error("Error handling RequestMailList", e);
-                context.reply(new MailListResponsePayload(List.of()));
+                context.reply(new MailListResponsePayload(List.of(), List.of(), "G", 12, 0, 0, true, 0, 0));
             }
         });
     }
@@ -300,6 +345,48 @@ public final class MailServerPayloadHandler {
                     }
                 }
 
+                // Charge send cost (base + per-item + read receipt)
+                long baseSendCost = config.sendCost.get();
+                long perItemCost = config.sendCostPerItem.get();
+                long readReceiptCost = (payload.readReceipt() && config.allowReadReceipt.get()) ? config.readReceiptCost.get() : 0;
+                long totalSendCost = baseSendCost + (items.size() * perItemCost) + readReceiptCost;
+
+                if (totalSendCost > 0) {
+                    var currencyReg = net.ecocraft.core.EcoServerEvents.getCurrencyRegistry();
+                    var defaultCurrency = currencyReg != null ? currencyReg.getDefault() : null;
+                    if (defaultCurrency != null) {
+                        var eco = net.ecocraft.core.EcoServerEvents.getEconomy();
+                        java.math.BigDecimal costBD = MailService.fromSmallestUnit(totalSendCost, defaultCurrency);
+                        var txResult = eco.withdraw(player.getUUID(), costBD, defaultCurrency);
+                        if (!txResult.successful()) {
+                            // Restore items to player inventory
+                            for (int i = 0; i < items.size(); i++) {
+                                int slotIndex = payload.inventorySlots().get(i);
+                                var itemRL = net.minecraft.resources.ResourceLocation.parse(items.get(i).itemId());
+                                var itemObj = BuiltInRegistries.ITEM.get(itemRL);
+                                ItemStack restored;
+                                if (items.get(i).itemNbt() != null && !items.get(i).itemNbt().isEmpty()) {
+                                    try {
+                                        var tag = TagParser.parseTag(items.get(i).itemNbt());
+                                        restored = ItemStack.OPTIONAL_CODEC.parse(
+                                                player.registryAccess().createSerializationContext(NbtOps.INSTANCE), tag
+                                        ).getOrThrow();
+                                    } catch (Exception ex) {
+                                        restored = new ItemStack(itemObj, items.get(i).quantity());
+                                    }
+                                } else {
+                                    restored = new ItemStack(itemObj, items.get(i).quantity());
+                                }
+                                player.getInventory().setItem(slotIndex, restored);
+                            }
+                            context.reply(new SendMailResultPayload(false, "Fonds insuffisants pour l'envoi : " + txResult.errorMessage()));
+                            return;
+                        }
+                    }
+                }
+
+                boolean readReceipt = payload.readReceipt() && config.allowReadReceipt.get();
+
                 // Send the mail
                 service.sendMail(
                         player.getUUID(),
@@ -311,7 +398,8 @@ public final class MailServerPayloadHandler {
                         payload.currencyAmount(),
                         currencyId,
                         payload.codAmount(),
-                        codCurrencyId
+                        codCurrencyId,
+                        readReceipt
                 );
 
                 context.reply(new SendMailResultPayload(true, Component.translatable("ecocraft_mail.server.mail_sent_success").getString()));
@@ -349,6 +437,22 @@ public final class MailServerPayloadHandler {
                 LOGGER.warn("Delete mail error: {}", e.getMessage());
             } catch (Exception e) {
                 LOGGER.error("Error handling DeleteMail", e);
+            }
+        });
+    }
+
+    public static void handleMarkRead(MarkReadPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            try {
+                MailService service = requireService();
+                ServerPlayer player = (ServerPlayer) context.player();
+                service.markRead(player.getUUID(), payload.mailId(), player.getName().getString());
+                // Refresh the mail list
+                handleRequestMailList(new RequestMailListPayload(), context);
+            } catch (MailService.MailException e) {
+                LOGGER.warn("Mark read error: {}", e.getMessage());
+            } catch (Exception e) {
+                LOGGER.error("Error handling MarkRead", e);
             }
         });
     }
@@ -410,6 +514,9 @@ public final class MailServerPayloadHandler {
                 config.mailExpiryDays.set(Math.max(1, Math.min(365, payload.mailExpiryDays())));
                 config.sendCost.set(Math.max(0, payload.sendCost()));
                 config.codFeePercent.set(Math.max(0, Math.min(100, payload.codFeePercent())));
+                config.allowReadReceipt.set(payload.allowReadReceipt());
+                config.readReceiptCost.set(Math.max(0, payload.readReceiptCost()));
+                config.sendCostPerItem.set(Math.max(0, payload.sendCostPerItem()));
                 MailConfig.CONFIG_SPEC.save();
                 // Send updated settings back to the client
                 context.reply(new MailSettingsPayload(
@@ -421,10 +528,136 @@ public final class MailServerPayloadHandler {
                         config.maxItemAttachments.get(),
                         config.mailExpiryDays.get(),
                         config.sendCost.get(),
-                        config.codFeePercent.get()
+                        config.codFeePercent.get(),
+                        config.allowReadReceipt.get(),
+                        config.readReceiptCost.get(),
+                        config.sendCostPerItem.get()
                 ));
             } catch (Exception e) {
                 LOGGER.error("Error handling UpdateMailSettings", e);
+            }
+        });
+    }
+
+    // -------------------------------------------------------------------------
+    // Postman skin
+    // -------------------------------------------------------------------------
+
+    public static void sendPostmanSkin(ServerPlayer player, int entityId) {
+        if (entityId <= 0) return;
+        var entity = player.level().getEntity(entityId);
+        if (entity instanceof PostmanEntity postman) {
+            PacketDistributor.sendToPlayer(player, new PostmanSkinPayload(entityId, postman.getSkinPlayerName()));
+        }
+    }
+
+    public static void handleUpdatePostmanSkin(UpdatePostmanSkinPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            ServerPlayer player = (ServerPlayer) context.player();
+            if (!PermissionAPI.getPermission(player, MailPermissions.ADMIN)) {
+                return;
+            }
+
+            var entity = player.level().getEntity(payload.entityId());
+            if (!(entity instanceof PostmanEntity postman)) {
+                return;
+            }
+
+            String skinName = payload.skinPlayerName().trim();
+            postman.setSkinPlayerName(skinName);
+
+            if (skinName.isEmpty()) {
+                postman.setSkinProfile(null);
+                LOGGER.info("[Mail] Postman skin reset for entity {}", payload.entityId());
+                return;
+            }
+
+            // Resolve GameProfile asynchronously
+            var server = player.getServer();
+            if (server == null) return;
+
+            net.minecraft.Util.backgroundExecutor().execute(() -> {
+                try {
+                    var profileCache = server.getProfileCache();
+                    if (profileCache == null) {
+                        LOGGER.warn("[Mail] Profile cache unavailable for skin resolution");
+                        return;
+                    }
+                    var optProfile = profileCache.get(skinName);
+                    if (optProfile.isEmpty()) {
+                        LOGGER.warn("[Mail] Player not found for skin: {}", skinName);
+                        return;
+                    }
+
+                    var profile = optProfile.get();
+                    var profileResult = server.getSessionService().fetchProfile(profile.getId(), true);
+                    if (profileResult == null) {
+                        LOGGER.warn("[Mail] Could not fetch profile for skin: {}", skinName);
+                        return;
+                    }
+                    var filledProfile = profileResult.profile();
+
+                    server.execute(() -> {
+                        postman.setSkinProfile(filledProfile);
+                        LOGGER.info("[Mail] Postman skin updated to '{}' for entity {}", skinName, payload.entityId());
+                    });
+                } catch (Exception e) {
+                    LOGGER.error("Error resolving postman skin for " + skinName, e);
+                }
+            });
+        });
+    }
+
+    // -------------------------------------------------------------------------
+    // Drafts
+    // -------------------------------------------------------------------------
+
+    public static void handleSaveDraft(SaveDraftPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            try {
+                MailService service = requireService();
+                ServerPlayer player = (ServerPlayer) context.player();
+                String draftId = UUID.randomUUID().toString();
+                service.getStorage().saveDraft(draftId, player.getUUID(),
+                        payload.recipient(), payload.subject(), payload.body(),
+                        payload.currency(), payload.cod());
+            } catch (Exception e) {
+                LOGGER.error("Error handling SaveDraft", e);
+            }
+        });
+    }
+
+    public static void handleRequestDrafts(RequestDraftsPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            try {
+                MailService service = requireService();
+                ServerPlayer player = (ServerPlayer) context.player();
+                var drafts = service.getStorage().getDrafts(player.getUUID());
+                List<DraftsResponsePayload.DraftEntry> entries = new ArrayList<>();
+                for (var draft : drafts) {
+                    entries.add(new DraftsResponsePayload.DraftEntry(
+                            draft.id(), draft.recipient(), draft.subject(), draft.body(),
+                            draft.currencyAmount(), draft.codAmount(), draft.createdAt()
+                    ));
+                }
+                context.reply(new DraftsResponsePayload(entries));
+            } catch (Exception e) {
+                LOGGER.error("Error handling RequestDrafts", e);
+                context.reply(new DraftsResponsePayload(List.of()));
+            }
+        });
+    }
+
+    public static void handleDeleteDraft(DeleteDraftPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            try {
+                MailService service = requireService();
+                ServerPlayer player = (ServerPlayer) context.player();
+                service.getStorage().deleteDraft(payload.draftId());
+                // Send updated drafts list
+                handleRequestDrafts(new RequestDraftsPayload(), context);
+            } catch (Exception e) {
+                LOGGER.error("Error handling DeleteDraft", e);
             }
         });
     }

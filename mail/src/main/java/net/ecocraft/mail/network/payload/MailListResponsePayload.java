@@ -8,7 +8,7 @@ import net.minecraft.resources.ResourceLocation;
 
 import java.util.List;
 
-public record MailListResponsePayload(List<MailSummary> mails) implements CustomPacketPayload {
+public record MailListResponsePayload(List<MailSummary> mails, List<MailSummary> sentMails, String currencySymbol, int maxItemAttachments, long sendCost, long sendCostPerItem, boolean allowReadReceipt, long readReceiptCost, int codFeePercent) implements CustomPacketPayload {
 
     public record MailSummary(
             String id,
@@ -16,6 +16,7 @@ public record MailListResponsePayload(List<MailSummary> mails) implements Custom
             String subject,
             boolean read,
             boolean collected,
+            boolean returned,
             boolean hasItems,
             boolean hasCurrency,
             boolean hasCOD,
@@ -32,13 +33,14 @@ public record MailListResponsePayload(List<MailSummary> mails) implements Custom
             String subject = ByteBufCodecs.STRING_UTF8.decode(buf);
             boolean read = ByteBufCodecs.BOOL.decode(buf);
             boolean collected = ByteBufCodecs.BOOL.decode(buf);
+            boolean returned = ByteBufCodecs.BOOL.decode(buf);
             boolean hasItems = ByteBufCodecs.BOOL.decode(buf);
             boolean hasCurrency = ByteBufCodecs.BOOL.decode(buf);
             boolean hasCOD = ByteBufCodecs.BOOL.decode(buf);
             long codAmount = ByteBufCodecs.VAR_LONG.decode(buf);
             long currencyAmount = ByteBufCodecs.VAR_LONG.decode(buf);
             long createdAt = ByteBufCodecs.VAR_LONG.decode(buf);
-            return new MailSummary(id, senderName, subject, read, collected, hasItems, hasCurrency, hasCOD, codAmount, currencyAmount, createdAt);
+            return new MailSummary(id, senderName, subject, read, collected, returned, hasItems, hasCurrency, hasCOD, codAmount, currencyAmount, createdAt);
         }
 
         @Override
@@ -48,6 +50,7 @@ public record MailListResponsePayload(List<MailSummary> mails) implements Custom
             ByteBufCodecs.STRING_UTF8.encode(buf, s.subject());
             ByteBufCodecs.BOOL.encode(buf, s.read());
             ByteBufCodecs.BOOL.encode(buf, s.collected());
+            ByteBufCodecs.BOOL.encode(buf, s.returned());
             ByteBufCodecs.BOOL.encode(buf, s.hasItems());
             ByteBufCodecs.BOOL.encode(buf, s.hasCurrency());
             ByteBufCodecs.BOOL.encode(buf, s.hasCOD());
@@ -64,12 +67,28 @@ public record MailListResponsePayload(List<MailSummary> mails) implements Custom
         @Override
         public MailListResponsePayload decode(ByteBuf buf) {
             List<MailSummary> mails = SUMMARY_CODEC.apply(ByteBufCodecs.list()).decode(buf);
-            return new MailListResponsePayload(mails);
+            List<MailSummary> sentMails = SUMMARY_CODEC.apply(ByteBufCodecs.list()).decode(buf);
+            String currencySymbol = ByteBufCodecs.STRING_UTF8.decode(buf);
+            int maxItemAttachments = ByteBufCodecs.VAR_INT.decode(buf);
+            long sendCost = ByteBufCodecs.VAR_LONG.decode(buf);
+            long sendCostPerItem = ByteBufCodecs.VAR_LONG.decode(buf);
+            boolean allowReadReceipt = ByteBufCodecs.BOOL.decode(buf);
+            long readReceiptCost = ByteBufCodecs.VAR_LONG.decode(buf);
+            int codFeePercent = ByteBufCodecs.VAR_INT.decode(buf);
+            return new MailListResponsePayload(mails, sentMails, currencySymbol, maxItemAttachments, sendCost, sendCostPerItem, allowReadReceipt, readReceiptCost, codFeePercent);
         }
 
         @Override
         public void encode(ByteBuf buf, MailListResponsePayload p) {
             SUMMARY_CODEC.apply(ByteBufCodecs.list()).encode(buf, p.mails());
+            SUMMARY_CODEC.apply(ByteBufCodecs.list()).encode(buf, p.sentMails());
+            ByteBufCodecs.STRING_UTF8.encode(buf, p.currencySymbol());
+            ByteBufCodecs.VAR_INT.encode(buf, p.maxItemAttachments());
+            ByteBufCodecs.VAR_LONG.encode(buf, p.sendCost());
+            ByteBufCodecs.VAR_LONG.encode(buf, p.sendCostPerItem());
+            ByteBufCodecs.BOOL.encode(buf, p.allowReadReceipt());
+            ByteBufCodecs.VAR_LONG.encode(buf, p.readReceiptCost());
+            ByteBufCodecs.VAR_INT.encode(buf, p.codFeePercent());
         }
     };
 

@@ -59,6 +59,18 @@ public final class MailNetworkHandler {
                 MailClientPayloadHandler::handleMailSettings
         );
 
+        registrar.playToClient(
+                PostmanSkinPayload.TYPE,
+                PostmanSkinPayload.STREAM_CODEC,
+                MailClientPayloadHandler::handlePostmanSkin
+        );
+
+        registrar.playToClient(
+                DraftsResponsePayload.TYPE,
+                DraftsResponsePayload.STREAM_CODEC,
+                MailClientPayloadHandler::handleDraftsResponse
+        );
+
         // Client -> Server
         registrar.playToServer(
                 RequestMailListPayload.TYPE,
@@ -106,6 +118,36 @@ public final class MailNetworkHandler {
                 UpdateMailSettingsPayload.TYPE,
                 UpdateMailSettingsPayload.STREAM_CODEC,
                 MailServerPayloadHandler::handleUpdateMailSettings
+        );
+
+        registrar.playToServer(
+                MarkReadPayload.TYPE,
+                MarkReadPayload.STREAM_CODEC,
+                MailServerPayloadHandler::handleMarkRead
+        );
+
+        registrar.playToServer(
+                UpdatePostmanSkinPayload.TYPE,
+                UpdatePostmanSkinPayload.STREAM_CODEC,
+                MailServerPayloadHandler::handleUpdatePostmanSkin
+        );
+
+        registrar.playToServer(
+                SaveDraftPayload.TYPE,
+                SaveDraftPayload.STREAM_CODEC,
+                MailServerPayloadHandler::handleSaveDraft
+        );
+
+        registrar.playToServer(
+                RequestDraftsPayload.TYPE,
+                RequestDraftsPayload.STREAM_CODEC,
+                MailServerPayloadHandler::handleRequestDrafts
+        );
+
+        registrar.playToServer(
+                DeleteDraftPayload.TYPE,
+                DeleteDraftPayload.STREAM_CODEC,
+                MailServerPayloadHandler::handleDeleteDraft
         );
     }
 }

@@ -165,7 +165,7 @@ public class MailDetailView extends BaseWidget {
             // Currency label
             if (detail.currencyAmount() > 0) {
                 Label currLabel = new Label(font, slotX + 8, slotY + 6,
-                        Component.translatable("ecocraft_mail.detail.currency", detail.currencyAmount()), THEME);
+                        Component.translatable("ecocraft_mail.detail.currency", detail.currencyAmount(), screen.currencySymbol), THEME);
                 currLabel.setColor(THEME.accent);
                 attachPanel.addChild(currLabel);
             }
@@ -182,11 +182,11 @@ public class MailDetailView extends BaseWidget {
             addChild(codPanel);
 
             Label codLabel = new Label(font, innerX + 8, currentY + 6,
-                    Component.translatable("ecocraft_mail.detail.cod_banner", detail.codAmount()), THEME);
+                    Component.translatable("ecocraft_mail.detail.cod_banner", detail.codAmount(), screen.currencySymbol), THEME);
             codLabel.setColor(THEME.warning);
             codPanel.addChild(codLabel);
 
-            if (!detail.collected()) {
+            if (!detail.collected() && !detail.returned()) {
                 // Pay & Collect button
                 EcoButton payButton = EcoButton.success(THEME,
                         Component.translatable("ecocraft_mail.button.pay_collect"), this::onPayCOD);
@@ -218,13 +218,27 @@ public class MailDetailView extends BaseWidget {
         }
 
         // Delete button (if eligible)
-        boolean canDelete = detail.read() && (!hasAttachments || detail.collected());
+        boolean canDelete = detail.read() && (!hasAttachments || detail.collected() || detail.returned());
         if (canDelete) {
             EcoButton deleteBtn = EcoButton.danger(THEME,
                     Component.translatable("ecocraft_mail.button.delete"), this::onDelete);
             deleteBtn.setBounds(btnX, btnY, 80, btnH);
             addChild(deleteBtn);
+            btnX += 88;
         }
+
+        // Reply button
+        EcoButton replyBtn = EcoButton.primary(THEME,
+                Component.translatable("ecocraft_mail.button.reply"), this::onReply);
+        replyBtn.setBounds(btnX, btnY, 80, btnH);
+        addChild(replyBtn);
+        btnX += 88;
+
+        // Forward button
+        EcoButton forwardBtn = EcoButton.ghost(THEME,
+                Component.translatable("ecocraft_mail.button.forward"), this::onForward);
+        forwardBtn.setBounds(btnX, btnY, 80, btnH);
+        addChild(forwardBtn);
     }
 
     @Override
@@ -259,6 +273,18 @@ public class MailDetailView extends BaseWidget {
     private void onReturnCOD() {
         PacketDistributor.sendToServer(new ReturnCODPayload(currentMailId));
         screen.showListView();
+    }
+
+    private void onReply() {
+        if (detail != null) {
+            screen.showComposeViewWithReply(detail.senderName(), detail.subject());
+        }
+    }
+
+    private void onForward() {
+        if (detail != null) {
+            screen.showComposeViewWithForward(detail.subject(), detail.body());
+        }
     }
 
     // --- Helpers ---

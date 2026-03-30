@@ -47,6 +47,13 @@ public class MailService {
     @Nullable
     private ItemDeliverer itemDeliverer;
 
+    @Nullable
+    private ReadReceiptNotifier readReceiptNotifier;
+
+    /** KubeJS event dispatcher; null when KubeJS is not loaded. */
+    @Nullable
+    private MailEventDispatcher mailEventDispatcher;
+
     /**
      * Functional interface for delivering items to a player.
      * Decoupled from Minecraft classes so {@link MailService} stays unit-testable.
@@ -54,6 +61,33 @@ public class MailService {
     @FunctionalInterface
     public interface ItemDeliverer {
         void deliver(UUID playerUuid, List<MailItemAttachment> items);
+    }
+
+    /**
+     * Functional interface for sending read receipt notifications.
+     * Decoupled from Minecraft classes so {@link MailService} stays unit-testable.
+     */
+    @FunctionalInterface
+    public interface ReadReceiptNotifier {
+        void notify(UUID senderUuid, String recipientName, String subject);
+    }
+
+    /**
+     * Event dispatcher interface for KubeJS integration.
+     * PRE methods return false to cancel the operation; POST methods are fire-and-forget.
+     * Null when KubeJS is not loaded.
+     */
+    public interface MailEventDispatcher {
+        boolean fireMailSending(UUID senderUuid, UUID recipientUuid, String subject,
+                                 boolean hasItems, boolean hasCurrency, long codAmount);
+        void fireMailSent(Mail mail);
+        void fireMailReceived(Mail mail);
+        void fireMailCollected(UUID playerUuid, Mail mail);
+        void fireMailRead(UUID playerUuid, String mailId);
+        void fireMailDeleted(UUID playerUuid, String mailId);
+        void fireCODPaid(UUID payerUuid, UUID senderUuid, long amount, String mailId);
+        void fireCODReturned(UUID playerUuid, String mailId);
+        void fireMailExpired(List<String> mailIds, int count);
     }
 
     public MailService(MailStorageProvider storage, EconomyProvider economy, CurrencyRegistry currencies) {
@@ -68,6 +102,15 @@ public class MailService {
 
     public void setItemDeliverer(@Nullable ItemDeliverer deliverer) {
         this.itemDeliverer = deliverer;
+    }
+
+    public void setReadReceiptNotifier(@Nullable ReadReceiptNotifier notifier) {
+        this.readReceiptNotifier = notifier;
+    }
+
+    /** Sets the KubeJS event dispatcher (called from MailServerEvents when KubeJS is loaded). */
+    public void setMailEventDispatcher(@Nullable MailEventDispatcher dispatcher) {
+        this.mailEventDispatcher = dispatcher;
     }
 
     public void setCodFeePercent(int percent) {
@@ -87,6 +130,11 @@ public class MailService {
         return c != null ? c.id() : null;
     }
 
+    public String getDefaultCurrencySymbol() {
+        var c = currencies.getDefault();
+        return c != null ? c.symbol() : "G";
+    }
+
     // -------------------------------------------------------------------------
     // Send mail (player-to-player)
     // -------------------------------------------------------------------------
@@ -104,7 +152,17 @@ public class MailService {
                            String subject, String body,
                            List<MailItemAttachment> items,
                            long currencyAmount, @Nullable String currencyId,
-                           long codAmount, @Nullable String codCurrencyId) {
+                           long codAmount, @Nullable String codCurrencyId,
+                           boolean readReceipt) {
+
+        // KubeJS PRE event
+        if (mailEventDispatcher != null && senderUuid != null &&
+            !mailEventDispatcher.fireMailSending(senderUuid, recipientUuid, subject,
+                    items != null && !items.isEmpty(),
+                    currencyAmount > 0 && currencyId != null,
+                    codAmount)) {
+            throw new MailException("Envoi de mail bloque par un script");
+        }
 
         // Withdraw currency from sender if attached
         if (currencyAmount > 0 && currencyId != null) {
@@ -135,6 +193,7 @@ public class MailService {
             false,  // collected
             false,  // indestructible
             false,  // returned
+            readReceipt,
             now,    // createdAt
             now,    // availableAt (instant delivery)
             now + expiryMs  // expiresAt
@@ -142,6 +201,13 @@ public class MailService {
 
         storage.createMail(mail);
         LOGGER.info("Mail sent from {} to {}: {}", senderName, recipientUuid, subject);
+
+        // KubeJS POST events
+        if (mailEventDispatcher != null) {
+            mailEventDispatcher.fireMailSent(mail);
+            mailEventDispatcher.fireMailReceived(mail);
+        }
+
         return mailId;
     }
 
@@ -193,6 +259,7 @@ public class MailService {
             false,  // collected
             indestructible,
             false,  // returned
+            false,  // readReceipt
             now,    // createdAt
             availableAt,
             indestructible ? Long.MAX_VALUE : now + expiryMs
@@ -200,6 +267,13 @@ public class MailService {
 
         storage.createMail(mail);
         LOGGER.info("System mail sent to {}: {}", recipientUuid, subject);
+
+        // KubeJS POST events
+        if (mailEventDispatcher != null) {
+            mailEventDispatcher.fireMailSent(mail);
+            mailEventDispatcher.fireMailReceived(mail);
+        }
+
         return mailId;
     }
 
@@ -210,6 +284,30 @@ public class MailService {
     /**
      * Collects a single mail: delivers items and currency to the player.
      *
+     * @throws MailException if mail cannot be collected
+     */
+    public void markRead(UUID playerUuid, String mailId, @Nullable String readerName) {
+        Mail mail = getAndValidateOwnership(mailId, playerUuid);
+        if (!mail.read()) {
+            storage.markRead(mailId);
+            // Send read receipt notification to sender if enabled
+            if (mail.readReceipt() && mail.senderUuid() != null && readReceiptNotifier != null) {
+                String reader = readerName != null ? readerName : playerUuid.toString();
+                readReceiptNotifier.notify(mail.senderUuid(), reader, mail.subject());
+            }
+            // KubeJS POST event
+            if (mailEventDispatcher != null) {
+                mailEventDispatcher.fireMailRead(playerUuid, mailId);
+            }
+        }
+    }
+
+    /** Overload for backwards compatibility. */
+    public void markRead(UUID playerUuid, String mailId) {
+        markRead(playerUuid, mailId, null);
+    }
+
+    /**
      * @throws MailException if mail cannot be collected
      */
     public void collectMail(UUID playerUuid, String mailId) {
@@ -226,7 +324,13 @@ public class MailService {
         }
 
         deliverAttachments(playerUuid, mail);
+        storage.markRead(mailId);
         storage.markCollected(mailId);
+
+        // KubeJS POST event
+        if (mailEventDispatcher != null) {
+            mailEventDispatcher.fireMailCollected(playerUuid, mail);
+        }
     }
 
     /**
@@ -296,6 +400,14 @@ public class MailService {
         storage.markCollected(mailId);
 
         LOGGER.info("COD paid for mail {}: {} {} (fee: {})", mailId, codAmountBD, codCurrency.symbol(), feeAmount);
+
+        // KubeJS POST events
+        if (mailEventDispatcher != null) {
+            if (mail.senderUuid() != null) {
+                mailEventDispatcher.fireCODPaid(playerUuid, mail.senderUuid(), mail.codAmount(), mailId);
+            }
+            mailEventDispatcher.fireMailCollected(playerUuid, mail);
+        }
     }
 
     /**
@@ -339,6 +451,7 @@ public class MailService {
             false,
             false,
             false,
+            false,  // readReceipt
             now,
             now,
             now + expiryMs
@@ -348,6 +461,11 @@ public class MailService {
         storage.markReturned(mailId);
 
         LOGGER.info("COD mail {} returned to sender {}", mailId, mail.senderUuid());
+
+        // KubeJS POST event
+        if (mailEventDispatcher != null) {
+            mailEventDispatcher.fireCODReturned(playerUuid, mailId);
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -367,6 +485,11 @@ public class MailService {
         }
 
         storage.deleteMail(mailId);
+
+        // KubeJS POST event
+        if (mailEventDispatcher != null) {
+            mailEventDispatcher.fireMailDeleted(playerUuid, mailId);
+        }
     }
 
     /**
@@ -414,6 +537,7 @@ public class MailService {
                     false,
                     false,
                     false,
+                    false,  // readReceipt
                     now,
                     now,
                     now + expiryMs
@@ -425,8 +549,19 @@ public class MailService {
             storage.markReturned(mail.id());
         }
 
+        // Collect expired COD mail IDs for the KubeJS event
+        List<String> expiredMailIds = new ArrayList<>();
+        for (Mail codMail : expiredCODs) {
+            expiredMailIds.add(codMail.id());
+        }
+
         // Step 2: delete all other expired mails
         storage.deleteExpiredMails();
+
+        // KubeJS POST event
+        if (mailEventDispatcher != null && !expiredMailIds.isEmpty()) {
+            mailEventDispatcher.fireMailExpired(expiredMailIds, expiredMailIds.size());
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -441,6 +576,20 @@ public class MailService {
         List<Mail> result = new ArrayList<>();
         for (Mail mail : allMails) {
             if (mail.isAvailable() && !mail.isExpired()) {
+                result.add(mail);
+            }
+        }
+        return result;
+    }
+
+    /**
+     * Returns sent mails for the player (non-expired).
+     */
+    public List<Mail> getSentMailsForPlayer(UUID playerUuid) {
+        List<Mail> allMails = storage.getMailsSentByPlayer(playerUuid);
+        List<Mail> result = new ArrayList<>();
+        for (Mail mail : allMails) {
+            if (!mail.isExpired()) {
                 result.add(mail);
             }
         }
@@ -464,7 +613,7 @@ public class MailService {
                 mail.subject(), mail.body(), mail.items(), mail.currencyAmount(), mail.currencyId(),
                 mail.codAmount(), mail.codCurrencyId(),
                 true,  // now read
-                mail.collected(), mail.indestructible(), mail.returned(),
+                mail.collected(), mail.indestructible(), mail.returned(), mail.readReceipt(),
                 mail.createdAt(), mail.availableAt(), mail.expiresAt()
             );
         }
