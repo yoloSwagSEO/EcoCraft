@@ -16,84 +16,84 @@ public final class AHNetworkHandler {
     public static void register(final RegisterPayloadHandlersEvent event) {
         final PayloadRegistrar registrar = event.registrar("1");
 
-        // Server → Client (no client-to-server handler needed)
+        // Server -> Client (lambdas defer client class loading for dist safety)
         registrar.playToClient(
                 OpenAHPayload.TYPE,
                 OpenAHPayload.STREAM_CODEC,
-                ClientPayloadHandler::handleOpenAH
+                (payload, ctx) -> ClientPayloadHandler.handleOpenAH(payload, ctx)
         );
 
         registrar.playToClient(
                 ListingsResponsePayload.TYPE,
                 ListingsResponsePayload.STREAM_CODEC,
-                ClientPayloadHandler::handleListingsResponse
+                (payload, ctx) -> ClientPayloadHandler.handleListingsResponse(payload, ctx)
         );
 
         registrar.playToClient(
                 ListingDetailResponsePayload.TYPE,
                 ListingDetailResponsePayload.STREAM_CODEC,
-                ClientPayloadHandler::handleListingDetailResponse
+                (payload, ctx) -> ClientPayloadHandler.handleListingDetailResponse(payload, ctx)
         );
 
         registrar.playToClient(
                 AHActionResultPayload.TYPE,
                 AHActionResultPayload.STREAM_CODEC,
-                ClientPayloadHandler::handleActionResult
+                (payload, ctx) -> ClientPayloadHandler.handleActionResult(payload, ctx)
         );
 
         registrar.playToClient(
                 MyListingsResponsePayload.TYPE,
                 MyListingsResponsePayload.STREAM_CODEC,
-                ClientPayloadHandler::handleMyListingsResponse
+                (payload, ctx) -> ClientPayloadHandler.handleMyListingsResponse(payload, ctx)
         );
 
         registrar.playToClient(
                 LedgerResponsePayload.TYPE,
                 LedgerResponsePayload.STREAM_CODEC,
-                ClientPayloadHandler::handleLedgerResponse
+                (payload, ctx) -> ClientPayloadHandler.handleLedgerResponse(payload, ctx)
         );
 
         registrar.playToClient(
                 BalanceUpdatePayload.TYPE,
                 BalanceUpdatePayload.STREAM_CODEC,
-                ClientPayloadHandler::handleBalanceUpdate
+                (payload, ctx) -> ClientPayloadHandler.handleBalanceUpdate(payload, ctx)
         );
 
         registrar.playToClient(
                 BestPriceResponsePayload.TYPE,
                 BestPriceResponsePayload.STREAM_CODEC,
-                ClientPayloadHandler::handleBestPriceResponse
+                (payload, ctx) -> ClientPayloadHandler.handleBestPriceResponse(payload, ctx)
         );
 
         registrar.playToClient(
                 AHSettingsPayload.TYPE,
                 AHSettingsPayload.STREAM_CODEC,
-                ClientPayloadHandler::handleAHSettings
+                (payload, ctx) -> ClientPayloadHandler.handleAHSettings(payload, ctx)
         );
 
         registrar.playToClient(
                 NPCSkinPayload.TYPE,
                 NPCSkinPayload.STREAM_CODEC,
-                ClientPayloadHandler::handleNPCSkin
+                (payload, ctx) -> ClientPayloadHandler.handleNPCSkin(payload, ctx)
         );
 
         registrar.playToClient(
                 AHContextPayload.TYPE,
                 AHContextPayload.STREAM_CODEC,
-                ClientPayloadHandler::handleAHContext
+                (payload, ctx) -> ClientPayloadHandler.handleAHContext(payload, ctx)
         );
 
         registrar.playToClient(
                 AHInstancesPayload.TYPE,
                 AHInstancesPayload.STREAM_CODEC,
-                ClientPayloadHandler::handleAHInstances
+                (payload, ctx) -> ClientPayloadHandler.handleAHInstances(payload, ctx)
         );
 
         registrar.playToClient(AHNotificationPayload.TYPE, AHNotificationPayload.STREAM_CODEC,
-                ClientPayloadHandler::handleNotification);
+                (payload, ctx) -> ClientPayloadHandler.handleNotification(payload, ctx));
 
         registrar.playToClient(BidHistoryResponsePayload.TYPE, BidHistoryResponsePayload.STREAM_CODEC,
-                ClientPayloadHandler::handleBidHistoryResponse);
+                (payload, ctx) -> ClientPayloadHandler.handleBidHistoryResponse(payload, ctx));
 
         // Client → Server
         registrar.playToServer(

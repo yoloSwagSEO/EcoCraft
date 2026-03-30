@@ -40,29 +40,29 @@ public final class EcoNetworkHandler {
 
         // --- Exchange payloads ---
 
-        // Server -> Client
+        // Server -> Client (lambdas defer client class loading for dist safety)
         registrar.playToClient(
                 OpenExchangePayload.TYPE,
                 OpenExchangePayload.STREAM_CODEC,
-                EcoClientPayloadHandler::handleOpenExchange
+                (payload, ctx) -> EcoClientPayloadHandler.handleOpenExchange(payload, ctx)
         );
 
         registrar.playToClient(
                 ExchangeDataPayload.TYPE,
                 ExchangeDataPayload.STREAM_CODEC,
-                EcoClientPayloadHandler::handleExchangeData
+                (payload, ctx) -> EcoClientPayloadHandler.handleExchangeData(payload, ctx)
         );
 
         registrar.playToClient(
                 ExchangeResultPayload.TYPE,
                 ExchangeResultPayload.STREAM_CODEC,
-                EcoClientPayloadHandler::handleExchangeResult
+                (payload, ctx) -> EcoClientPayloadHandler.handleExchangeResult(payload, ctx)
         );
 
         registrar.playToClient(
                 ExchangerSkinPayload.TYPE,
                 ExchangerSkinPayload.STREAM_CODEC,
-                EcoClientPayloadHandler::handleExchangerSkin
+                (payload, ctx) -> EcoClientPayloadHandler.handleExchangerSkin(payload, ctx)
         );
 
         // Client -> Server
@@ -80,23 +80,23 @@ public final class EcoNetworkHandler {
 
         // --- Vault payloads ---
 
-        // Server -> Client
+        // Server -> Client (lambdas defer client class loading for dist safety)
         registrar.playToClient(
                 OpenVaultPayload.TYPE,
                 OpenVaultPayload.STREAM_CODEC,
-                EcoClientPayloadHandler::handleOpenVault
+                (payload, ctx) -> EcoClientPayloadHandler.handleOpenVault(payload, ctx)
         );
 
         registrar.playToClient(
                 VaultDataPayload.TYPE,
                 VaultDataPayload.STREAM_CODEC,
-                EcoClientPayloadHandler::handleVaultData
+                (payload, ctx) -> EcoClientPayloadHandler.handleVaultData(payload, ctx)
         );
 
         registrar.playToClient(
                 VaultResultPayload.TYPE,
                 VaultResultPayload.STREAM_CODEC,
-                EcoClientPayloadHandler::handleVaultResult
+                (payload, ctx) -> EcoClientPayloadHandler.handleVaultResult(payload, ctx)
         );
 
         // Client -> Server

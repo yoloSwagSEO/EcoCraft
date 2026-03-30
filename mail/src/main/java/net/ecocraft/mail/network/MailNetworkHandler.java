@@ -16,65 +16,65 @@ public final class MailNetworkHandler {
     public static void register(final RegisterPayloadHandlersEvent event) {
         final PayloadRegistrar registrar = event.registrar("1");
 
-        // Server -> Client
+        // Server -> Client (lambdas defer client class loading for dist safety)
         registrar.playToClient(
                 OpenMailboxPayload.TYPE,
                 OpenMailboxPayload.STREAM_CODEC,
-                MailClientPayloadHandler::handleOpenMailbox
+                (payload, ctx) -> MailClientPayloadHandler.handleOpenMailbox(payload, ctx)
         );
 
         registrar.playToClient(
                 MailListResponsePayload.TYPE,
                 MailListResponsePayload.STREAM_CODEC,
-                MailClientPayloadHandler::handleMailListResponse
+                (payload, ctx) -> MailClientPayloadHandler.handleMailListResponse(payload, ctx)
         );
 
         registrar.playToClient(
                 MailDetailResponsePayload.TYPE,
                 MailDetailResponsePayload.STREAM_CODEC,
-                MailClientPayloadHandler::handleMailDetailResponse
+                (payload, ctx) -> MailClientPayloadHandler.handleMailDetailResponse(payload, ctx)
         );
 
         registrar.playToClient(
                 CollectMailResultPayload.TYPE,
                 CollectMailResultPayload.STREAM_CODEC,
-                MailClientPayloadHandler::handleCollectMailResult
+                (payload, ctx) -> MailClientPayloadHandler.handleCollectMailResult(payload, ctx)
         );
 
         registrar.playToClient(
                 SendMailResultPayload.TYPE,
                 SendMailResultPayload.STREAM_CODEC,
-                MailClientPayloadHandler::handleSendMailResult
+                (payload, ctx) -> MailClientPayloadHandler.handleSendMailResult(payload, ctx)
         );
 
         registrar.playToClient(
                 MailNotificationPayload.TYPE,
                 MailNotificationPayload.STREAM_CODEC,
-                MailClientPayloadHandler::handleNotification
+                (payload, ctx) -> MailClientPayloadHandler.handleNotification(payload, ctx)
         );
 
         registrar.playToClient(
                 MailSettingsPayload.TYPE,
                 MailSettingsPayload.STREAM_CODEC,
-                MailClientPayloadHandler::handleMailSettings
+                (payload, ctx) -> MailClientPayloadHandler.handleMailSettings(payload, ctx)
         );
 
         registrar.playToClient(
                 PostmanSkinPayload.TYPE,
                 PostmanSkinPayload.STREAM_CODEC,
-                MailClientPayloadHandler::handlePostmanSkin
+                (payload, ctx) -> MailClientPayloadHandler.handlePostmanSkin(payload, ctx)
         );
 
         registrar.playToClient(
                 DraftsResponsePayload.TYPE,
                 DraftsResponsePayload.STREAM_CODEC,
-                MailClientPayloadHandler::handleDraftsResponse
+                (payload, ctx) -> MailClientPayloadHandler.handleDraftsResponse(payload, ctx)
         );
 
         registrar.playToClient(
                 SentMailsResponsePayload.TYPE,
                 SentMailsResponsePayload.STREAM_CODEC,
-                MailClientPayloadHandler::handleSentMailsResponse
+                (payload, ctx) -> MailClientPayloadHandler.handleSentMailsResponse(payload, ctx)
         );
 
         // Client -> Server

@@ -27,6 +27,11 @@ neoForge {
             sourceSet(sourceSets.main)
         }
     }
+
+    unitTest {
+        enable()
+        testedMod = mods."${project.ah_mod_id}"
+    }
 }
 
 dependencies {
@@ -36,6 +41,7 @@ dependencies {
     implementation 'org.xerial:sqlite-jdbc:3.47.1.0'
     compileOnly 'dev.latvian.mods:kubejs-neoforge:2101.7.2-build.354'
     testImplementation 'org.slf4j:slf4j-simple:2.0.9'
+    testRuntimeOnly 'org.xerial:sqlite-jdbc:3.47.1.0'
 }
 
 var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {
