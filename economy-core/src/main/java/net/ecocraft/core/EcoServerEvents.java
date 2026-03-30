@@ -56,7 +56,14 @@ public class EcoServerEvents {
 
         // Initialize services
         var economyProvider = new EconomyProviderImpl(storage.getProvider(), currencyRegistry);
-        var exchangeService = new ExchangeServiceImpl(economyProvider);
+        var exchangeConfig = new ExchangeServiceImpl.ExchangeConfig(
+            EcoConfig.CONFIG.exchangeGlobalFeePercent.get(),
+            EcoConfig.CONFIG.exchangeMinAmount.get(),
+            EcoConfig.CONFIG.exchangeMaxAmount.get(),
+            EcoConfig.CONFIG.exchangeDailyLimitPerPlayer.get()
+        );
+        var exchangeService = new ExchangeServiceImpl(economyProvider, storage.getProvider(), currencyRegistry, exchangeConfig);
+        exchangeService.loadRatesFromStorage();
         var transactionLog = new TransactionLogImpl(storage.getProvider(), currencyRegistry);
         context = new EcoServerContext(storage, currencyRegistry, economyProvider,
                 exchangeService, transactionLog);

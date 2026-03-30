@@ -20,8 +20,10 @@ class ExchangeServiceImplTest {
     private ExchangeServiceImpl exchangeService;
     private Path tempDir;
 
-    private static final Currency GOLD = Currency.virtual("gold", "Gold", "\u26C1", 2);
-    private static final Currency SILVER = Currency.virtual("silver", "Silver", "\u26C0", 2);
+    private static final Currency GOLD = Currency.builder("gold", "Gold", "\u26C1")
+        .decimals(2).exchangeable(true).referenceRate(1.0).build();
+    private static final Currency SILVER = Currency.builder("silver", "Silver", "\u26C0")
+        .decimals(2).exchangeable(true).referenceRate(0.1).build();
 
     @BeforeEach
     void setUp() throws Exception {
@@ -32,7 +34,7 @@ class ExchangeServiceImplTest {
         registry.register(GOLD);
         registry.register(SILVER);
         economy = new EconomyProviderImpl(db, registry);
-        exchangeService = new ExchangeServiceImpl(economy);
+        exchangeService = new ExchangeServiceImpl(economy, db, registry);
     }
 
     @AfterEach
@@ -74,15 +76,17 @@ class ExchangeServiceImplTest {
     }
 
     @Test
-    void rollbackWhenNoExchangeRate() {
+    void failsWhenCurrencyNotExchangeable() {
+        Currency copper = Currency.builder("copper", "Copper", "C").decimals(2).build();
+        registry.register(copper);
         var player = UUID.randomUUID();
-        economy.deposit(player, new BigDecimal("100.00"), GOLD);
+        economy.deposit(player, new BigDecimal("100.00"), copper);
 
-        // No rate registered for GOLD -> SILVER
-        var result = exchangeService.convert(player, new BigDecimal("50.00"), GOLD, SILVER);
+        // Copper is not exchangeable — should fail
+        var result = exchangeService.convert(player, new BigDecimal("50.00"), copper, SILVER);
         assertFalse(result.successful());
         // Balance should be unchanged
-        assertAmountEquals(new BigDecimal("100.00"), economy.getVirtualBalance(player, GOLD));
+        assertAmountEquals(new BigDecimal("100.00"), economy.getVirtualBalance(player, copper));
     }
 
     @Test
