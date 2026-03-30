@@ -127,7 +127,9 @@ public final class EcoNetworkHandler {
         double feePercent = EcoConfig.CONFIG.exchangeGlobalFeePercent.get();
 
         List<ExchangeDataPayload.CurrencyData> currencies = new ArrayList<>();
+        LOGGER.info("[Exchange] Registry has {} currencies", registry.listAll().size());
         for (Currency c : registry.listAll()) {
+            LOGGER.info("[Exchange] Currency: id={}, exchangeable={}, rate={}", c.id(), c.exchangeable(), c.referenceRate());
             if (!c.exchangeable()) continue;
             long balance = economy.getVirtualBalance(player.getUUID(), c).longValue();
             currencies.add(new ExchangeDataPayload.CurrencyData(
@@ -135,6 +137,7 @@ public final class EcoNetworkHandler {
                     balance, c.referenceRate().doubleValue(), c.exchangeable()
             ));
         }
+        LOGGER.info("[Exchange] Sending {} exchangeable currencies to {}", currencies.size(), player.getName().getString());
 
         PacketDistributor.sendToPlayer(player, new ExchangeDataPayload(currencies, feePercent));
     }

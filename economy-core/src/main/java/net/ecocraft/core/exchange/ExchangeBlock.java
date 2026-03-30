@@ -38,8 +38,8 @@ public class ExchangeBlock extends BaseEntityBlock {
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos,
                                                 Player player, BlockHitResult hit) {
         if (!level.isClientSide && player instanceof ServerPlayer serverPlayer) {
-            EcoNetworkHandler.sendExchangeData(serverPlayer);
             PacketDistributor.sendToPlayer(serverPlayer, new OpenExchangePayload(0));
+            EcoNetworkHandler.sendExchangeData(serverPlayer);
         }
         return InteractionResult.sidedSuccess(level.isClientSide);
     }
