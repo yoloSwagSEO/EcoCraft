@@ -7,6 +7,7 @@ import net.ecocraft.gui.theme.Theme;
 import net.ecocraft.mail.network.payload.MailNotificationPayload;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
+import net.minecraft.sounds.SoundEvents;
 
 public class MailNotificationManager {
 
@@ -28,6 +29,12 @@ public class MailNotificationManager {
         if (channel == MailNotificationChannel.TOAST || channel == MailNotificationChannel.BOTH) {
             sendToast(eventType, title, message);
         }
+
+        // Play notification sound
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player != null) {
+            mc.player.playSound(SoundEvents.EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
+        }
     }
 
     private static String getTitleForEvent(MailNotificationEventType eventType) {
@@ -35,6 +42,7 @@ public class MailNotificationManager {
             case NEW_MAIL -> Component.translatable("ecocraft_mail.notification.new_mail").getString();
             case COD_RECEIVED -> Component.translatable("ecocraft_mail.notification.cod_received").getString();
             case MAIL_RETURNED -> Component.translatable("ecocraft_mail.notification.mail_returned").getString();
+            case READ_RECEIPT -> Component.translatable("ecocraft_mail.notification.read_receipt").getString();
         };
     }
 

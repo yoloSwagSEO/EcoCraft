@@ -5,7 +5,8 @@ import net.ecocraft.gui.core.ToastLevel;
 public enum MailNotificationEventType {
     NEW_MAIL("new_mail", MailNotificationChannel.BOTH, ToastLevel.INFO),
     COD_RECEIVED("cod_received", MailNotificationChannel.BOTH, ToastLevel.SUCCESS),
-    MAIL_RETURNED("mail_returned", MailNotificationChannel.BOTH, ToastLevel.WARNING);
+    MAIL_RETURNED("mail_returned", MailNotificationChannel.BOTH, ToastLevel.WARNING),
+    READ_RECEIPT("read_receipt", MailNotificationChannel.BOTH, ToastLevel.INFO);
 
     private final String key;
     private final MailNotificationChannel defaultChannel;

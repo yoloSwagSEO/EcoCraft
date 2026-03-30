@@ -1,5 +1,6 @@
 package net.ecocraft.mail.storage;
 
+import net.ecocraft.mail.data.Draft;
 import net.ecocraft.mail.data.Mail;
 import net.ecocraft.mail.data.MailItemAttachment;
 import org.slf4j.Logger;
@@ -55,6 +56,7 @@ public class MailStorageProvider {
                     collected        INTEGER NOT NULL DEFAULT 0,
                     indestructible   INTEGER NOT NULL DEFAULT 0,
                     returned         INTEGER NOT NULL DEFAULT 0,
+                    read_receipt     INTEGER NOT NULL DEFAULT 0,
                     created_at       INTEGER NOT NULL,
                     available_at     INTEGER NOT NULL,
                     expires_at       INTEGER NOT NULL
@@ -74,8 +76,36 @@ public class MailStorageProvider {
                 """);
             stmt.execute("CREATE INDEX IF NOT EXISTS idx_mail_items_mail ON mail_items(mail_id)");
             stmt.execute("PRAGMA foreign_keys = ON");
+
+            // Migration: add read_receipt column if missing
+            try {
+                stmt.execute("ALTER TABLE mails ADD COLUMN read_receipt INTEGER DEFAULT 0");
+            } catch (SQLException ignored) {
+                // Column already exists
+            }
         } catch (SQLException e) {
             throw new RuntimeException("Failed to initialize mail database", e);
+        }
+        initDraftsTable();
+    }
+
+    private synchronized void initDraftsTable() {
+        try (Statement stmt = connection.createStatement()) {
+            stmt.execute("""
+                CREATE TABLE IF NOT EXISTS mail_drafts (
+                    id              TEXT PRIMARY KEY,
+                    player_uuid     TEXT NOT NULL,
+                    recipient       TEXT NOT NULL DEFAULT '',
+                    subject         TEXT NOT NULL DEFAULT '',
+                    body            TEXT NOT NULL DEFAULT '',
+                    currency_amount INTEGER DEFAULT 0,
+                    cod_amount      INTEGER DEFAULT 0,
+                    created_at      INTEGER NOT NULL
+                )
+                """);
+            stmt.execute("CREATE INDEX IF NOT EXISTS idx_drafts_player ON mail_drafts(player_uuid)");
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to initialize drafts table", e);
         }
     }
 
@@ -94,8 +124,8 @@ public class MailStorageProvider {
     public synchronized void createMail(Mail mail) {
         String sql = "INSERT INTO mails (id, sender_uuid, sender_name, recipient_uuid, subject, body, " +
                 "currency_amount, currency_id, cod_amount, cod_currency_id, " +
-                "read, collected, indestructible, returned, created_at, available_at, expires_at) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                "read, collected, indestructible, returned, read_receipt, created_at, available_at, expires_at) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setString(1, mail.id());
             ps.setString(2, mail.senderUuid() != null ? mail.senderUuid().toString() : null);
@@ -111,9 +141,10 @@ public class MailStorageProvider {
             ps.setInt(12, mail.collected() ? 1 : 0);
             ps.setInt(13, mail.indestructible() ? 1 : 0);
             ps.setInt(14, mail.returned() ? 1 : 0);
-            ps.setLong(15, mail.createdAt());
-            ps.setLong(16, mail.availableAt());
-            ps.setLong(17, mail.expiresAt());
+            ps.setInt(15, mail.readReceipt() ? 1 : 0);
+            ps.setLong(16, mail.createdAt());
+            ps.setLong(17, mail.availableAt());
+            ps.setLong(18, mail.expiresAt());
             ps.executeUpdate();
         } catch (SQLException e) {
             LOGGER.error("Failed to create mail {}", mail.id(), e);
@@ -168,6 +199,21 @@ public class MailStorageProvider {
             }
         } catch (SQLException e) {
             LOGGER.error("Failed to get mails for player {}", playerUuid, e);
+        }
+        return mails;
+    }
+
+    public synchronized List<Mail> getMailsSentByPlayer(UUID senderUuid) {
+        String sql = "SELECT * FROM mails WHERE sender_uuid = ? ORDER BY created_at DESC";
+        List<Mail> mails = new ArrayList<>();
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setString(1, senderUuid.toString());
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                mails.add(mapMail(rs));
+            }
+        } catch (SQLException e) {
+            LOGGER.error("Failed to get sent mails for player {}", senderUuid, e);
         }
         return mails;
     }
@@ -283,6 +329,55 @@ public class MailStorageProvider {
     }
 
     // -------------------------------------------------------------------------
+    // Drafts
+    // -------------------------------------------------------------------------
+
+    public synchronized void saveDraft(String id, UUID playerUuid, String recipient, String subject, String body, long currency, long cod) {
+        String sql = "INSERT OR REPLACE INTO mail_drafts (id, player_uuid, recipient, subject, body, currency_amount, cod_amount, created_at) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setString(1, id);
+            ps.setString(2, playerUuid.toString());
+            ps.setString(3, recipient);
+            ps.setString(4, subject);
+            ps.setString(5, body);
+            ps.setLong(6, currency);
+            ps.setLong(7, cod);
+            ps.setLong(8, System.currentTimeMillis());
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            LOGGER.error("Failed to save draft {}", id, e);
+        }
+    }
+
+    public synchronized List<Draft> getDrafts(UUID playerUuid) {
+        String sql = "SELECT * FROM mail_drafts WHERE player_uuid = ? ORDER BY created_at DESC";
+        List<Draft> drafts = new ArrayList<>();
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setString(1, playerUuid.toString());
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                drafts.add(new Draft(
+                    rs.getString("id"),
+                    rs.getString("recipient"),
+                    rs.getString("subject"),
+                    rs.getString("body"),
+                    rs.getLong("currency_amount"),
+                    rs.getLong("cod_amount"),
+                    rs.getLong("created_at")
+                ));
+            }
+        } catch (SQLException e) {
+            LOGGER.error("Failed to get drafts for player {}", playerUuid, e);
+        }
+        return drafts;
+    }
+
+    public synchronized void deleteDraft(String id) {
+        execute("DELETE FROM mail_drafts WHERE id = ?", id);
+    }
+
+    // -------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------
 
@@ -314,6 +409,7 @@ public class MailStorageProvider {
             rs.getInt("collected") == 1,
             rs.getInt("indestructible") == 1,
             rs.getInt("returned") == 1,
+            rs.getInt("read_receipt") == 1,
             rs.getLong("created_at"),
             rs.getLong("available_at"),
             rs.getLong("expires_at")
