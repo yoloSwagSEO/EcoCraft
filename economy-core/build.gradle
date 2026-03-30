@@ -22,12 +22,21 @@ neoForge {
             server()
             programArgument '--nogui'
         }
+        gameTestServer {
+            type = "gameTestServer"
+            programArgument '--nogui'
+        }
     }
 
     mods {
         "${project.economy_core_mod_id}" {
             sourceSet(sourceSets.main)
         }
+    }
+
+    unitTest {
+        enable()
+        testedMod = mods."${project.economy_core_mod_id}"
     }
 }
 
@@ -39,7 +48,7 @@ dependencies {
         version { prefer '3.47.1.0' }
     }
     compileOnly 'dev.latvian.mods:kubejs-neoforge:2101.7.2-build.354'
-    testImplementation 'org.slf4j:slf4j-simple:2.0.16'
+    testImplementation 'org.slf4j:slf4j-simple:2.0.9'
 }
 
 var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {
@@ -60,3 +69,34 @@ var generateModMetadata = tasks.register("generateModMetadata", ProcessResources
 
 sourceSets.main.resources.srcDir generateModMetadata
 neoForge.ideSyncTask generateModMetadata
+
+// Generate empty structure templates for gametests
+tasks.register('generateGameTestStructures') {
+    def outDir = file('src/main/resources/data/ecocraft_core/structure')
+    def outFile = new File(outDir, 'empty3x3x3.nbt')
+    outputs.file(outFile)
+    onlyIf { !outFile.exists() }
+    doLast {
+        outDir.mkdirs()
+        def baos = new ByteArrayOutputStream()
+        def dos = new DataOutputStream(baos)
+        dos.writeByte(10); dos.writeUTF('')
+        dos.writeByte(9); dos.writeUTF('size'); dos.writeByte(3); dos.writeInt(3)
+        dos.writeInt(3); dos.writeInt(3); dos.writeInt(3)
+        dos.writeByte(9); dos.writeUTF('entities'); dos.writeByte(10); dos.writeInt(0)
+        dos.writeByte(9); dos.writeUTF('blocks'); dos.writeByte(10); dos.writeInt(0)
+        dos.writeByte(9); dos.writeUTF('palette'); dos.writeByte(10); dos.writeInt(1)
+        dos.writeByte(8); dos.writeUTF('Name'); dos.writeUTF('minecraft:air'); dos.writeByte(0)
+        dos.writeByte(3); dos.writeUTF('DataVersion'); dos.writeInt(3955)
+        dos.writeByte(0); dos.flush()
+        outFile.withOutputStream { fos ->
+            def gzos = new java.util.zip.GZIPOutputStream(fos)
+            gzos.write(baos.toByteArray())
+            gzos.close()
+        }
+    }
+}
+
+tasks.named('processResources').configure {
+    dependsOn 'generateGameTestStructures'
+}
