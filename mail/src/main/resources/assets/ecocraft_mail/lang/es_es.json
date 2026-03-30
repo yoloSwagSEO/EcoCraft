@@ -132,6 +132,7 @@
   "ecocraft_mail.server.player_not_found": "Jugador no encontrado: %s",
   "ecocraft_mail.server.cannot_self_send": "No puedes enviarte un correo a ti mismo",
   "ecocraft_mail.server.mail_sent_success": "¡Correo enviado!",
+  "ecocraft_mail.server.insufficient_funds_send": "Fondos insuficientes para el envío",
 
   "ecocraft_mail.settings.skin_label": "Skin del cartero",
   "ecocraft_mail.settings.skin_placeholder": "Nombre del jugador...",

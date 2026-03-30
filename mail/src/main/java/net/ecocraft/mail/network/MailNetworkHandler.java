@@ -71,6 +71,12 @@ public final class MailNetworkHandler {
                 MailClientPayloadHandler::handleDraftsResponse
         );
 
+        registrar.playToClient(
+                SentMailsResponsePayload.TYPE,
+                SentMailsResponsePayload.STREAM_CODEC,
+                MailClientPayloadHandler::handleSentMailsResponse
+        );
+
         // Client -> Server
         registrar.playToServer(
                 RequestMailListPayload.TYPE,
@@ -148,6 +154,12 @@ public final class MailNetworkHandler {
                 DeleteDraftPayload.TYPE,
                 DeleteDraftPayload.STREAM_CODEC,
                 MailServerPayloadHandler::handleDeleteDraft
+        );
+
+        registrar.playToServer(
+                RequestSentMailsPayload.TYPE,
+                RequestSentMailsPayload.STREAM_CODEC,
+                MailServerPayloadHandler::handleRequestSentMails
         );
     }
 }

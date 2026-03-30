@@ -46,6 +46,7 @@ public record SendMailPayload(
             ByteBufCodecs.VAR_INT.apply(ByteBufCodecs.list()).encode(buf, p.inventorySlots());
             ByteBufCodecs.VAR_LONG.encode(buf, p.currencyAmount());
             ByteBufCodecs.VAR_LONG.encode(buf, p.codAmount());
+            ByteBufCodecs.BOOL.encode(buf, p.readReceipt());
         }
     };
 

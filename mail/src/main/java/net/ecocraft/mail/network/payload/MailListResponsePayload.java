@@ -8,7 +8,7 @@ import net.minecraft.resources.ResourceLocation;
 
 import java.util.List;
 
-public record MailListResponsePayload(List<MailSummary> mails, List<MailSummary> sentMails, String currencySymbol, int maxItemAttachments, long sendCost, long sendCostPerItem, boolean allowReadReceipt, long readReceiptCost, int codFeePercent) implements CustomPacketPayload {
+public record MailListResponsePayload(List<MailSummary> mails, String currencySymbol, int maxItemAttachments, long sendCost, long sendCostPerItem, boolean allowReadReceipt, long readReceiptCost, int codFeePercent) implements CustomPacketPayload {
 
     public record MailSummary(
             String id,
@@ -67,7 +67,6 @@ public record MailListResponsePayload(List<MailSummary> mails, List<MailSummary>
         @Override
         public MailListResponsePayload decode(ByteBuf buf) {
             List<MailSummary> mails = SUMMARY_CODEC.apply(ByteBufCodecs.list()).decode(buf);
-            List<MailSummary> sentMails = SUMMARY_CODEC.apply(ByteBufCodecs.list()).decode(buf);
             String currencySymbol = ByteBufCodecs.STRING_UTF8.decode(buf);
             int maxItemAttachments = ByteBufCodecs.VAR_INT.decode(buf);
             long sendCost = ByteBufCodecs.VAR_LONG.decode(buf);
@@ -75,13 +74,12 @@ public record MailListResponsePayload(List<MailSummary> mails, List<MailSummary>
             boolean allowReadReceipt = ByteBufCodecs.BOOL.decode(buf);
             long readReceiptCost = ByteBufCodecs.VAR_LONG.decode(buf);
             int codFeePercent = ByteBufCodecs.VAR_INT.decode(buf);
-            return new MailListResponsePayload(mails, sentMails, currencySymbol, maxItemAttachments, sendCost, sendCostPerItem, allowReadReceipt, readReceiptCost, codFeePercent);
+            return new MailListResponsePayload(mails, currencySymbol, maxItemAttachments, sendCost, sendCostPerItem, allowReadReceipt, readReceiptCost, codFeePercent);
         }
 
         @Override
         public void encode(ByteBuf buf, MailListResponsePayload p) {
             SUMMARY_CODEC.apply(ByteBufCodecs.list()).encode(buf, p.mails());
-            SUMMARY_CODEC.apply(ByteBufCodecs.list()).encode(buf, p.sentMails());
             ByteBufCodecs.STRING_UTF8.encode(buf, p.currencySymbol());
             ByteBufCodecs.VAR_INT.encode(buf, p.maxItemAttachments());
             ByteBufCodecs.VAR_LONG.encode(buf, p.sendCost());

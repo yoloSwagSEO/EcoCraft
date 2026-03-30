@@ -63,6 +63,7 @@ public class MailStorageProvider {
                 )
                 """);
             stmt.execute("CREATE INDEX IF NOT EXISTS idx_mails_recipient ON mails(recipient_uuid, collected)");
+            stmt.execute("CREATE INDEX IF NOT EXISTS idx_mails_sender ON mails(sender_uuid)");
             stmt.execute("""
                 CREATE TABLE IF NOT EXISTS mail_items (
                     id         INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -122,43 +123,65 @@ public class MailStorageProvider {
     // -------------------------------------------------------------------------
 
     public synchronized void createMail(Mail mail) {
-        String sql = "INSERT INTO mails (id, sender_uuid, sender_name, recipient_uuid, subject, body, " +
-                "currency_amount, currency_id, cod_amount, cod_currency_id, " +
-                "read, collected, indestructible, returned, read_receipt, created_at, available_at, expires_at) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-        try (PreparedStatement ps = connection.prepareStatement(sql)) {
-            ps.setString(1, mail.id());
-            ps.setString(2, mail.senderUuid() != null ? mail.senderUuid().toString() : null);
-            ps.setString(3, mail.senderName());
-            ps.setString(4, mail.recipientUuid().toString());
-            ps.setString(5, mail.subject());
-            ps.setString(6, mail.body());
-            ps.setLong(7, mail.currencyAmount());
-            ps.setString(8, mail.currencyId());
-            ps.setLong(9, mail.codAmount());
-            ps.setString(10, mail.codCurrencyId());
-            ps.setInt(11, mail.read() ? 1 : 0);
-            ps.setInt(12, mail.collected() ? 1 : 0);
-            ps.setInt(13, mail.indestructible() ? 1 : 0);
-            ps.setInt(14, mail.returned() ? 1 : 0);
-            ps.setInt(15, mail.readReceipt() ? 1 : 0);
-            ps.setLong(16, mail.createdAt());
-            ps.setLong(17, mail.availableAt());
-            ps.setLong(18, mail.expiresAt());
-            ps.executeUpdate();
-        } catch (SQLException e) {
-            LOGGER.error("Failed to create mail {}", mail.id(), e);
-        }
+        boolean wasAutoCommit = true;
+        try {
+            wasAutoCommit = connection.getAutoCommit();
+            connection.setAutoCommit(false);
 
-        // Insert item attachments
-        if (mail.items() != null) {
-            for (MailItemAttachment item : mail.items()) {
-                createMailItem(mail.id(), item);
+            String sql = "INSERT INTO mails (id, sender_uuid, sender_name, recipient_uuid, subject, body, " +
+                    "currency_amount, currency_id, cod_amount, cod_currency_id, " +
+                    "read, collected, indestructible, returned, read_receipt, created_at, available_at, expires_at) " +
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            try (PreparedStatement ps = connection.prepareStatement(sql)) {
+                ps.setString(1, mail.id());
+                ps.setString(2, mail.senderUuid() != null ? mail.senderUuid().toString() : null);
+                ps.setString(3, mail.senderName());
+                ps.setString(4, mail.recipientUuid().toString());
+                ps.setString(5, mail.subject());
+                ps.setString(6, mail.body());
+                ps.setLong(7, mail.currencyAmount());
+                ps.setString(8, mail.currencyId());
+                ps.setLong(9, mail.codAmount());
+                ps.setString(10, mail.codCurrencyId());
+                ps.setInt(11, mail.read() ? 1 : 0);
+                ps.setInt(12, mail.collected() ? 1 : 0);
+                ps.setInt(13, mail.indestructible() ? 1 : 0);
+                ps.setInt(14, mail.returned() ? 1 : 0);
+                ps.setInt(15, mail.readReceipt() ? 1 : 0);
+                ps.setLong(16, mail.createdAt());
+                ps.setLong(17, mail.availableAt());
+                ps.setLong(18, mail.expiresAt());
+                ps.executeUpdate();
+            }
+
+            // Insert item attachments
+            if (mail.items() != null) {
+                for (MailItemAttachment item : mail.items()) {
+                    createMailItemInTx(mail.id(), item);
+                }
+            }
+
+            connection.commit();
+        } catch (SQLException e) {
+            try {
+                connection.rollback();
+            } catch (SQLException rollbackEx) {
+                LOGGER.error("Failed to rollback mail creation {}", mail.id(), rollbackEx);
+            }
+            throw new RuntimeException("Failed to create mail " + mail.id(), e);
+        } finally {
+            try {
+                connection.setAutoCommit(wasAutoCommit);
+            } catch (SQLException e) {
+                LOGGER.error("Failed to restore autoCommit", e);
             }
         }
     }
 
-    private synchronized void createMailItem(String mailId, MailItemAttachment item) {
+    /**
+     * Insert a mail item within an existing transaction (throws on error for rollback).
+     */
+    private void createMailItemInTx(String mailId, MailItemAttachment item) throws SQLException {
         String sql = "INSERT INTO mail_items (mail_id, item_id, item_name, item_nbt, quantity) VALUES (?, ?, ?, ?, ?)";
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setString(1, mailId);
@@ -167,8 +190,6 @@ public class MailStorageProvider {
             ps.setString(4, item.itemNbt());
             ps.setInt(5, item.quantity());
             ps.executeUpdate();
-        } catch (SQLException e) {
-            LOGGER.error("Failed to create mail item for mail {}", mailId, e);
         }
     }
 
@@ -239,7 +260,7 @@ public class MailStorageProvider {
     }
 
     public synchronized int countAvailableMails(UUID playerUuid) {
-        String sql = "SELECT COUNT(*) FROM mails WHERE recipient_uuid = ? AND available_at <= ? AND (indestructible = 1 OR expires_at > ?)";
+        String sql = "SELECT COUNT(*) FROM mails WHERE recipient_uuid = ? AND available_at <= ? AND (indestructible = 1 OR expires_at > ?) AND collected = 0 AND returned = 0";
         long now = System.currentTimeMillis();
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setString(1, playerUuid.toString());
@@ -371,6 +392,42 @@ public class MailStorageProvider {
             LOGGER.error("Failed to get drafts for player {}", playerUuid, e);
         }
         return drafts;
+    }
+
+    public synchronized Draft getDraft(String draftId) {
+        String sql = "SELECT * FROM mail_drafts WHERE id = ?";
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setString(1, draftId);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                return new Draft(
+                    rs.getString("id"),
+                    rs.getString("recipient"),
+                    rs.getString("subject"),
+                    rs.getString("body"),
+                    rs.getLong("currency_amount"),
+                    rs.getLong("cod_amount"),
+                    rs.getLong("created_at")
+                );
+            }
+        } catch (SQLException e) {
+            LOGGER.error("Failed to get draft {}", draftId, e);
+        }
+        return null;
+    }
+
+    public synchronized String getDraftOwner(String draftId) {
+        String sql = "SELECT player_uuid FROM mail_drafts WHERE id = ?";
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setString(1, draftId);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                return rs.getString("player_uuid");
+            }
+        } catch (SQLException e) {
+            LOGGER.error("Failed to get draft owner {}", draftId, e);
+        }
+        return null;
     }
 
     public synchronized void deleteDraft(String id) {

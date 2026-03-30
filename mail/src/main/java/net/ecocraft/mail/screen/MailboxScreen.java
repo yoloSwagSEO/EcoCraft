@@ -164,9 +164,17 @@ public class MailboxScreen extends EcoScreen {
             screen.allowReadReceipt = payload.allowReadReceipt();
             screen.readReceiptCost = payload.readReceiptCost();
             screen.codFeePercent = payload.codFeePercent();
-            screen.sentMails = payload.sentMails();
             if (screen.listView != null) {
                 screen.listView.onReceiveMailList(payload.mails());
+            }
+        }
+    }
+
+    public static void receiveSentMails(SentMailsResponsePayload payload) {
+        if (Minecraft.getInstance().screen instanceof MailboxScreen screen) {
+            screen.sentMails = payload.sentMails();
+            if (screen.listView != null) {
+                screen.listView.onReceiveSentMails(payload.sentMails());
             }
         }
     }

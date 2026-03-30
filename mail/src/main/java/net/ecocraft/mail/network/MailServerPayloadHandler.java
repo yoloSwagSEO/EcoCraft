@@ -68,6 +68,28 @@ public final class MailServerPayloadHandler {
                 String symbol = service.getDefaultCurrencySymbol();
                 int maxAttach = MailConfig.CONFIG.maxItemAttachments.get();
                 long sendCost = MailConfig.CONFIG.sendCost.get();
+                long sendCostPerItem = MailConfig.CONFIG.sendCostPerItem.get();
+                boolean allowReadReceipt = MailConfig.CONFIG.allowReadReceipt.get();
+                long readReceiptCost = MailConfig.CONFIG.readReceiptCost.get();
+                int codFeePercent = MailConfig.CONFIG.codFeePercent.get();
+                context.reply(new MailListResponsePayload(summaries, symbol, maxAttach, sendCost, sendCostPerItem, allowReadReceipt, readReceiptCost, codFeePercent));
+            } catch (Exception e) {
+                LOGGER.error("Error handling RequestMailList", e);
+                context.reply(new MailListResponsePayload(List.of(), "G", 12, 0, 0, true, 0, 0));
+            }
+        });
+    }
+
+    // -------------------------------------------------------------------------
+    // Sent mails (on-demand)
+    // -------------------------------------------------------------------------
+
+    public static void handleRequestSentMails(RequestSentMailsPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            try {
+                MailService service = requireService();
+                ServerPlayer player = (ServerPlayer) context.player();
+
                 List<MailListResponsePayload.MailSummary> sentSummaries = new ArrayList<>();
                 List<Mail> sentMails = service.getSentMailsForPlayer(player.getUUID());
                 var server = player.getServer();
@@ -103,14 +125,10 @@ public final class MailServerPayloadHandler {
                             mail.createdAt()
                     ));
                 }
-                long sendCostPerItem = MailConfig.CONFIG.sendCostPerItem.get();
-                boolean allowReadReceipt = MailConfig.CONFIG.allowReadReceipt.get();
-                long readReceiptCost = MailConfig.CONFIG.readReceiptCost.get();
-                int codFeePercent = MailConfig.CONFIG.codFeePercent.get();
-                context.reply(new MailListResponsePayload(summaries, sentSummaries, symbol, maxAttach, sendCost, sendCostPerItem, allowReadReceipt, readReceiptCost, codFeePercent));
+                context.reply(new SentMailsResponsePayload(sentSummaries));
             } catch (Exception e) {
-                LOGGER.error("Error handling RequestMailList", e);
-                context.reply(new MailListResponsePayload(List.of(), List.of(), "G", 12, 0, 0, true, 0, 0));
+                LOGGER.error("Error handling RequestSentMails", e);
+                context.reply(new SentMailsResponsePayload(List.of()));
             }
         });
     }
@@ -310,23 +328,6 @@ public final class MailServerPayloadHandler {
                     return;
                 }
 
-                // Extract items from player inventory
-                List<MailItemAttachment> items = new ArrayList<>();
-                for (int slotIndex : payload.inventorySlots()) {
-                    if (slotIndex < 0 || slotIndex >= player.getInventory().getContainerSize()) continue;
-                    ItemStack stack = player.getInventory().getItem(slotIndex);
-                    if (stack.isEmpty()) continue;
-
-                    String itemId = BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
-                    String itemName = stack.getHoverName().getString();
-                    String itemNbt = serializeItemStack(stack, player);
-
-                    items.add(new MailItemAttachment(itemId, itemName, itemNbt, stack.getCount()));
-
-                    // Remove item from player inventory
-                    player.getInventory().setItem(slotIndex, ItemStack.EMPTY);
-                }
-
                 // Determine currency ID (use default currency)
                 String currencyId = null;
                 if (payload.currencyAmount() > 0) {
@@ -345,11 +346,18 @@ public final class MailServerPayloadHandler {
                     }
                 }
 
-                // Charge send cost (base + per-item + read receipt)
+                // Compute total cost and check balance BEFORE extracting items
                 long baseSendCost = config.sendCost.get();
                 long perItemCost = config.sendCostPerItem.get();
                 long readReceiptCost = (payload.readReceipt() && config.allowReadReceipt.get()) ? config.readReceiptCost.get() : 0;
-                long totalSendCost = baseSendCost + (items.size() * perItemCost) + readReceiptCost;
+                int validSlotCount = 0;
+                for (int slotIndex : payload.inventorySlots()) {
+                    if (slotIndex >= 0 && slotIndex < player.getInventory().getContainerSize()
+                            && !player.getInventory().getItem(slotIndex).isEmpty()) {
+                        validSlotCount++;
+                    }
+                }
+                long totalSendCost = baseSendCost + (validSlotCount * perItemCost) + readReceiptCost;
 
                 if (totalSendCost > 0) {
                     var currencyReg = net.ecocraft.core.EcoServerEvents.getCurrencyRegistry();
@@ -359,30 +367,27 @@ public final class MailServerPayloadHandler {
                         java.math.BigDecimal costBD = MailService.fromSmallestUnit(totalSendCost, defaultCurrency);
                         var txResult = eco.withdraw(player.getUUID(), costBD, defaultCurrency);
                         if (!txResult.successful()) {
-                            // Restore items to player inventory
-                            for (int i = 0; i < items.size(); i++) {
-                                int slotIndex = payload.inventorySlots().get(i);
-                                var itemRL = net.minecraft.resources.ResourceLocation.parse(items.get(i).itemId());
-                                var itemObj = BuiltInRegistries.ITEM.get(itemRL);
-                                ItemStack restored;
-                                if (items.get(i).itemNbt() != null && !items.get(i).itemNbt().isEmpty()) {
-                                    try {
-                                        var tag = TagParser.parseTag(items.get(i).itemNbt());
-                                        restored = ItemStack.OPTIONAL_CODEC.parse(
-                                                player.registryAccess().createSerializationContext(NbtOps.INSTANCE), tag
-                                        ).getOrThrow();
-                                    } catch (Exception ex) {
-                                        restored = new ItemStack(itemObj, items.get(i).quantity());
-                                    }
-                                } else {
-                                    restored = new ItemStack(itemObj, items.get(i).quantity());
-                                }
-                                player.getInventory().setItem(slotIndex, restored);
-                            }
-                            context.reply(new SendMailResultPayload(false, "Fonds insuffisants pour l'envoi : " + txResult.errorMessage()));
+                            context.reply(new SendMailResultPayload(false, Component.translatable("ecocraft_mail.server.insufficient_funds_send").getString() + ": " + txResult.errorMessage()));
                             return;
                         }
                     }
+                }
+
+                // Extract items from player inventory (after cost check passed)
+                List<MailItemAttachment> items = new ArrayList<>();
+                for (int slotIndex : payload.inventorySlots()) {
+                    if (slotIndex < 0 || slotIndex >= player.getInventory().getContainerSize()) continue;
+                    ItemStack stack = player.getInventory().getItem(slotIndex);
+                    if (stack.isEmpty()) continue;
+
+                    String itemId = BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
+                    String itemName = stack.getHoverName().getString();
+                    String itemNbt = serializeItemStack(stack, player);
+
+                    items.add(new MailItemAttachment(itemId, itemName, itemNbt, stack.getCount()));
+
+                    // Remove item from player inventory
+                    player.getInventory().setItem(slotIndex, ItemStack.EMPTY);
                 }
 
                 boolean readReceipt = payload.readReceipt() && config.allowReadReceipt.get();
@@ -653,6 +658,12 @@ public final class MailServerPayloadHandler {
             try {
                 MailService service = requireService();
                 ServerPlayer player = (ServerPlayer) context.player();
+                // Ownership check: only delete if the draft belongs to the player
+                String owner = service.getStorage().getDraftOwner(payload.draftId());
+                if (owner == null || !owner.equals(player.getUUID().toString())) {
+                    LOGGER.warn("Player {} tried to delete draft {} they don't own", player.getUUID(), payload.draftId());
+                    return;
+                }
                 service.getStorage().deleteDraft(payload.draftId());
                 // Send updated drafts list
                 handleRequestDrafts(new RequestDraftsPayload(), context);

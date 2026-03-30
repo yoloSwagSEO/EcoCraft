@@ -44,6 +44,10 @@ public final class MailClientPayloadHandler {
         context.enqueueWork(() -> MailboxScreen.receiveDrafts(payload));
     }
 
+    public static void handleSentMailsResponse(SentMailsResponsePayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> MailboxScreen.receiveSentMails(payload));
+    }
+
     public static void handleMailSettings(MailSettingsPayload payload, IPayloadContext context) {
         context.enqueueWork(() -> {
             var screen = net.minecraft.client.Minecraft.getInstance().screen;

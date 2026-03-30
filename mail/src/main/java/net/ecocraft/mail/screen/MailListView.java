@@ -10,6 +10,7 @@ import net.ecocraft.mail.network.payload.DraftsResponsePayload;
 import net.ecocraft.mail.network.payload.MailListResponsePayload.MailSummary;
 import net.ecocraft.mail.network.payload.MarkReadPayload;
 import net.ecocraft.mail.network.payload.RequestDraftsPayload;
+import net.ecocraft.mail.network.payload.RequestSentMailsPayload;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -209,6 +210,8 @@ public class MailListView extends BaseWidget {
         this.activeTab = tab;
         if (tab == Tab.DRAFTS) {
             PacketDistributor.sendToServer(new RequestDraftsPayload());
+        } else if (tab == Tab.SENT) {
+            PacketDistributor.sendToServer(new RequestSentMailsPayload());
         }
         // Rebuild all widgets to update tab button styles
         rebuildAll();
@@ -234,6 +237,13 @@ public class MailListView extends BaseWidget {
         filterAttachmentsButton.setVisible(isInbox);
         filterCodButton.setVisible(isInbox);
         searchInput.setVisible(isInbox);
+    }
+
+    public void onReceiveSentMails(List<MailSummary> sentMails) {
+        screen.sentMails = sentMails;
+        if (activeTab == Tab.SENT) {
+            rebuildMailRows();
+        }
     }
 
     public void onReceiveDrafts(List<DraftsResponsePayload.DraftEntry> drafts) {

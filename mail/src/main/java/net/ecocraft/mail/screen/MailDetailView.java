@@ -153,7 +153,7 @@ public class MailDetailView extends BaseWidget {
             // Item slots
             for (MailDetailResponsePayload.ItemEntry item : detail.items()) {
                 EcoItemSlot slot = new EcoItemSlot(slotX, slotY, slotSize, THEME);
-                ItemStack stack = itemFromId(item.itemId());
+                ItemStack stack = itemFromId(item.itemId(), item.itemNbt());
                 if (!stack.isEmpty()) {
                     stack.setCount(item.quantity());
                 }
@@ -295,7 +295,23 @@ public class MailDetailView extends BaseWidget {
         return sdf.format(new Date(epochMs));
     }
 
-    static ItemStack itemFromId(String itemId) {
+    static ItemStack itemFromId(String itemId, String itemNbt) {
+        // If NBT data is available, try to deserialize the full ItemStack from it
+        if (itemNbt != null && !itemNbt.isEmpty()) {
+            try {
+                var mc = Minecraft.getInstance();
+                if (mc.level != null) {
+                    var tag = net.minecraft.nbt.TagParser.parseTag(itemNbt);
+                    var result = ItemStack.OPTIONAL_CODEC.parse(
+                            mc.level.registryAccess().createSerializationContext(net.minecraft.nbt.NbtOps.INSTANCE), tag
+                    );
+                    var stack = result.result();
+                    if (stack.isPresent() && !stack.get().isEmpty()) {
+                        return stack.get();
+                    }
+                }
+            } catch (Exception e) { /* fall through to simple lookup */ }
+        }
         try {
             ResourceLocation rl = ResourceLocation.parse(itemId);
             var item = BuiltInRegistries.ITEM.get(rl);

@@ -455,38 +455,6 @@ public class MailSettingsScreen extends EcoScreen {
         return cy + 20;
     }
 
-    private int addToggleRow(Font font, int labelX, int y, int toggleX, int toggleW,
-                              String labelText, boolean value, java.util.function.Consumer<Boolean> responder) {
-        Label label = new Label(font, labelX, y + 3,
-                Component.literal(labelText), THEME);
-        label.setColor(THEME.textLight);
-        getTree().addChild(label);
-
-        EcoToggle toggle = new EcoToggle(toggleX, y, toggleW, 14, THEME);
-        toggle.value(value);
-        toggle.responder(responder);
-        getTree().addChild(toggle);
-
-        return y + ROW_HEIGHT;
-    }
-
-    private int addNumberRow(Font font, int labelX, int y, int inputX, int inputW,
-                              String labelText, int value, int min, int max,
-                              java.util.function.Consumer<Long> responder) {
-        Label label = new Label(font, labelX, y + 3,
-                Component.literal(labelText), THEME);
-        label.setColor(THEME.textLight);
-        getTree().addChild(label);
-
-        EcoNumberInput input = new EcoNumberInput(font, inputX, y, inputW, 16, THEME);
-        input.min(min).max(max).step(1).showButtons(true);
-        input.setValue(value);
-        input.responder(responder);
-        getTree().addChild(input);
-
-        return y + ROW_HEIGHT + 2;
-    }
-
     private void onSaveSettings() {
         PacketDistributor.sendToServer(new UpdateMailSettingsPayload(
                 editAllowPlayerMail, editAllowItemAttachments,

@@ -161,7 +161,7 @@ public class MailService {
                     items != null && !items.isEmpty(),
                     currencyAmount > 0 && currencyId != null,
                     codAmount)) {
-            throw new MailException("Envoi de mail bloque par un script");
+            throw new MailException("Mail sending blocked by script");
         }
 
         // Withdraw currency from sender if attached
@@ -170,7 +170,7 @@ public class MailService {
             BigDecimal amount = fromSmallestUnit(currencyAmount, currency);
             TransactionResult result = economy.withdraw(senderUuid, amount, currency);
             if (!result.successful()) {
-                throw new MailException("Fonds insuffisants : " + result.errorMessage());
+                throw new MailException("Insufficient funds: " + result.errorMessage());
             }
         }
 
@@ -314,13 +314,13 @@ public class MailService {
         Mail mail = getAndValidateOwnership(mailId, playerUuid);
 
         if (!mail.isAvailable()) {
-            throw new MailException("Ce mail n'est pas encore disponible");
+            throw new MailException("Mail is not yet available");
         }
         if (mail.collected()) {
-            throw new MailException("Ce mail a deja ete collecte");
+            throw new MailException("Mail has already been collected");
         }
         if (mail.hasCOD()) {
-            throw new MailException("Ce mail est en contre-remboursement, utilisez Payer & Collecter");
+            throw new MailException("Mail is COD, use Pay & Collect");
         }
 
         deliverAttachments(playerUuid, mail);
@@ -350,6 +350,7 @@ public class MailService {
             if (mail.isExpired()) continue;
 
             deliverAttachments(playerUuid, mail);
+            storage.markRead(mail.id());
             storage.markCollected(mail.id());
             count++;
         }
@@ -371,10 +372,10 @@ public class MailService {
         Mail mail = getAndValidateOwnership(mailId, playerUuid);
 
         if (!mail.hasCOD()) {
-            throw new MailException("Ce mail n'est pas en contre-remboursement");
+            throw new MailException("Mail is not COD");
         }
         if (mail.collected()) {
-            throw new MailException("Ce mail a deja ete collecte");
+            throw new MailException("Mail has already been collected");
         }
 
         Currency codCurrency = resolveCurrency(mail.codCurrencyId());
@@ -383,7 +384,7 @@ public class MailService {
         BigDecimal codAmountBD = fromSmallestUnit(mail.codAmount(), codCurrency);
         TransactionResult withdrawResult = economy.withdraw(playerUuid, codAmountBD, codCurrency);
         if (!withdrawResult.successful()) {
-            throw new MailException("Fonds insuffisants pour le contre-remboursement : " + withdrawResult.errorMessage());
+            throw new MailException("Insufficient funds for COD payment: " + withdrawResult.errorMessage());
         }
 
         // Calculate fee and deposit to sender
@@ -419,19 +420,19 @@ public class MailService {
         Mail mail = getAndValidateOwnership(mailId, playerUuid);
 
         if (!mail.hasCOD()) {
-            throw new MailException("Ce mail n'est pas en contre-remboursement");
+            throw new MailException("Mail is not COD");
         }
         if (mail.collected()) {
-            throw new MailException("Ce mail a deja ete collecte");
+            throw new MailException("Mail has already been collected");
         }
         if (mail.returned()) {
-            throw new MailException("Ce mail a deja ete retourne");
+            throw new MailException("Mail has already been returned");
         }
         if (mail.senderUuid() == null) {
-            throw new MailException("Impossible de retourner un mail systeme");
+            throw new MailException("Cannot return a system mail");
         }
 
-        // Create return mail to original sender with items, no COD, no currency
+        // Create return mail to original sender with items and currency, no COD
         long now = System.currentTimeMillis();
         String returnMailId = UUID.randomUUID().toString();
 
@@ -443,8 +444,8 @@ public class MailService {
             "Retour : " + mail.subject(),
             "",
             mail.items() != null ? mail.items() : List.of(),
-            0,     // no currency on return
-            null,
+            mail.currencyAmount(),
+            mail.currencyId(),
             0,     // no COD on return
             null,
             false,
@@ -481,7 +482,7 @@ public class MailService {
         Mail mail = getAndValidateOwnership(mailId, playerUuid);
 
         if (!mail.canDelete()) {
-            throw new MailException("Ce mail ne peut pas etre supprime (pieces jointes non collectees)");
+            throw new MailException("Mail cannot be deleted (uncollected attachments)");
         }
 
         storage.deleteMail(mailId);
@@ -529,8 +530,8 @@ public class MailService {
                     "Retour (expire) : " + mail.subject(),
                     "",
                     mail.items() != null ? mail.items() : List.of(),
-                    0,
-                    null,
+                    mail.currencyAmount(),
+                    mail.currencyId(),
                     0,
                     null,
                     false,
@@ -547,6 +548,8 @@ public class MailService {
                 LOGGER.info("Expired COD mail {} auto-returned to {}", mail.id(), mail.senderUuid());
             }
             storage.markReturned(mail.id());
+            // Explicitly delete the original expired COD mail
+            storage.deleteMail(mail.id());
         }
 
         // Collect expired COD mail IDs for the KubeJS event
@@ -628,10 +631,10 @@ public class MailService {
     private Mail getAndValidateOwnership(String mailId, UUID playerUuid) {
         Mail mail = storage.getMailById(mailId);
         if (mail == null) {
-            throw new MailException("Mail introuvable : " + mailId);
+            throw new MailException("Mail not found: " + mailId);
         }
         if (!mail.recipientUuid().equals(playerUuid)) {
-            throw new MailException("Ce mail ne vous appartient pas");
+            throw new MailException("Mail does not belong to you");
         }
         return mail;
     }
@@ -653,7 +656,7 @@ public class MailService {
     private Currency resolveCurrency(String currencyId) {
         Currency currency = currencies.getById(currencyId);
         if (currency == null) {
-            throw new MailException("Devise inconnue : " + currencyId);
+            throw new MailException("Unknown currency: " + currencyId);
         }
         return currency;
     }

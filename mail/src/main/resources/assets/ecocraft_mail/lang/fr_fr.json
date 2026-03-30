@@ -132,6 +132,7 @@
   "ecocraft_mail.server.player_not_found": "Joueur introuvable : %s",
   "ecocraft_mail.server.cannot_self_send": "Vous ne pouvez pas vous envoyer un mail",
   "ecocraft_mail.server.mail_sent_success": "Mail envoyé !",
+  "ecocraft_mail.server.insufficient_funds_send": "Fonds insuffisants pour l'envoi",
 
   "ecocraft_mail.settings.skin_label": "Skin du facteur",
   "ecocraft_mail.settings.skin_placeholder": "Nom du joueur...",

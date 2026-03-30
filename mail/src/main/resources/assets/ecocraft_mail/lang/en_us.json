@@ -132,6 +132,7 @@
   "ecocraft_mail.server.player_not_found": "Player not found: %s",
   "ecocraft_mail.server.cannot_self_send": "You cannot send mail to yourself",
   "ecocraft_mail.server.mail_sent_success": "Mail sent!",
+  "ecocraft_mail.server.insufficient_funds_send": "Insufficient funds for sending",
 
   "ecocraft_mail.settings.skin_label": "Postman skin",
   "ecocraft_mail.settings.skin_placeholder": "Player name...",

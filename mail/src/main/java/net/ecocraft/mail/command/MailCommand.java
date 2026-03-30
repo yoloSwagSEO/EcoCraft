@@ -2,6 +2,7 @@ package net.ecocraft.mail.command;
 
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.StringArgumentType;
+import net.ecocraft.mail.network.payload.OpenMailboxPayload;
 import net.ecocraft.mail.permission.MailPermissions;
 import net.ecocraft.mail.service.MailService;
 import net.minecraft.commands.CommandSourceStack;
@@ -9,6 +10,7 @@ import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
+import net.neoforged.neoforge.network.PacketDistributor;
 
 import java.util.List;
 import java.util.UUID;
@@ -28,10 +30,7 @@ public final class MailCommand {
                 .requires(src -> MailPermissions.check(src, MailPermissions.COMMAND))
                 .executes(ctx -> {
                     ServerPlayer player = ctx.getSource().getPlayerOrException();
-                    // TODO: send OpenMailboxPayload to client (Task 6: network payloads)
-                    ctx.getSource().sendSuccess(
-                            () -> Component.translatable("ecocraft_mail.command.opening"),
-                            false);
+                    PacketDistributor.sendToPlayer(player, new OpenMailboxPayload(0));
                     return 1;
                 })
 
