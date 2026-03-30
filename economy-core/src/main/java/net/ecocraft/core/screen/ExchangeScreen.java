@@ -60,6 +60,10 @@ public class ExchangeScreen extends EcoScreen {
     // Current input amount
     private long currentAmount = 0;
 
+    // Track selected currency indices across rebuilds
+    private int selectedFromIndex = 0;
+    private int selectedToIndex = 1;
+
     public ExchangeScreen(int npcEntityId) {
         super(Component.translatable("ecocraft_core.exchange.title"));
         this.npcEntityId = npcEntityId;
@@ -122,8 +126,15 @@ public class ExchangeScreen extends EcoScreen {
         y += 12;
         fromDropdown = new EcoDropdown(contentLeft, y, contentWidth, 18, THEME);
         fromDropdown.options(getCurrencyNames());
-        if (!currencies.isEmpty()) fromDropdown.selectedIndex(0);
-        fromDropdown.responder(idx -> onCurrencyChanged());
+        if (selectedFromIndex >= 0 && selectedFromIndex < currencies.size()) fromDropdown.selectedIndex(selectedFromIndex);
+        fromDropdown.responder(idx -> {
+            selectedFromIndex = idx;
+            // Adjust "to" if same as "from"
+            if (selectedToIndex == selectedFromIndex) {
+                selectedToIndex = findNextIndex(selectedFromIndex);
+            }
+            init(); // rebuild to update "Vers" dropdown
+        });
         getTree().addChild(fromDropdown);
 
         y += 22;
@@ -174,10 +185,28 @@ public class ExchangeScreen extends EcoScreen {
 
         y += 12;
         toDropdown = new EcoDropdown(contentLeft, y, contentWidth, 18, THEME);
-        toDropdown.options(getCurrencyNames());
-        if (currencies.size() > 1) toDropdown.selectedIndex(1);
-        else if (!currencies.isEmpty()) toDropdown.selectedIndex(0);
-        toDropdown.responder(idx -> onCurrencyChanged());
+        // Build "Vers" list excluding the selected "De" currency
+        List<String> toNames = new ArrayList<>();
+        List<Integer> toIndexMap = new ArrayList<>(); // maps dropdown index → currencies index
+        for (int i = 0; i < currencies.size(); i++) {
+            if (i == selectedFromIndex) continue;
+            toNames.add(currencies.get(i).name() + " (" + currencies.get(i).symbol() + ")");
+            toIndexMap.add(i);
+        }
+        toDropdown.options(toNames);
+        // Find the position of selectedToIndex in the filtered list
+        int toDropdownIdx = 0;
+        for (int i = 0; i < toIndexMap.size(); i++) {
+            if (toIndexMap.get(i) == selectedToIndex) { toDropdownIdx = i; break; }
+        }
+        if (!toNames.isEmpty()) toDropdown.selectedIndex(toDropdownIdx);
+        final List<Integer> finalToMap = toIndexMap;
+        toDropdown.responder(idx -> {
+            if (idx >= 0 && idx < finalToMap.size()) {
+                selectedToIndex = finalToMap.get(idx);
+            }
+            onCurrencyChanged();
+        });
         getTree().addChild(toDropdown);
 
         y += 22;
@@ -307,15 +336,20 @@ public class ExchangeScreen extends EcoScreen {
     }
 
     private ExchangeDataPayload.CurrencyData getSelectedFrom() {
-        int idx = fromDropdown != null ? fromDropdown.getSelectedIndex() : -1;
-        if (idx >= 0 && idx < currencies.size()) return currencies.get(idx);
+        if (selectedFromIndex >= 0 && selectedFromIndex < currencies.size()) return currencies.get(selectedFromIndex);
         return null;
     }
 
     private ExchangeDataPayload.CurrencyData getSelectedTo() {
-        int idx = toDropdown != null ? toDropdown.getSelectedIndex() : -1;
-        if (idx >= 0 && idx < currencies.size()) return currencies.get(idx);
+        if (selectedToIndex >= 0 && selectedToIndex < currencies.size()) return currencies.get(selectedToIndex);
         return null;
+    }
+
+    private int findNextIndex(int excludeIndex) {
+        for (int i = 0; i < currencies.size(); i++) {
+            if (i != excludeIndex) return i;
+        }
+        return 0;
     }
 
     private Currency getSelectedFromCurrency() {
