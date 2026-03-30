@@ -46,8 +46,10 @@ public class EcoCurrencyInput extends BaseWidget {
     private long max;
     private @Nullable LongConsumer responder;
 
-    // Simple mode
-    private @Nullable EcoNumberInput simpleInput;
+    // Simple mode — uses EcoTextInput with decimal parsing
+    private @Nullable EcoTextInput simpleTextInput;
+    private @Nullable EcoButton simpleUpButton;
+    private @Nullable EcoButton simpleDownButton;
 
     // Composite mode
     private final List<SubUnitField> subUnitFields = new ArrayList<>();
@@ -73,19 +75,11 @@ public class EcoCurrencyInput extends BaseWidget {
 
     public EcoCurrencyInput min(long min) {
         this.min = min;
-        if (!composite && simpleInput != null) {
-            long divisor = pow10(currency.decimals());
-            simpleInput.min(min / divisor);
-        }
         return this;
     }
 
     public EcoCurrencyInput max(long max) {
         this.max = max;
-        if (!composite && simpleInput != null) {
-            long divisor = pow10(currency.decimals());
-            simpleInput.max(max / divisor);
-        }
         return this;
     }
 
@@ -100,10 +94,8 @@ public class EcoCurrencyInput extends BaseWidget {
 
     public void setValue(long value) {
         this.value = clamp(value);
-        if (!composite && simpleInput != null) {
-            // Display in whole units
-            long divisor = pow10(currency.decimals());
-            simpleInput.setValue(this.value / divisor);
+        if (!composite) {
+            updateSimpleText();
         }
         notifyResponder();
     }
@@ -116,19 +108,57 @@ public class EcoCurrencyInput extends BaseWidget {
     // --- Layout builders ---
 
     private void buildSimpleLayout(int x, int y, int width) {
+        int btnW = 16;
         int symbolWidth = font.width(currency.symbol()) + 6;
-        int inputWidth = width - symbolWidth;
-        long divisor = pow10(currency.decimals());
+        int inputWidth = width - symbolWidth - btnW * 2 - 4;
+        int decimals = currency.decimals();
 
-        simpleInput = new EcoNumberInput(font, x, y, inputWidth, SIMPLE_HEIGHT, theme);
-        // Display values in whole units, step by 1 whole unit
-        simpleInput.min(min / divisor).max(max / divisor).step(1);
-        simpleInput.responder(displayVal -> {
-            // Convert display value back to smallest unit
-            this.value = clamp(displayVal * divisor);
-            notifyResponder();
+        // "-" button
+        simpleDownButton = EcoButton.ghost(theme, net.minecraft.network.chat.Component.literal("-"),
+                () -> adjustSimple(-1));
+        simpleDownButton.setBounds(x, y, btnW, SIMPLE_HEIGHT);
+        addChild(simpleDownButton);
+
+        // Text input with decimal support
+        simpleTextInput = new EcoTextInput(font, x + btnW + 1, y, inputWidth, SIMPLE_HEIGHT,
+                net.minecraft.network.chat.Component.literal("0"), theme);
+        simpleTextInput.setMaxLength(15);
+        simpleTextInput.setFilter(text -> text.matches("^\\d*\\.?\\d{0," + decimals + "}$"));
+        simpleTextInput.responder(text -> {
+            try {
+                if (text.isEmpty()) {
+                    this.value = 0;
+                } else {
+                    java.math.BigDecimal bd = new java.math.BigDecimal(text);
+                    this.value = clamp(CurrencyFormatter.toSmallestUnit(bd, currency));
+                }
+                notifyResponder();
+            } catch (Exception ignored) {}
         });
-        addChild(simpleInput);
+        addChild(simpleTextInput);
+
+        // "+" button
+        simpleUpButton = EcoButton.ghost(theme, net.minecraft.network.chat.Component.literal("+"),
+                () -> adjustSimple(1));
+        simpleUpButton.setBounds(x + btnW + inputWidth + 3, y, btnW, SIMPLE_HEIGHT);
+        addChild(simpleUpButton);
+    }
+
+    private void adjustSimple(int direction) {
+        long step = pow10(currency.decimals()); // 1 whole unit
+        long newVal = clamp(value + direction * step);
+        if (newVal != value) {
+            value = newVal;
+            updateSimpleText();
+            notifyResponder();
+        }
+    }
+
+    private void updateSimpleText() {
+        if (simpleTextInput != null) {
+            java.math.BigDecimal display = CurrencyFormatter.fromSmallestUnit(value, currency);
+            simpleTextInput.setValue(display.toPlainString());
+        }
     }
 
     private static long pow10(int exp) {
@@ -166,9 +196,9 @@ public class EcoCurrencyInput extends BaseWidget {
     }
 
     private void renderSimple(GuiGraphics graphics, int mouseX, int mouseY) {
-        // EcoNumberInput renders via child tree; just draw the symbol label
-        if (simpleInput != null) {
-            int labelX = simpleInput.getX() + simpleInput.getWidth() + 4;
+        // Children (buttons + text input) render via child tree; just draw the symbol label
+        if (simpleUpButton != null) {
+            int labelX = simpleUpButton.getX() + simpleUpButton.getWidth() + 4;
             int labelY = getY() + (SIMPLE_HEIGHT - font.lineHeight) / 2;
             graphics.drawString(font, currency.symbol(), labelX, labelY, theme.textLight, false);
         }
@@ -303,10 +333,7 @@ public class EcoCurrencyInput extends BaseWidget {
                 field.y += dy;
             }
         }
-        // Simple mode: EcoNumberInput repositions via child tree
-        if (simpleInput != null) {
-            simpleInput.setPosition(simpleInput.getX() + dx, simpleInput.getY() + dy);
-        }
+        // Simple mode: children reposition via child tree (buttons + text input)
     }
 
     // --- Inner class ---
