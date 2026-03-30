@@ -48,7 +48,7 @@ public class SellTab extends BaseWidget {
     private EcoItemSlot itemSlot;
     private EcoButton buyoutBtn;
     private EcoButton auctionBtn;
-    private EcoNumberInput priceInput;
+    private EcoCurrencyInput priceCurrencyInput;
     private EcoFilterTags durationTags;
     private EcoButton sellButton;
     private EcoInventoryGrid inventoryGrid;
@@ -129,13 +129,14 @@ public class SellTab extends BaseWidget {
         currentY += 4;
 
         // 3. "Prix unitaire:" label + price input
-        priceInput = new EcoNumberInput(font, leftCenterX - 60, currentY, 120, 18, THEME);
-        priceInput.min(0).max(999_999_999_999L).step(1).showButtons(false);
-        priceInput.responder(this::onPriceChanged);
+        var currency = parent.getCurrency();
+        priceCurrencyInput = new EcoCurrencyInput(font, leftCenterX - 60, currentY, 120, currency, THEME);
+        priceCurrencyInput.min(0);
+        priceCurrencyInput.responder(val -> priceValue = val); // already in smallest unit
         if (priceValue > 0) {
-            priceInput.setValue(priceValue);
+            priceCurrencyInput.setValue(priceValue);
         }
-        addChild(priceInput);
+        addChild(priceCurrencyInput);
         currentY += 18;
         currentY += 4;
 
@@ -224,10 +225,10 @@ public class SellTab extends BaseWidget {
         }
 
         // "Prix unitaire:" label left of the price input
-        if (priceInput != null) {
-            int priceInputY = priceInput.getY();
+        if (priceCurrencyInput != null) {
+            int priceInputY = priceCurrencyInput.getY();
             Component unitPriceLabel = Component.translatable("ecocraft_ah.sell.unit_price_label");
-            graphics.drawString(font, unitPriceLabel, priceInput.getX() - font.width(unitPriceLabel) - 4, priceInputY + 3, THEME.textGrey, false);
+            graphics.drawString(font, unitPriceLabel, priceCurrencyInput.getX() - font.width(unitPriceLabel) - 4, priceInputY + 3, THEME.textGrey, false);
         }
 
         // Quantity info below duration
@@ -327,8 +328,8 @@ public class SellTab extends BaseWidget {
         } else {
             priceValue = 0;
         }
-        if (priceInput != null && priceValue > 0) {
-            priceInput.setValue(priceValue);
+        if (priceCurrencyInput != null && priceValue > 0) {
+            priceCurrencyInput.setValue(priceValue);
         }
     }
 

@@ -87,13 +87,28 @@ public final class CurrencyFormatter {
     private static String formatSimple(long amount, Currency currency) {
         int dec = currency.decimals();
         if (dec <= 0) {
-            return amount + " " + currency.symbol();
+            return formatWithThousands(amount) + " " + currency.symbol();
         }
         long divisor = pow10(dec);
         long whole = amount / divisor;
-        long frac = amount % divisor;
+        long frac = Math.abs(amount % divisor);
         String fracStr = String.format("%0" + dec + "d", frac);
-        return whole + "." + fracStr + " " + currency.symbol();
+        return formatWithThousands(whole) + "." + fracStr + " " + currency.symbol();
+    }
+
+    /** Format a number with space-separated thousands (locale-independent). */
+    private static String formatWithThousands(long value) {
+        if (value < 1000 && value > -1000) return String.valueOf(value);
+        String raw = String.valueOf(Math.abs(value));
+        StringBuilder sb = new StringBuilder();
+        int count = 0;
+        for (int i = raw.length() - 1; i >= 0; i--) {
+            if (count > 0 && count % 3 == 0) sb.append(' ');
+            sb.append(raw.charAt(i));
+            count++;
+        }
+        if (value < 0) sb.append('-');
+        return sb.reverse().toString();
     }
 
     private static String formatComposite(long amount, Currency currency) {

@@ -56,6 +56,13 @@ class CurrencyFormatterTest {
         assertEquals("0 G", CurrencyFormatter.format(0, gold0dec));
     }
 
+    @Test
+    void formatWithThousandsSeparator() {
+        assertEquals("1 234 567 G", CurrencyFormatter.format(1234567, gold0dec));
+        assertEquals("1 234 567.89 G", CurrencyFormatter.format(123456789, gold2dec));
+        assertEquals("1 000.00 G", CurrencyFormatter.format(100000, gold2dec));
+    }
+
     // ---- Composite currency (WoW-style base-10) ----
 
     @Test
