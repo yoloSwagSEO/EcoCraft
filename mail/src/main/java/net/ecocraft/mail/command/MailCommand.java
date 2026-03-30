@@ -129,7 +129,8 @@ public final class MailCommand {
                     "",  // no body via command
                     List.of(),  // no items via command
                     0, null,  // no currency
-                    0, null   // no COD
+                    0, null,  // no COD
+                    false     // no read receipt
             );
             source.sendSuccess(
                     () -> Component.translatable("ecocraft_mail.command.mail_sent", recipient.getName().getString()),
@@ -298,7 +299,7 @@ public final class MailCommand {
                     ),
                     0, null,
                     300, service.getDefaultCurrencyId(), // COD: 300 Gold
-                    false, false, false, false,
+                    false, false, false, false, false,
                     now, now,
                     now + MailService.DEFAULT_EXPIRY_MS
             );

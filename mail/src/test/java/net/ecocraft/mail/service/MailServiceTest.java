@@ -164,7 +164,7 @@ class MailServiceTest {
     @Test
     void sendMailCreatesMailInStorage() {
         String mailId = service.sendMail(SENDER, "Sender", RECIPIENT, "Hello", "Body",
-                List.of(), 0, null, 0, null);
+                List.of(), 0, null, 0, null, false);
 
         Mail mail = storage.getMailById(mailId);
         assertNotNull(mail);
@@ -182,7 +182,7 @@ class MailServiceTest {
         economy.setBalance(SENDER, GOLD, new BigDecimal("500"));
 
         service.sendMail(SENDER, "Sender", RECIPIENT, "Gift", "",
-                List.of(), 100, "gold", 0, null);
+                List.of(), 100, "gold", 0, null, false);
 
         assertEquals(new BigDecimal("400"), economy.getVirtualBalance(SENDER, GOLD));
     }
@@ -193,7 +193,7 @@ class MailServiceTest {
 
         assertThrows(MailService.MailException.class, () ->
                 service.sendMail(SENDER, "Sender", RECIPIENT, "Gift", "",
-                        List.of(), 100, "gold", 0, null));
+                        List.of(), 100, "gold", 0, null, false));
 
         // Balance unchanged
         assertEquals(new BigDecimal("50"), economy.getVirtualBalance(SENDER, GOLD));
@@ -202,7 +202,7 @@ class MailServiceTest {
     @Test
     void sendMailWithItems() {
         String mailId = service.sendMail(SENDER, "Sender", RECIPIENT, "Item mail", "",
-                swordItems(), 0, null, 0, null);
+                swordItems(), 0, null, 0, null, false);
 
         Mail mail = storage.getMailById(mailId);
         assertNotNull(mail);
@@ -214,7 +214,7 @@ class MailServiceTest {
     @Test
     void sendMailWithCOD() {
         String mailId = service.sendMail(SENDER, "Sender", RECIPIENT, "COD item", "",
-                swordItems(), 0, null, 200, "gold");
+                swordItems(), 0, null, 200, "gold", false);
 
         Mail mail = storage.getMailById(mailId);
         assertNotNull(mail);
@@ -270,7 +270,7 @@ class MailServiceTest {
     void collectMailDeliversCurrencyAndMarksCollected() {
         economy.setBalance(SENDER, GOLD, new BigDecimal("1000"));
         String mailId = service.sendMail(SENDER, "Sender", RECIPIENT, "Gift", "",
-                List.of(), 100, "gold", 0, null);
+                List.of(), 100, "gold", 0, null, false);
 
         service.collectMail(RECIPIENT, mailId);
 
@@ -285,7 +285,7 @@ class MailServiceTest {
     @Test
     void collectMailDeliversItems() {
         String mailId = service.sendMail(SENDER, "Sender", RECIPIENT, "Items", "",
-                swordItems(), 0, null, 0, null);
+                swordItems(), 0, null, 0, null, false);
 
         service.collectMail(RECIPIENT, mailId);
 
@@ -298,7 +298,7 @@ class MailServiceTest {
     void collectMailFailsIfAlreadyCollected() {
         economy.setBalance(SENDER, GOLD, new BigDecimal("1000"));
         String mailId = service.sendMail(SENDER, "Sender", RECIPIENT, "Gift", "",
-                List.of(), 50, "gold", 0, null);
+                List.of(), 50, "gold", 0, null, false);
 
         service.collectMail(RECIPIENT, mailId);
 
@@ -309,7 +309,7 @@ class MailServiceTest {
     @Test
     void collectMailFailsIfCOD() {
         String mailId = service.sendMail(SENDER, "Sender", RECIPIENT, "COD", "",
-                swordItems(), 0, null, 100, "gold");
+                swordItems(), 0, null, 100, "gold", false);
 
         assertThrows(MailService.MailException.class, () ->
                 service.collectMail(RECIPIENT, mailId));
@@ -317,7 +317,7 @@ class MailServiceTest {
 
     @Test
     void collectMailFailsIfNotOwner() {
-        String mailId = service.sendMail(SENDER, "Sender", RECIPIENT, "Hello", "", List.of(), 0, null, 0, null);
+        String mailId = service.sendMail(SENDER, "Sender", RECIPIENT, "Hello", "", List.of(), 0, null, 0, null, false);
         UUID other = UUID.randomUUID();
 
         assertThrows(MailService.MailException.class, () ->
@@ -334,15 +334,15 @@ class MailServiceTest {
 
         // Normal mail with currency
         service.sendMail(SENDER, "Sender", RECIPIENT, "Gift 1", "",
-                List.of(), 50, "gold", 0, null);
+                List.of(), 50, "gold", 0, null, false);
 
         // COD mail
         service.sendMail(SENDER, "Sender", RECIPIENT, "COD", "",
-                swordItems(), 0, null, 200, "gold");
+                swordItems(), 0, null, 200, "gold", false);
 
         // Normal mail with items
         service.sendMail(SENDER, "Sender", RECIPIENT, "Gift 2", "",
-                swordItems(), 0, null, 0, null);
+                swordItems(), 0, null, 0, null, false);
 
         int collected = service.collectAllMails(RECIPIENT);
 
@@ -357,7 +357,7 @@ class MailServiceTest {
     void collectAllMailsReturnsZeroWhenNothingToCollect() {
         // Text-only mail (no attachments)
         service.sendMail(SENDER, "Sender", RECIPIENT, "Hello", "Just text",
-                List.of(), 0, null, 0, null);
+                List.of(), 0, null, 0, null, false);
 
         int collected = service.collectAllMails(RECIPIENT);
         assertEquals(0, collected);
@@ -373,7 +373,7 @@ class MailServiceTest {
         economy.setBalance(RECIPIENT, GOLD, new BigDecimal("500"));
 
         String mailId = service.sendMail(SENDER, "Sender", RECIPIENT, "COD Item", "",
-                swordItems(), 0, null, 200, "gold");
+                swordItems(), 0, null, 200, "gold", false);
 
         service.payCOD(RECIPIENT, mailId);
 
@@ -399,7 +399,7 @@ class MailServiceTest {
         economy.setBalance(RECIPIENT, GOLD, new BigDecimal("500"));
 
         String mailId = service.sendMail(SENDER, "Sender", RECIPIENT, "COD Item", "",
-                swordItems(), 0, null, 200, "gold");
+                swordItems(), 0, null, 200, "gold", false);
 
         service.payCOD(RECIPIENT, mailId);
 
@@ -415,7 +415,7 @@ class MailServiceTest {
         economy.setBalance(RECIPIENT, GOLD, new BigDecimal("50")); // not enough
 
         String mailId = service.sendMail(SENDER, "Sender", RECIPIENT, "Expensive COD", "",
-                swordItems(), 0, null, 200, "gold");
+                swordItems(), 0, null, 200, "gold", false);
 
         assertThrows(MailService.MailException.class, () ->
                 service.payCOD(RECIPIENT, mailId));
@@ -431,7 +431,7 @@ class MailServiceTest {
 
         // COD mail that also has currency attached
         String mailId = service.sendMail(SENDER, "Sender", RECIPIENT, "COD + Currency", "",
-                swordItems(), 50, "gold", 200, "gold");
+                swordItems(), 50, "gold", 200, "gold", false);
 
         service.payCOD(RECIPIENT, mailId);
 
@@ -446,7 +446,7 @@ class MailServiceTest {
     @Test
     void returnCODCreatesReturnMailToSenderAndMarksReturned() {
         String mailId = service.sendMail(SENDER, "Sender", RECIPIENT, "COD Item", "",
-                swordItems(), 0, null, 100, "gold");
+                swordItems(), 0, null, 100, "gold", false);
 
         service.returnCOD(RECIPIENT, mailId);
 
@@ -469,7 +469,7 @@ class MailServiceTest {
     @Test
     void returnCODFailsIfAlreadyReturned() {
         String mailId = service.sendMail(SENDER, "Sender", RECIPIENT, "COD", "",
-                swordItems(), 0, null, 100, "gold");
+                swordItems(), 0, null, 100, "gold", false);
 
         service.returnCOD(RECIPIENT, mailId);
 
@@ -482,7 +482,7 @@ class MailServiceTest {
         economy.setBalance(RECIPIENT, GOLD, new BigDecimal("500"));
 
         String mailId = service.sendMail(SENDER, "Sender", RECIPIENT, "COD", "",
-                swordItems(), 0, null, 100, "gold");
+                swordItems(), 0, null, 100, "gold", false);
 
         service.payCOD(RECIPIENT, mailId);
 
@@ -498,7 +498,7 @@ class MailServiceTest {
     void deleteMailSucceedsWhenCanDelete() {
         // Text-only mail — canDelete requires read
         String mailId = service.sendMail(SENDER, "Sender", RECIPIENT, "Hello", "Text only",
-                List.of(), 0, null, 0, null);
+                List.of(), 0, null, 0, null, false);
 
         // Mark as read via getMailDetail
         service.getMailDetail(mailId, RECIPIENT);
@@ -512,7 +512,7 @@ class MailServiceTest {
     void deleteMailSucceedsAfterCollection() {
         economy.setBalance(SENDER, GOLD, new BigDecimal("1000"));
         String mailId = service.sendMail(SENDER, "Sender", RECIPIENT, "Gift", "",
-                swordItems(), 50, "gold", 0, null);
+                swordItems(), 50, "gold", 0, null, false);
 
         // Collect first
         service.collectMail(RECIPIENT, mailId);
@@ -527,7 +527,7 @@ class MailServiceTest {
     void deleteMailFailsWhenNotCanDelete() {
         // Mail with uncollected items — canDelete should be false
         String mailId = service.sendMail(SENDER, "Sender", RECIPIENT, "Items", "",
-                swordItems(), 0, null, 0, null);
+                swordItems(), 0, null, 0, null, false);
 
         assertThrows(MailService.MailException.class, () ->
                 service.deleteMail(RECIPIENT, mailId));
@@ -536,7 +536,7 @@ class MailServiceTest {
     @Test
     void deleteMailFailsWhenNotOwner() {
         String mailId = service.sendMail(SENDER, "Sender", RECIPIENT, "Hello", "",
-                List.of(), 0, null, 0, null);
+                List.of(), 0, null, 0, null, false);
 
         assertThrows(MailService.MailException.class, () ->
                 service.deleteMail(UUID.randomUUID(), mailId));
@@ -554,7 +554,7 @@ class MailServiceTest {
         Mail expiredCOD = new Mail(
             mailId, SENDER, "Sender", RECIPIENT, "Expired COD", "",
             swordItems(), 0, null, 100, "gold",
-            false, false, false, false,
+            false, false, false, false, false,
             past - 60_000, past - 60_000, past  // expired
         );
         storage.createMail(expiredCOD);
@@ -583,7 +583,7 @@ class MailServiceTest {
         Mail expiredNormal = new Mail(
             mailId, SENDER, "Sender", RECIPIENT, "Old mail", "",
             List.of(), 0, null, 0, null,
-            false, false, false, false,
+            false, false, false, false, false,
             past - 60_000, past - 60_000, past  // expired
         );
         storage.createMail(expiredNormal);
@@ -601,7 +601,7 @@ class MailServiceTest {
     @Test
     void getMailsForPlayerFiltersUnavailableAndExpired() {
         // Available mail
-        service.sendMail(SENDER, "Sender", RECIPIENT, "Available", "", List.of(), 0, null, 0, null);
+        service.sendMail(SENDER, "Sender", RECIPIENT, "Available", "", List.of(), 0, null, 0, null, false);
 
         // Future mail (not yet available)
         service.sendSystemMail("System", RECIPIENT, "Future", "", List.of(), 0, null, false,
@@ -619,7 +619,7 @@ class MailServiceTest {
     @Test
     void getMailDetailMarksAsRead() {
         String mailId = service.sendMail(SENDER, "Sender", RECIPIENT, "Unread", "",
-                List.of(), 0, null, 0, null);
+                List.of(), 0, null, 0, null, false);
 
         Mail mail = service.getMailDetail(mailId, RECIPIENT);
 
@@ -631,7 +631,7 @@ class MailServiceTest {
     @Test
     void getMailDetailFailsForWrongPlayer() {
         String mailId = service.sendMail(SENDER, "Sender", RECIPIENT, "Private", "",
-                List.of(), 0, null, 0, null);
+                List.of(), 0, null, 0, null, false);
 
         assertThrows(MailService.MailException.class, () ->
                 service.getMailDetail(mailId, UUID.randomUUID()));

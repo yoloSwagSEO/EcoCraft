@@ -22,6 +22,9 @@ public class MailConfig {
     public final ModConfigSpec.LongValue sendCost;
     public final ModConfigSpec.IntValue codFeePercent;
     public final ModConfigSpec.BooleanValue allowMailboxCraft;
+    public final ModConfigSpec.BooleanValue allowReadReceipt;
+    public final ModConfigSpec.LongValue readReceiptCost;
+    public final ModConfigSpec.LongValue sendCostPerItem;
 
     private MailConfig(ModConfigSpec.Builder builder) {
         builder.push("mail");
@@ -61,6 +64,18 @@ public class MailConfig {
         allowMailboxCraft = builder
             .comment("Players can craft the mailbox block")
             .define("allowMailboxCraft", true);
+
+        allowReadReceipt = builder
+            .comment("Allow read receipts on mails")
+            .define("allowReadReceipt", true);
+
+        readReceiptCost = builder
+            .comment("Cost to enable read receipt on a mail (0 = free)")
+            .defineInRange("readReceiptCost", 0L, 0L, Long.MAX_VALUE);
+
+        sendCostPerItem = builder
+            .comment("Additional cost per item attachment (0 = free)")
+            .defineInRange("sendCostPerItem", 0L, 0L, Long.MAX_VALUE);
 
         builder.pop();
     }

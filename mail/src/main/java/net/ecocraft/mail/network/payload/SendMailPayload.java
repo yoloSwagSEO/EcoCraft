@@ -18,7 +18,8 @@ public record SendMailPayload(
         String body,
         List<Integer> inventorySlots,
         long currencyAmount,
-        long codAmount
+        long codAmount,
+        boolean readReceipt
 ) implements CustomPacketPayload {
 
     public static final CustomPacketPayload.Type<SendMailPayload> TYPE =
@@ -33,7 +34,8 @@ public record SendMailPayload(
             List<Integer> inventorySlots = ByteBufCodecs.VAR_INT.apply(ByteBufCodecs.list()).decode(buf);
             long currencyAmount = ByteBufCodecs.VAR_LONG.decode(buf);
             long codAmount = ByteBufCodecs.VAR_LONG.decode(buf);
-            return new SendMailPayload(recipientName, subject, body, inventorySlots, currencyAmount, codAmount);
+            boolean readReceipt = ByteBufCodecs.BOOL.decode(buf);
+            return new SendMailPayload(recipientName, subject, body, inventorySlots, currencyAmount, codAmount, readReceipt);
         }
 
         @Override

@@ -41,7 +41,7 @@ class MailStorageProviderTest {
         return new Mail(
             id, SENDER, "SenderName", recipient, subject, "Body text",
             List.of(), 0L, null, codAmount, codAmount > 0 ? "gold" : null,
-            read, collected, indestructible, false,
+            read, collected, indestructible, false, false,
             System.currentTimeMillis(), System.currentTimeMillis(), expiresAt
         );
     }
@@ -50,7 +50,7 @@ class MailStorageProviderTest {
         return new Mail(
             id, SENDER, "SenderName", recipient, "Subject", "Body",
             items, 0L, null, 0L, null,
-            false, false, false, false,
+            false, false, false, false, false,
             System.currentTimeMillis(), System.currentTimeMillis(),
             System.currentTimeMillis() + 86400_000L * 30
         );
@@ -60,7 +60,7 @@ class MailStorageProviderTest {
         return new Mail(
             id, SENDER, "SenderName", recipient, "Currency mail", "Body",
             List.of(), amount, "gold", 0L, null,
-            false, false, false, false,
+            false, false, false, false, false,
             System.currentTimeMillis(), System.currentTimeMillis(),
             System.currentTimeMillis() + 86400_000L * 30
         );
@@ -106,19 +106,19 @@ class MailStorageProviderTest {
 
         // Unread mail created earlier
         Mail unread1 = new Mail("m1", SENDER, "S", PLAYER_A, "Unread old", "",
-            List.of(), 0, null, 0, null, false, false, false, false,
+            List.of(), 0, null, 0, null, false, false, false, false, false,
             now - 2000, now - 2000, future);
         // Unread mail created later
         Mail unread2 = new Mail("m2", SENDER, "S", PLAYER_A, "Unread new", "",
-            List.of(), 0, null, 0, null, false, false, false, false,
+            List.of(), 0, null, 0, null, false, false, false, false, false,
             now - 1000, now - 1000, future);
         // Read mail
         Mail readMail = new Mail("m3", SENDER, "S", PLAYER_A, "Read", "",
-            List.of(), 0, null, 0, null, true, false, false, false,
+            List.of(), 0, null, 0, null, true, false, false, false, false,
             now - 500, now - 500, future);
         // Another player's mail
         Mail otherPlayer = new Mail("m4", SENDER, "S", PLAYER_B, "Other", "",
-            List.of(), 0, null, 0, null, false, false, false, false,
+            List.of(), 0, null, 0, null, false, false, false, false, false,
             now, now, future);
 
         db.createMail(unread1);
@@ -211,7 +211,7 @@ class MailStorageProviderTest {
         Mail collectedCod = makeMail("m2", PLAYER_A, "COD collected", false, true, false, 100, past);
         // Expired COD but already returned -> should NOT be returned
         Mail returnedCod = new Mail("m3", SENDER, "S", PLAYER_A, "COD returned", "",
-            List.of(), 0, null, 100, "gold", false, false, false, true,
+            List.of(), 0, null, 100, "gold", false, false, false, true, false,
             System.currentTimeMillis() - 2000, System.currentTimeMillis() - 2000, past);
         // Not expired COD -> should NOT be returned
         Mail activeCod = makeMail("m4", PLAYER_A, "COD active", false, false, false, 100, future);
@@ -239,7 +239,7 @@ class MailStorageProviderTest {
         Mail available = makeMail("m1", PLAYER_A, "Available", false, false, false, 0, future);
         // Not yet available (availableAt in future) -> don't count
         Mail notYet = new Mail("m2", SENDER, "S", PLAYER_A, "Not yet", "",
-            List.of(), 0, null, 0, null, false, false, false, false,
+            List.of(), 0, null, 0, null, false, false, false, false, false,
             now, now + 86400_000L, future);
         // Expired, not indestructible -> don't count
         Mail expired = makeMail("m3", PLAYER_A, "Expired", false, false, false, 0, past);
@@ -271,7 +271,7 @@ class MailStorageProviderTest {
             withCurrency.recipientUuid(), withCurrency.subject(), withCurrency.body(),
             withCurrency.items(), withCurrency.currencyAmount(), withCurrency.currencyId(),
             withCurrency.codAmount(), withCurrency.codCurrencyId(),
-            true, false, false, false,
+            true, false, false, false, false,
             withCurrency.createdAt(), withCurrency.availableAt(), withCurrency.expiresAt()
         );
         assertFalse(readWithCurrency.canDelete());
@@ -282,7 +282,7 @@ class MailStorageProviderTest {
             withCurrency.recipientUuid(), withCurrency.subject(), withCurrency.body(),
             withCurrency.items(), withCurrency.currencyAmount(), withCurrency.currencyId(),
             withCurrency.codAmount(), withCurrency.codCurrencyId(),
-            true, true, false, false,
+            true, true, false, false, false,
             withCurrency.createdAt(), withCurrency.availableAt(), withCurrency.expiresAt()
         );
         assertTrue(collectedWithCurrency.canDelete());
@@ -309,7 +309,7 @@ class MailStorageProviderTest {
         Mail systemMail = new Mail(
             "sys-1", null, "Hôtel des Ventes", PLAYER_A, "Vente réussie", "Votre objet a été vendu.",
             List.of(), 1000L, "gold", 0L, null,
-            false, false, true, false,
+            false, false, true, false, false,
             System.currentTimeMillis(), System.currentTimeMillis(),
             System.currentTimeMillis() + 86400_000L * 30
         );

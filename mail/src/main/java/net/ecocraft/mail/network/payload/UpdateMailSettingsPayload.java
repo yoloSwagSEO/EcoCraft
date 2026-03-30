@@ -18,7 +18,10 @@ public record UpdateMailSettingsPayload(
         int maxItemAttachments,
         int mailExpiryDays,
         long sendCost,
-        int codFeePercent
+        int codFeePercent,
+        boolean allowReadReceipt,
+        long readReceiptCost,
+        long sendCostPerItem
 ) implements CustomPacketPayload {
 
     public static final Type<UpdateMailSettingsPayload> TYPE =
@@ -36,9 +39,13 @@ public record UpdateMailSettingsPayload(
             int mailExpiryDays = ByteBufCodecs.VAR_INT.decode(buf);
             long sendCost = ByteBufCodecs.VAR_LONG.decode(buf);
             int codFeePercent = ByteBufCodecs.VAR_INT.decode(buf);
+            boolean allowReadReceipt = ByteBufCodecs.BOOL.decode(buf);
+            long readReceiptCost = ByteBufCodecs.VAR_LONG.decode(buf);
+            long sendCostPerItem = ByteBufCodecs.VAR_LONG.decode(buf);
             return new UpdateMailSettingsPayload(allowPlayerMail, allowItemAttachments,
                     allowCurrencyAttachments, allowCOD, allowMailboxCraft,
-                    maxItemAttachments, mailExpiryDays, sendCost, codFeePercent);
+                    maxItemAttachments, mailExpiryDays, sendCost, codFeePercent,
+                    allowReadReceipt, readReceiptCost, sendCostPerItem);
         }
 
         @Override
@@ -52,6 +59,9 @@ public record UpdateMailSettingsPayload(
             ByteBufCodecs.VAR_INT.encode(buf, payload.mailExpiryDays());
             ByteBufCodecs.VAR_LONG.encode(buf, payload.sendCost());
             ByteBufCodecs.VAR_INT.encode(buf, payload.codFeePercent());
+            ByteBufCodecs.BOOL.encode(buf, payload.allowReadReceipt());
+            ByteBufCodecs.VAR_LONG.encode(buf, payload.readReceiptCost());
+            ByteBufCodecs.VAR_LONG.encode(buf, payload.sendCostPerItem());
         }
     };
 
