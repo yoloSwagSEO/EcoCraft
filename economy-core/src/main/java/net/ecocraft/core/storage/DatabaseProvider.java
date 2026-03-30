@@ -39,4 +39,16 @@ public interface DatabaseProvider {
         UUID id, @Nullable UUID from, @Nullable UUID to,
         BigDecimal amount, String currencyId, String type, Instant timestamp
     ) {}
+
+    // --- Exchange rates ---
+    record StoredExchangeRate(String fromCurrency, String toCurrency, BigDecimal rate, BigDecimal feeRate) {}
+
+    void saveExchangeRate(String fromCurrency, String toCurrency, BigDecimal rate, BigDecimal feeRate);
+    @Nullable StoredExchangeRate getExchangeRate(String fromCurrency, String toCurrency);
+    void deleteExchangeRate(String fromCurrency, String toCurrency);
+    List<StoredExchangeRate> getAllExchangeRates();
+
+    // --- Daily exchange limits ---
+    void recordDailyExchange(String playerUuid, String fromCurrency, String toCurrency, long amount);
+    long getDailyExchangeTotal(String playerUuid, String fromCurrency, String toCurrency);
 }

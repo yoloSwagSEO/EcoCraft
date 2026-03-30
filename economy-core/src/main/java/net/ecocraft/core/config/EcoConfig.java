@@ -33,6 +33,12 @@ public class EcoConfig {
     // Vault
     public final ModConfigSpec.BooleanValue vaultEnabled;
 
+    // Exchange
+    public final ModConfigSpec.DoubleValue exchangeGlobalFeePercent;
+    public final ModConfigSpec.LongValue exchangeMinAmount;
+    public final ModConfigSpec.LongValue exchangeMaxAmount;
+    public final ModConfigSpec.LongValue exchangeDailyLimitPerPlayer;
+
     private EcoConfig(ModConfigSpec.Builder builder) {
         builder.push("storage");
         storageType = builder
@@ -61,6 +67,21 @@ public class EcoConfig {
         vaultEnabled = builder
             .comment("Enable the vault block for physical/virtual currency sync")
             .define("enabled", true);
+        builder.pop();
+
+        builder.push("exchange");
+        exchangeGlobalFeePercent = builder
+            .comment("Global fee percentage applied to all cross-rate exchanges (0-100)")
+            .defineInRange("globalFeePercent", 2.0, 0.0, 100.0);
+        exchangeMinAmount = builder
+            .comment("Minimum amount per exchange (0 = disabled)")
+            .defineInRange("minAmount", 0L, 0L, Long.MAX_VALUE);
+        exchangeMaxAmount = builder
+            .comment("Maximum amount per exchange (0 = disabled)")
+            .defineInRange("maxAmount", 0L, 0L, Long.MAX_VALUE);
+        exchangeDailyLimitPerPlayer = builder
+            .comment("Daily exchange limit per player per currency pair (0 = disabled)")
+            .defineInRange("dailyLimitPerPlayer", 0L, 0L, Long.MAX_VALUE);
         builder.pop();
     }
 }

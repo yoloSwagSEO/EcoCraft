@@ -6,6 +6,7 @@ import java.math.BigDecimal;
 import java.nio.file.Path;
 import java.sql.*;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -52,6 +53,29 @@ public class SqliteDatabaseProvider implements DatabaseProvider {
                     """);
                     stmt.execute("CREATE INDEX IF NOT EXISTS idx_tx_from ON transactions(from_uuid, timestamp DESC)");
                     stmt.execute("CREATE INDEX IF NOT EXISTS idx_tx_to ON transactions(to_uuid, timestamp DESC)");
+                }
+            });
+            migrator.addMigration(2, "Exchange rates and daily limits tables", conn -> {
+                try (Statement stmt = conn.createStatement()) {
+                    stmt.execute("""
+                        CREATE TABLE IF NOT EXISTS exchange_rates (
+                            from_currency TEXT NOT NULL,
+                            to_currency TEXT NOT NULL,
+                            rate TEXT NOT NULL,
+                            fee_rate TEXT NOT NULL DEFAULT '0',
+                            PRIMARY KEY (from_currency, to_currency)
+                        )
+                    """);
+                    stmt.execute("""
+                        CREATE TABLE IF NOT EXISTS exchange_daily (
+                            player_uuid TEXT NOT NULL,
+                            from_currency TEXT NOT NULL,
+                            to_currency TEXT NOT NULL,
+                            day TEXT NOT NULL,
+                            total_amount INTEGER NOT NULL DEFAULT 0,
+                            PRIMARY KEY (player_uuid, from_currency, to_currency, day)
+                        )
+                    """);
                 }
             });
             migrator.migrate(connection);
@@ -205,6 +229,114 @@ public class SqliteDatabaseProvider implements DatabaseProvider {
             return rs.next() ? rs.getLong(1) : 0;
         } catch (SQLException e) {
             throw new RuntimeException("Failed to count transactions", e);
+        }
+    }
+
+    // --- Exchange rates ---
+
+    @Override
+    public synchronized void saveExchangeRate(String fromCurrency, String toCurrency, BigDecimal rate, BigDecimal feeRate) {
+        try (PreparedStatement ps = connection.prepareStatement("""
+                INSERT OR REPLACE INTO exchange_rates (from_currency, to_currency, rate, fee_rate)
+                VALUES (?, ?, ?, ?)
+            """)) {
+            ps.setString(1, fromCurrency);
+            ps.setString(2, toCurrency);
+            ps.setString(3, rate.toPlainString());
+            ps.setString(4, feeRate.toPlainString());
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to save exchange rate", e);
+        }
+    }
+
+    @Override
+    public synchronized @Nullable StoredExchangeRate getExchangeRate(String fromCurrency, String toCurrency) {
+        try (PreparedStatement ps = connection.prepareStatement(
+                "SELECT rate, fee_rate FROM exchange_rates WHERE from_currency = ? AND to_currency = ?")) {
+            ps.setString(1, fromCurrency);
+            ps.setString(2, toCurrency);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                return new StoredExchangeRate(fromCurrency, toCurrency,
+                        new BigDecimal(rs.getString("rate")),
+                        new BigDecimal(rs.getString("fee_rate")));
+            }
+            return null;
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to get exchange rate", e);
+        }
+    }
+
+    @Override
+    public synchronized void deleteExchangeRate(String fromCurrency, String toCurrency) {
+        try (PreparedStatement ps = connection.prepareStatement(
+                "DELETE FROM exchange_rates WHERE from_currency = ? AND to_currency = ?")) {
+            ps.setString(1, fromCurrency);
+            ps.setString(2, toCurrency);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to delete exchange rate", e);
+        }
+    }
+
+    @Override
+    public synchronized List<StoredExchangeRate> getAllExchangeRates() {
+        List<StoredExchangeRate> results = new ArrayList<>();
+        try (PreparedStatement ps = connection.prepareStatement(
+                "SELECT from_currency, to_currency, rate, fee_rate FROM exchange_rates")) {
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                results.add(new StoredExchangeRate(
+                        rs.getString("from_currency"),
+                        rs.getString("to_currency"),
+                        new BigDecimal(rs.getString("rate")),
+                        new BigDecimal(rs.getString("fee_rate"))));
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to get all exchange rates", e);
+        }
+        return results;
+    }
+
+    // --- Daily exchange limits ---
+
+    @Override
+    public synchronized void recordDailyExchange(String playerUuid, String fromCurrency, String toCurrency, long amount) {
+        String day = LocalDate.now().toString();
+        try (PreparedStatement ps = connection.prepareStatement("""
+                INSERT INTO exchange_daily (player_uuid, from_currency, to_currency, day, total_amount)
+                VALUES (?, ?, ?, ?, ?)
+                ON CONFLICT(player_uuid, from_currency, to_currency, day)
+                DO UPDATE SET total_amount = total_amount + excluded.total_amount
+            """)) {
+            ps.setString(1, playerUuid);
+            ps.setString(2, fromCurrency);
+            ps.setString(3, toCurrency);
+            ps.setString(4, day);
+            ps.setLong(5, amount);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to record daily exchange", e);
+        }
+    }
+
+    @Override
+    public synchronized long getDailyExchangeTotal(String playerUuid, String fromCurrency, String toCurrency) {
+        String day = LocalDate.now().toString();
+        try (PreparedStatement ps = connection.prepareStatement(
+                "SELECT total_amount FROM exchange_daily WHERE player_uuid = ? AND from_currency = ? AND to_currency = ? AND day = ?")) {
+            ps.setString(1, playerUuid);
+            ps.setString(2, fromCurrency);
+            ps.setString(3, toCurrency);
+            ps.setString(4, day);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                return rs.getLong("total_amount");
+            }
+            return 0;
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to get daily exchange total", e);
         }
     }
 
