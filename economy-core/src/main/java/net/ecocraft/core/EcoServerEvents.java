@@ -48,12 +48,15 @@ public class EcoServerEvents {
 
         // Initialize currency registry with default currency from config
         var currencyRegistry = new CurrencyRegistryImpl();
-        var defaultCurrency = Currency.virtual(
+        var defaultCurrency = Currency.builder(
             EcoConfig.CONFIG.defaultCurrencyId.get(),
             EcoConfig.CONFIG.defaultCurrencyName.get(),
-            EcoConfig.CONFIG.defaultCurrencySymbol.get(),
-            EcoConfig.CONFIG.defaultCurrencyDecimals.get()
-        );
+            EcoConfig.CONFIG.defaultCurrencySymbol.get()
+        )
+            .decimals(EcoConfig.CONFIG.defaultCurrencyDecimals.get())
+            .exchangeable(true)
+            .referenceRate(java.math.BigDecimal.ONE)
+            .build();
         currencyRegistry.register(defaultCurrency);
 
         // Initialize services
