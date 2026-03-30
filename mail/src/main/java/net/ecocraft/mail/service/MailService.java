@@ -45,6 +45,18 @@ public class MailService {
     private int codFeePercent = DEFAULT_COD_FEE_PERCENT;
     private long expiryMs = DEFAULT_EXPIRY_MS;
 
+    // Feature toggles (default: all enabled)
+    private boolean allowPlayerMail = true;
+    private boolean allowItemAttachments = true;
+    private boolean allowCurrencyAttachments = true;
+    private boolean allowCOD = true;
+    private boolean allowReadReceipt = true;
+
+    // Cost settings (in smallest currency units, 0 = free)
+    private long sendCost = 0;
+    private long sendCostPerItem = 0;
+    private long readReceiptCost = 0;
+
     @Nullable
     private ItemDeliverer itemDeliverer;
 
@@ -122,6 +134,38 @@ public class MailService {
         this.expiryMs = expiryMs;
     }
 
+    public void setAllowPlayerMail(boolean allow) {
+        this.allowPlayerMail = allow;
+    }
+
+    public void setAllowItemAttachments(boolean allow) {
+        this.allowItemAttachments = allow;
+    }
+
+    public void setAllowCurrencyAttachments(boolean allow) {
+        this.allowCurrencyAttachments = allow;
+    }
+
+    public void setAllowCOD(boolean allow) {
+        this.allowCOD = allow;
+    }
+
+    public void setAllowReadReceipt(boolean allow) {
+        this.allowReadReceipt = allow;
+    }
+
+    public void setSendCost(long cost) {
+        this.sendCost = cost;
+    }
+
+    public void setSendCostPerItem(long cost) {
+        this.sendCostPerItem = cost;
+    }
+
+    public void setReadReceiptCost(long cost) {
+        this.readReceiptCost = cost;
+    }
+
     public MailStorageProvider getStorage() {
         return storage;
     }
@@ -163,6 +207,44 @@ public class MailService {
                     currencyAmount > 0 && currencyId != null,
                     codAmount)) {
             throw new MailException("Mail sending blocked by script");
+        }
+
+        // Feature toggle checks
+        if (!allowPlayerMail) {
+            throw new MailException("Player mail is disabled");
+        }
+        if (!allowItemAttachments && items != null && !items.isEmpty()) {
+            throw new MailException("Item attachments are disabled");
+        }
+        if (!allowCurrencyAttachments && currencyAmount > 0 && currencyId != null) {
+            throw new MailException("Currency attachments are disabled");
+        }
+        if (!allowCOD && codAmount > 0) {
+            throw new MailException("Cash on delivery is disabled");
+        }
+
+        // Override read receipt if feature is disabled
+        if (!allowReadReceipt) {
+            readReceipt = false;
+        }
+
+        // Charge send costs
+        long totalSendCost = sendCost;
+        if (sendCostPerItem > 0 && items != null) {
+            totalSendCost += (long) items.size() * sendCostPerItem;
+        }
+        if (readReceipt && readReceiptCost > 0) {
+            totalSendCost += readReceiptCost;
+        }
+        if (totalSendCost > 0) {
+            Currency defaultCurrency = currencies.getDefault();
+            if (defaultCurrency != null) {
+                BigDecimal costBD = fromSmallestUnit(totalSendCost, defaultCurrency);
+                TransactionResult costResult = economy.withdraw(senderUuid, costBD, defaultCurrency);
+                if (!costResult.successful()) {
+                    throw new MailException("Insufficient funds for send cost: " + costResult.errorMessage());
+                }
+            }
         }
 
         // Withdraw currency from sender if attached
