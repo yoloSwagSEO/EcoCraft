@@ -57,7 +57,7 @@ public class EcoConfig {
             .define("defaultCurrency.id", "gold");
         defaultCurrencyName = builder.define("defaultCurrency.name", "Gold");
         defaultCurrencySymbol = builder.define("defaultCurrency.symbol", "\u26C1");
-        defaultCurrencyDecimals = builder.defineInRange("defaultCurrency.decimals", 2, 0, 4);
+        defaultCurrencyDecimals = builder.defineInRange("defaultCurrency.decimals", 0, 0, 4);
         startingBalance = builder
             .comment("Starting balance for new players")
             .defineInRange("startingBalance", 100.0, 0.0, Double.MAX_VALUE);
