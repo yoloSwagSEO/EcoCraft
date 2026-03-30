@@ -235,6 +235,16 @@ public class AuctionStorageProvider {
                 }
             });
 
+            migrator.addMigration(10, "Decimal migration - multiply all amounts by 100 for decimals=2", conn -> {
+                try (Statement stmt = conn.createStatement()) {
+                    stmt.execute("UPDATE ah_listings SET buyout_price = buyout_price * 100, starting_bid = starting_bid * 100, current_bid = current_bid * 100, tax_amount = tax_amount * 100");
+                    stmt.execute("UPDATE ah_bids SET amount = amount * 100");
+                    stmt.execute("UPDATE ah_parcels SET amount = amount * 100");
+                    stmt.execute("UPDATE ah_price_history SET sale_price = sale_price * 100");
+                    stmt.execute("UPDATE ah_pending_notifications SET amount = amount * 100");
+                }
+            });
+
             migrator.migrate(connection);
         } catch (SQLException e) {
             throw new RuntimeException("Failed to initialize auction-house database", e);

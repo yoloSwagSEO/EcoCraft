@@ -1,5 +1,6 @@
 package net.ecocraft.mail.storage;
 
+import net.ecocraft.core.storage.DatabaseMigrator;
 import net.ecocraft.mail.data.Draft;
 import net.ecocraft.mail.data.Mail;
 import net.ecocraft.mail.data.MailItemAttachment;
@@ -39,74 +40,78 @@ public class MailStorageProvider {
     // -------------------------------------------------------------------------
 
     public synchronized void initialize() {
-        try (Statement stmt = connection.createStatement()) {
-            stmt.execute("""
-                CREATE TABLE IF NOT EXISTS mails (
-                    id               TEXT PRIMARY KEY,
-                    sender_uuid      TEXT,
-                    sender_name      TEXT NOT NULL,
-                    recipient_uuid   TEXT NOT NULL,
-                    subject          TEXT NOT NULL,
-                    body             TEXT NOT NULL DEFAULT '',
-                    currency_amount  INTEGER NOT NULL DEFAULT 0,
-                    currency_id      TEXT,
-                    cod_amount       INTEGER NOT NULL DEFAULT 0,
-                    cod_currency_id  TEXT,
-                    read             INTEGER NOT NULL DEFAULT 0,
-                    collected        INTEGER NOT NULL DEFAULT 0,
-                    indestructible   INTEGER NOT NULL DEFAULT 0,
-                    returned         INTEGER NOT NULL DEFAULT 0,
-                    read_receipt     INTEGER NOT NULL DEFAULT 0,
-                    created_at       INTEGER NOT NULL,
-                    available_at     INTEGER NOT NULL,
-                    expires_at       INTEGER NOT NULL
-                )
-                """);
-            stmt.execute("CREATE INDEX IF NOT EXISTS idx_mails_recipient ON mails(recipient_uuid, collected)");
-            stmt.execute("CREATE INDEX IF NOT EXISTS idx_mails_sender ON mails(sender_uuid)");
-            stmt.execute("""
-                CREATE TABLE IF NOT EXISTS mail_items (
-                    id         INTEGER PRIMARY KEY AUTOINCREMENT,
-                    mail_id    TEXT NOT NULL,
-                    item_id    TEXT NOT NULL,
-                    item_name  TEXT NOT NULL,
-                    item_nbt   TEXT,
-                    quantity   INTEGER NOT NULL DEFAULT 1,
-                    FOREIGN KEY (mail_id) REFERENCES mails(id) ON DELETE CASCADE
-                )
-                """);
-            stmt.execute("CREATE INDEX IF NOT EXISTS idx_mail_items_mail ON mail_items(mail_id)");
-            stmt.execute("PRAGMA foreign_keys = ON");
+        try {
+            DatabaseMigrator migrator = new DatabaseMigrator("ecocraft-mail");
 
-            // Migration: add read_receipt column if missing
-            try {
-                stmt.execute("ALTER TABLE mails ADD COLUMN read_receipt INTEGER DEFAULT 0");
-            } catch (SQLException ignored) {
-                // Column already exists
-            }
+            migrator.addMigration(1, "Initial schema - mails, mail_items, mail_drafts", conn -> {
+                try (Statement stmt = conn.createStatement()) {
+                    stmt.execute("""
+                        CREATE TABLE IF NOT EXISTS mails (
+                            id               TEXT PRIMARY KEY,
+                            sender_uuid      TEXT,
+                            sender_name      TEXT NOT NULL,
+                            recipient_uuid   TEXT NOT NULL,
+                            subject          TEXT NOT NULL,
+                            body             TEXT NOT NULL DEFAULT '',
+                            currency_amount  INTEGER NOT NULL DEFAULT 0,
+                            currency_id      TEXT,
+                            cod_amount       INTEGER NOT NULL DEFAULT 0,
+                            cod_currency_id  TEXT,
+                            read             INTEGER NOT NULL DEFAULT 0,
+                            collected        INTEGER NOT NULL DEFAULT 0,
+                            indestructible   INTEGER NOT NULL DEFAULT 0,
+                            returned         INTEGER NOT NULL DEFAULT 0,
+                            read_receipt     INTEGER NOT NULL DEFAULT 0,
+                            created_at       INTEGER NOT NULL,
+                            available_at     INTEGER NOT NULL,
+                            expires_at       INTEGER NOT NULL
+                        )
+                        """);
+                    stmt.execute("CREATE INDEX IF NOT EXISTS idx_mails_recipient ON mails(recipient_uuid, collected)");
+                    stmt.execute("CREATE INDEX IF NOT EXISTS idx_mails_sender ON mails(sender_uuid)");
+                    stmt.execute("""
+                        CREATE TABLE IF NOT EXISTS mail_items (
+                            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+                            mail_id    TEXT NOT NULL,
+                            item_id    TEXT NOT NULL,
+                            item_name  TEXT NOT NULL,
+                            item_nbt   TEXT,
+                            quantity   INTEGER NOT NULL DEFAULT 1,
+                            FOREIGN KEY (mail_id) REFERENCES mails(id) ON DELETE CASCADE
+                        )
+                        """);
+                    stmt.execute("CREATE INDEX IF NOT EXISTS idx_mail_items_mail ON mail_items(mail_id)");
+                    stmt.execute("PRAGMA foreign_keys = ON");
+
+                    // read_receipt column included in initial schema above
+                    // (legacy migration handled by CREATE TABLE IF NOT EXISTS)
+
+                    stmt.execute("""
+                        CREATE TABLE IF NOT EXISTS mail_drafts (
+                            id              TEXT PRIMARY KEY,
+                            player_uuid     TEXT NOT NULL,
+                            recipient       TEXT NOT NULL DEFAULT '',
+                            subject         TEXT NOT NULL DEFAULT '',
+                            body            TEXT NOT NULL DEFAULT '',
+                            currency_amount INTEGER DEFAULT 0,
+                            cod_amount      INTEGER DEFAULT 0,
+                            created_at      INTEGER NOT NULL
+                        )
+                        """);
+                    stmt.execute("CREATE INDEX IF NOT EXISTS idx_drafts_player ON mail_drafts(player_uuid)");
+                }
+            });
+
+            migrator.addMigration(2, "Decimal migration - multiply all amounts by 100 for decimals=2", conn -> {
+                try (Statement stmt = conn.createStatement()) {
+                    stmt.execute("UPDATE mails SET currency_amount = currency_amount * 100, cod_amount = cod_amount * 100");
+                    stmt.execute("UPDATE mail_drafts SET currency_amount = currency_amount * 100, cod_amount = cod_amount * 100");
+                }
+            });
+
+            migrator.migrate(connection);
         } catch (SQLException e) {
             throw new RuntimeException("Failed to initialize mail database", e);
-        }
-        initDraftsTable();
-    }
-
-    private synchronized void initDraftsTable() {
-        try (Statement stmt = connection.createStatement()) {
-            stmt.execute("""
-                CREATE TABLE IF NOT EXISTS mail_drafts (
-                    id              TEXT PRIMARY KEY,
-                    player_uuid     TEXT NOT NULL,
-                    recipient       TEXT NOT NULL DEFAULT '',
-                    subject         TEXT NOT NULL DEFAULT '',
-                    body            TEXT NOT NULL DEFAULT '',
-                    currency_amount INTEGER DEFAULT 0,
-                    cod_amount      INTEGER DEFAULT 0,
-                    created_at      INTEGER NOT NULL
-                )
-                """);
-            stmt.execute("CREATE INDEX IF NOT EXISTS idx_drafts_player ON mail_drafts(player_uuid)");
-        } catch (SQLException e) {
-            throw new RuntimeException("Failed to initialize drafts table", e);
         }
     }
 

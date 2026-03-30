@@ -94,6 +94,39 @@ public class SqliteDatabaseProvider implements DatabaseProvider {
                     """);
                 }
             });
+            migrator.addMigration(4, "Decimal migration - multiply all amounts by 100 for decimals=2", conn -> {
+                try (Statement stmt = conn.createStatement()) {
+                    // balances.amount is TEXT (BigDecimal string) — read, multiply, write back
+                    try (ResultSet rs = stmt.executeQuery("SELECT player_uuid, currency_id, amount FROM balances")) {
+                        try (PreparedStatement update = conn.prepareStatement(
+                                "UPDATE balances SET amount = ? WHERE player_uuid = ? AND currency_id = ?")) {
+                            while (rs.next()) {
+                                BigDecimal old = new BigDecimal(rs.getString("amount"));
+                                BigDecimal migrated = old.multiply(BigDecimal.valueOf(100));
+                                update.setString(1, migrated.toPlainString());
+                                update.setString(2, rs.getString("player_uuid"));
+                                update.setString(3, rs.getString("currency_id"));
+                                update.addBatch();
+                            }
+                            update.executeBatch();
+                        }
+                    }
+                    // transactions.amount is TEXT (BigDecimal string) — same approach
+                    try (ResultSet rs = stmt.executeQuery("SELECT id, amount FROM transactions")) {
+                        try (PreparedStatement update = conn.prepareStatement(
+                                "UPDATE transactions SET amount = ? WHERE id = ?")) {
+                            while (rs.next()) {
+                                BigDecimal old = new BigDecimal(rs.getString("amount"));
+                                BigDecimal migrated = old.multiply(BigDecimal.valueOf(100));
+                                update.setString(1, migrated.toPlainString());
+                                update.setString(2, rs.getString("id"));
+                                update.addBatch();
+                            }
+                            update.executeBatch();
+                        }
+                    }
+                }
+            });
             migrator.migrate(connection);
         } catch (SQLException e) {
             throw new RuntimeException("Failed to initialize SQLite database", e);
