@@ -94,6 +94,29 @@ public class MailServerEvents {
             }
         });
 
+        // Wire read receipt notifier
+        mailService.setReadReceiptNotifier((senderUuid, readerName, subject) -> {
+            ServerPlayer sender = server.getPlayerList().getPlayer(senderUuid);
+            if (sender != null) {
+                net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(
+                        sender,
+                        new net.ecocraft.mail.network.payload.MailNotificationPayload(
+                                "READ_RECEIPT", subject, readerName)
+                );
+            }
+        });
+
+        // Wire KubeJS event dispatcher if KubeJS is loaded
+        if (net.neoforged.fml.ModList.get().isLoaded("kubejs")) {
+            try {
+                var dispatcher = new net.ecocraft.mail.compat.kubejs.MailEventDispatcherImpl(server);
+                mailService.setMailEventDispatcher(dispatcher);
+                LOGGER.info("KubeJS integration enabled for EcoCraft Mail");
+            } catch (Exception e) {
+                LOGGER.warn("Failed to initialize KubeJS Mail integration: {}", e.getMessage());
+            }
+        }
+
         // Apply config to service
         applyConfig();
 
@@ -105,6 +128,9 @@ public class MailServerEvents {
         if (storageProvider != null) {
             storageProvider.shutdown();
             storageProvider = null;
+        }
+        if (mailService != null) {
+            mailService.setMailEventDispatcher(null);
         }
         mailService = null;
         serverInstance = null;
