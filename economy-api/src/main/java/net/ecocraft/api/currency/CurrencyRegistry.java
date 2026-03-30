@@ -39,4 +39,11 @@ public interface CurrencyRegistry {
      * @return true if registered
      */
     boolean exists(String id);
+
+    /**
+     * Unregisters a currency. Throws {@link IllegalArgumentException} if the currency
+     * is not registered or is the default currency.
+     * @param id the currency id to remove
+     */
+    void unregister(String id);
 }

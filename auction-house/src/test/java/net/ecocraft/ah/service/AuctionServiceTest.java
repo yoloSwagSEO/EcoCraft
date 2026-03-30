@@ -101,6 +101,9 @@ class AuctionServiceTest {
 
         @Override
         public boolean exists(String id) { return map.containsKey(id); }
+
+        @Override
+        public void unregister(String id) { map.remove(id); }
     }
 
     // -------------------------------------------------------------------------

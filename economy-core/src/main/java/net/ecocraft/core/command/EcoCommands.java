@@ -9,6 +9,7 @@ import net.ecocraft.api.currency.Currency;
 import net.ecocraft.api.currency.CurrencyRegistry;
 import net.ecocraft.api.exchange.ExchangeService;
 import net.ecocraft.api.transaction.TransactionLog;
+import net.ecocraft.core.storage.DatabaseProvider;
 import net.minecraft.commands.CommandSourceStack;
 
 import java.util.function.Supplier;
@@ -19,11 +20,12 @@ public class EcoCommands {
                                 Supplier<EconomyProvider> economy,
                                 Supplier<CurrencyRegistry> currencies,
                                 Supplier<ExchangeService> exchange,
-                                Supplier<TransactionLog> transactionLog) {
+                                Supplier<TransactionLog> transactionLog,
+                                Supplier<DatabaseProvider> database) {
         BalanceCommand.register(dispatcher, economy, currencies);
         PayCommand.register(dispatcher, economy, currencies);
         CurrencyCommand.register(dispatcher, currencies, exchange, transactionLog);
-        EcoAdminCommand.register(dispatcher, economy, currencies);
+        EcoAdminCommand.register(dispatcher, economy, currencies, database);
     }
 
     /**

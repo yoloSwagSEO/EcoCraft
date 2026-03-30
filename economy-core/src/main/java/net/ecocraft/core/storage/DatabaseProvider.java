@@ -51,4 +51,15 @@ public interface DatabaseProvider {
     // --- Daily exchange limits ---
     void recordDailyExchange(String playerUuid, String fromCurrency, String toCurrency, long amount);
     long getDailyExchangeTotal(String playerUuid, String fromCurrency, String toCurrency);
+
+    // --- Currencies ---
+    record StoredCurrency(String id, String name, String symbol, int decimals,
+                          boolean physical, @Nullable String itemId,
+                          boolean exchangeable, BigDecimal referenceRate) {}
+
+    void saveCurrency(String id, String name, String symbol, int decimals,
+                      boolean physical, @Nullable String itemId,
+                      boolean exchangeable, BigDecimal referenceRate);
+    void deleteCurrency(String id);
+    List<StoredCurrency> getAllCurrencies();
 }

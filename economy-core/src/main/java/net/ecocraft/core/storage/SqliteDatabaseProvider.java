@@ -78,6 +78,22 @@ public class SqliteDatabaseProvider implements DatabaseProvider {
                     """);
                 }
             });
+            migrator.addMigration(3, "Currencies table for persistence", conn -> {
+                try (Statement stmt = conn.createStatement()) {
+                    stmt.execute("""
+                        CREATE TABLE IF NOT EXISTS currencies (
+                            id TEXT PRIMARY KEY,
+                            name TEXT NOT NULL,
+                            symbol TEXT NOT NULL,
+                            decimals INTEGER NOT NULL DEFAULT 0,
+                            physical INTEGER NOT NULL DEFAULT 0,
+                            item_id TEXT,
+                            exchangeable INTEGER NOT NULL DEFAULT 1,
+                            reference_rate TEXT NOT NULL DEFAULT '1.0'
+                        )
+                    """);
+                }
+            });
             migrator.migrate(connection);
         } catch (SQLException e) {
             throw new RuntimeException("Failed to initialize SQLite database", e);
@@ -338,6 +354,63 @@ public class SqliteDatabaseProvider implements DatabaseProvider {
         } catch (SQLException e) {
             throw new RuntimeException("Failed to get daily exchange total", e);
         }
+    }
+
+    // --- Currencies ---
+
+    @Override
+    public synchronized void saveCurrency(String id, String name, String symbol, int decimals,
+                                          boolean physical, @Nullable String itemId,
+                                          boolean exchangeable, BigDecimal referenceRate) {
+        try (PreparedStatement ps = connection.prepareStatement("""
+                INSERT OR REPLACE INTO currencies (id, name, symbol, decimals, physical, item_id, exchangeable, reference_rate)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """)) {
+            ps.setString(1, id);
+            ps.setString(2, name);
+            ps.setString(3, symbol);
+            ps.setInt(4, decimals);
+            ps.setInt(5, physical ? 1 : 0);
+            ps.setString(6, itemId);
+            ps.setInt(7, exchangeable ? 1 : 0);
+            ps.setString(8, referenceRate.toPlainString());
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to save currency", e);
+        }
+    }
+
+    @Override
+    public synchronized void deleteCurrency(String id) {
+        try (PreparedStatement ps = connection.prepareStatement("DELETE FROM currencies WHERE id = ?")) {
+            ps.setString(1, id);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to delete currency", e);
+        }
+    }
+
+    @Override
+    public synchronized List<StoredCurrency> getAllCurrencies() {
+        List<StoredCurrency> results = new ArrayList<>();
+        try (PreparedStatement ps = connection.prepareStatement(
+                "SELECT id, name, symbol, decimals, physical, item_id, exchangeable, reference_rate FROM currencies")) {
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                results.add(new StoredCurrency(
+                        rs.getString("id"),
+                        rs.getString("name"),
+                        rs.getString("symbol"),
+                        rs.getInt("decimals"),
+                        rs.getInt("physical") == 1,
+                        rs.getString("item_id"),
+                        rs.getInt("exchangeable") == 1,
+                        new BigDecimal(rs.getString("reference_rate"))));
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to get all currencies", e);
+        }
+        return results;
     }
 
     private void appendFilters(StringBuilder sql, List<Object> params,

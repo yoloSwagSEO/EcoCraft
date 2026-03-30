@@ -46,6 +46,17 @@ public class CurrencyRegistryImpl implements CurrencyRegistry {
         return currencies.containsKey(id);
     }
 
+    @Override
+    public void unregister(String id) {
+        if (!currencies.containsKey(id)) {
+            throw new IllegalArgumentException("Currency not registered: " + id);
+        }
+        if (id.equals(defaultId)) {
+            throw new IllegalArgumentException("Cannot unregister the default currency: " + id);
+        }
+        currencies.remove(id);
+    }
+
     public void setDefault(String id) {
         if (!currencies.containsKey(id)) {
             throw new IllegalArgumentException("Currency not registered: " + id);

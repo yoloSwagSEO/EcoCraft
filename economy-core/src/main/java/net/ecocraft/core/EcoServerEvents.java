@@ -59,6 +59,22 @@ public class EcoServerEvents {
             .build();
         currencyRegistry.register(defaultCurrency);
 
+        // Load persisted custom currencies
+        var db = storage.getProvider();
+        for (var stored : db.getAllCurrencies()) {
+            if (!currencyRegistry.exists(stored.id())) {
+                var builder = Currency.builder(stored.id(), stored.name(), stored.symbol())
+                        .decimals(stored.decimals())
+                        .exchangeable(stored.exchangeable())
+                        .referenceRate(stored.referenceRate());
+                if (stored.physical() && stored.itemId() != null) {
+                    builder.physical(stored.itemId());
+                }
+                currencyRegistry.register(builder.build());
+                LOGGER.info("Loaded persisted currency: {} ({})", stored.name(), stored.id());
+            }
+        }
+
         // Initialize services
         var economyProvider = new EconomyProviderImpl(storage.getProvider(), currencyRegistry);
         var exchangeConfig = new ExchangeServiceImpl.ExchangeConfig(
@@ -113,7 +129,8 @@ public class EcoServerEvents {
                 () -> context != null ? context.getEconomyProvider() : null,
                 () -> context != null ? context.getCurrencyRegistry() : null,
                 () -> context != null ? context.getExchangeService() : null,
-                () -> context != null ? context.getTransactionLog() : null);
+                () -> context != null ? context.getTransactionLog() : null,
+                () -> context != null ? context.getStorage().getProvider() : null);
         LOGGER.info("EcoCraft Economy commands registered.");
     }
 

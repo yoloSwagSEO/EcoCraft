@@ -12,6 +12,7 @@ import net.ecocraft.api.currency.CurrencyRegistry;
 import net.ecocraft.core.impl.CurrencyRegistryImpl;
 import net.ecocraft.core.impl.EconomyProviderImpl;
 import net.ecocraft.core.permission.EcoPermissions;
+import net.ecocraft.core.storage.DatabaseProvider;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.EntityArgument;
@@ -25,7 +26,8 @@ public class EcoAdminCommand {
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher,
                                 Supplier<EconomyProvider> economy,
-                                Supplier<CurrencyRegistry> currencies) {
+                                Supplier<CurrencyRegistry> currencies,
+                                Supplier<DatabaseProvider> database) {
         var currSuggestions = EcoCommands.currencySuggestions(currencies);
 
         dispatcher.register(Commands.literal("eco")
@@ -70,13 +72,20 @@ public class EcoAdminCommand {
                 .then(Commands.argument("id", StringArgumentType.word())
                     .then(Commands.argument("name", StringArgumentType.word())
                         .then(Commands.argument("symbol", StringArgumentType.string())
-                            .executes(ctx -> createCurrency(ctx, currencies.get(), 1.0))
+                            .executes(ctx -> createCurrency(ctx, currencies.get(), database.get(), 1.0))
                             .then(Commands.argument("rate", DoubleArgumentType.doubleArg(0.001))
-                                .executes(ctx -> createCurrency(ctx, currencies.get(),
+                                .executes(ctx -> createCurrency(ctx, currencies.get(), database.get(),
                                         DoubleArgumentType.getDouble(ctx, "rate")))
                             )
                         )
                     )
+                )
+            )
+            .then(Commands.literal("deletecurrency")
+                .requires(src -> EcoPermissions.check(src, EcoPermissions.ADMIN_SET))
+                .then(Commands.argument("id", StringArgumentType.word())
+                    .suggests(currSuggestions)
+                    .executes(ctx -> deleteCurrency(ctx, currencies.get(), database.get()))
                 )
             )
         );
@@ -118,7 +127,7 @@ public class EcoAdminCommand {
     }
 
     private static int createCurrency(CommandContext<CommandSourceStack> ctx,
-                                        CurrencyRegistry currencies, double rate) {
+                                        CurrencyRegistry currencies, DatabaseProvider db, double rate) {
         String id = StringArgumentType.getString(ctx, "id");
         String name = StringArgumentType.getString(ctx, "name");
         String symbol = StringArgumentType.getString(ctx, "symbol");
@@ -136,9 +145,35 @@ public class EcoAdminCommand {
                 .build();
 
         currencies.register(currency);
+        db.saveCurrency(id, name, symbol, 2, false, null, true, BigDecimal.valueOf(rate));
 
         source.sendSuccess(() -> Component.translatable(
                 "ecocraft_core.command.eco.currency_created", name, symbol, String.format("%.3f", rate)
+        ), true);
+        return Command.SINGLE_SUCCESS;
+    }
+
+    private static int deleteCurrency(CommandContext<CommandSourceStack> ctx,
+                                       CurrencyRegistry currencies, DatabaseProvider db) {
+        String id = StringArgumentType.getString(ctx, "id");
+        CommandSourceStack source = ctx.getSource();
+
+        if (!currencies.exists(id)) {
+            source.sendFailure(Component.translatable("ecocraft_core.command.eco.currency_not_found", id));
+            return 0;
+        }
+
+        // Prevent deleting the default currency
+        if (currencies.getDefault().id().equals(id)) {
+            source.sendFailure(Component.translatable("ecocraft_core.command.eco.currency_is_default", id));
+            return 0;
+        }
+
+        currencies.unregister(id);
+        db.deleteCurrency(id);
+
+        source.sendSuccess(() -> Component.translatable(
+                "ecocraft_core.command.eco.currency_deleted", id
         ), true);
         return Command.SINGLE_SUCCESS;
     }
