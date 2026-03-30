@@ -27,12 +27,12 @@
   "ecocraft_mail.button.settings": "⚙",
 
   "ecocraft_mail.detail.from": "De: %s",
-  "ecocraft_mail.detail.currency": "%d Gold",
-  "ecocraft_mail.detail.cod_banner": "Contra reembolso: %d Gold",
+  "ecocraft_mail.detail.currency": "%d %s",
+  "ecocraft_mail.detail.cod_banner": "Contra reembolso: %d %s",
 
   "ecocraft_mail.list.from": "De: %s",
   "ecocraft_mail.list.tag_items": "[Items]",
-  "ecocraft_mail.list.tag_gold": "[%d G]",
+  "ecocraft_mail.list.tag_gold": "[%d %s]",
   "ecocraft_mail.list.tag_cod": "[COD]",
 
   "ecocraft_mail.compose.header": "NUEVO CORREO",
@@ -42,12 +42,18 @@
   "ecocraft_mail.compose.subject_placeholder": "Asunto del correo...",
   "ecocraft_mail.compose.message": "Mensaje",
   "ecocraft_mail.compose.items_label": "Items en mano a adjuntar (cantidad)",
+  "ecocraft_mail.compose.attach_label": "A enviar",
   "ecocraft_mail.compose.currency_label": "Cantidad (Gold)",
   "ecocraft_mail.compose.cod_label": "Contra reembolso",
   "ecocraft_mail.compose.sending": "Enviando...",
   "ecocraft_mail.compose.sent": "Correo enviado",
   "ecocraft_mail.compose.error_recipient": "¡Destinatario requerido!",
   "ecocraft_mail.compose.error_subject": "¡Asunto requerido!",
+  "ecocraft_mail.compose.read_receipt": "Acuse de recibo",
+  "ecocraft_mail.compose.read_receipt_cost": "(costo: %d %s)",
+  "ecocraft_mail.compose.total_cost": "Costo total: %d %s",
+  "ecocraft_mail.compose.send_cost": "Costo de envío: %d %s",
+  "ecocraft_mail.compose.confirm_send": "¿Confirmar?",
 
   "ecocraft_mail.settings.tab_notifications": "Notificaciones",
   "ecocraft_mail.settings.tab_general": "General",
@@ -62,6 +68,7 @@
   "ecocraft_mail.settings.event.new_mail": "Correo nuevo",
   "ecocraft_mail.settings.event.cod_received": "Pago COD recibido",
   "ecocraft_mail.settings.event.mail_returned": "Correo devuelto",
+  "ecocraft_mail.settings.event.read_receipt": "Acuse de recibo",
 
   "ecocraft_mail.settings.config.player_mail": "Correo entre jugadores: Activo",
   "ecocraft_mail.settings.config.item_attachments": "Adjuntos (items): Activo",
@@ -82,10 +89,14 @@
   "ecocraft_mail.settings.input.expiry_days": "Expiración (días)",
   "ecocraft_mail.settings.input.send_cost": "Coste de envío",
   "ecocraft_mail.settings.input.cod_fee": "Comisión COD (%)",
+  "ecocraft_mail.settings.toggle.read_receipt": "Acuse de recibo",
+  "ecocraft_mail.settings.input.read_receipt_cost": "Costo acuse de recibo",
+  "ecocraft_mail.settings.input.cost_per_item": "Costo por ítem",
 
   "ecocraft_mail.notification.new_mail": "Correo nuevo",
   "ecocraft_mail.notification.cod_received": "Pago COD recibido",
   "ecocraft_mail.notification.mail_returned": "Correo devuelto",
+  "ecocraft_mail.notification.read_receipt": "Acuse de recibo",
   "ecocraft_mail.notification.message": "%s - de %s",
   "ecocraft_mail.notification.chat_prefix": "[Mail] ",
 
@@ -122,5 +133,23 @@
   "ecocraft_mail.server.cannot_self_send": "No puedes enviarte un correo a ti mismo",
   "ecocraft_mail.server.mail_sent_success": "¡Correo enviado!",
 
-  "ecocraft_mail.login.unread_mails": "§e✉ Tienes %d correo(s) en tu buzón."
+  "ecocraft_mail.settings.skin_label": "Skin del cartero",
+  "ecocraft_mail.settings.skin_placeholder": "Nombre del jugador...",
+
+  "ecocraft_mail.login.unread_mails": "§e✉ Tienes %d correo(s) en tu buzón.",
+
+  "ecocraft_mail.filter.all": "Todos",
+  "ecocraft_mail.filter.unread": "No leídos",
+  "ecocraft_mail.filter.attachments": "Adjuntos",
+  "ecocraft_mail.filter.cod": "COD",
+  "ecocraft_mail.search.placeholder": "Buscar...",
+  "ecocraft_mail.button.reply": "Responder",
+  "ecocraft_mail.button.forward": "Reenviar",
+
+  "ecocraft_mail.tab.inbox": "Bandeja de entrada",
+  "ecocraft_mail.tab.sent": "Enviados",
+  "ecocraft_mail.tab.drafts": "Borradores",
+  "ecocraft_mail.button.draft": "Borrador",
+  "ecocraft_mail.compose.draft_saved": "Borrador guardado",
+  "ecocraft_mail.list.to": "Para: %s"
 }

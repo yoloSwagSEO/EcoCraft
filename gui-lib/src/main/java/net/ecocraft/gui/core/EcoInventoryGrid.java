@@ -93,9 +93,11 @@ public class EcoInventoryGrid extends BaseWidget {
     private final boolean showArmor;
     private final boolean showOffhand;
     private final boolean showOther;
+    private final boolean alignLeft;
 
     private int selectedSlot = -1;
     private int hoveredSlot = -1;
+    private java.util.Set<Integer> dimmedSlots = java.util.Set.of();
 
     // Scrollbar (child widget)
     private final EcoScrollbar scrollbar;
@@ -128,6 +130,7 @@ public class EcoInventoryGrid extends BaseWidget {
         private boolean showOffhand = false;
         private boolean showOther = true;
         private SectionLabels sectionLabels = SectionLabels.defaultLabels();
+        private boolean alignLeft = false;
 
         public Builder inventory(Inventory inventory) {
             this.inventory = inventory;
@@ -194,6 +197,11 @@ public class EcoInventoryGrid extends BaseWidget {
             return this;
         }
 
+        public Builder alignLeft(boolean alignLeft) {
+            this.alignLeft = alignLeft;
+            return this;
+        }
+
         public EcoInventoryGrid build() {
             if (inventory == null) {
                 throw new IllegalStateException("inventory is required");
@@ -217,6 +225,7 @@ public class EcoInventoryGrid extends BaseWidget {
         this.showArmor = builder.showArmor;
         this.showOffhand = builder.showOffhand;
         this.showOther = builder.showOther;
+        this.alignLeft = builder.alignLeft;
         this.sectionLabels = builder.sectionLabels;
         this.scrollbar = new EcoScrollbar(0, 0, 0, theme);
         addChild(scrollbar);
@@ -287,6 +296,11 @@ public class EcoInventoryGrid extends BaseWidget {
 
     public void setSelectedSlot(int slot) {
         this.selectedSlot = slot;
+    }
+
+    /** Set slots that should be rendered as dimmed (semi-transparent overlay). */
+    public void setDimmedSlots(java.util.Set<Integer> slots) {
+        this.dimmedSlots = slots != null ? slots : java.util.Set.of();
     }
 
     public void onSlotClicked(IntConsumer callback) {
@@ -368,9 +382,9 @@ public class EcoInventoryGrid extends BaseWidget {
                     theme.textGrey, false);
             currentY += SECTION_LABEL_HEIGHT;
 
-            // Grid width centered
+            // Grid width
             int gridW = Math.min(columns * cell - SLOT_PADDING, aw);
-            int gridX = getX() + (aw - gridW) / 2;
+            int gridX = alignLeft ? getX() : getX() + (aw - gridW) / 2;
 
             // Slots
             int col = 0;
@@ -401,6 +415,11 @@ public class EcoInventoryGrid extends BaseWidget {
                         int itemY = sy + (slotSize.pixels - 16) / 2;
                         graphics.renderItem(stack, itemX, itemY);
                         graphics.renderItemDecorations(font, stack, itemX, itemY);
+
+                        // Dim overlay for selected-for-sending slots
+                        if (dimmedSlots.contains(slotIndex)) {
+                            graphics.fill(sx, sy, sx + slotSize.pixels, sy + slotSize.pixels, 0xAA000000);
+                        }
                     }
 
                     if (isHover && !isEmpty) {

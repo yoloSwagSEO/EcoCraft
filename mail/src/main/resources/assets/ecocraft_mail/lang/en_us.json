@@ -27,12 +27,12 @@
   "ecocraft_mail.button.settings": "⚙",
 
   "ecocraft_mail.detail.from": "From: %s",
-  "ecocraft_mail.detail.currency": "%d Gold",
-  "ecocraft_mail.detail.cod_banner": "Cash on Delivery: %d Gold",
+  "ecocraft_mail.detail.currency": "%d %s",
+  "ecocraft_mail.detail.cod_banner": "Cash on Delivery: %d %s",
 
   "ecocraft_mail.list.from": "From: %s",
   "ecocraft_mail.list.tag_items": "[Items]",
-  "ecocraft_mail.list.tag_gold": "[%d G]",
+  "ecocraft_mail.list.tag_gold": "[%d %s]",
   "ecocraft_mail.list.tag_cod": "[COD]",
 
   "ecocraft_mail.compose.header": "NEW MAIL",
@@ -42,12 +42,18 @@
   "ecocraft_mail.compose.subject_placeholder": "Mail subject...",
   "ecocraft_mail.compose.message": "Message",
   "ecocraft_mail.compose.items_label": "Items from hand to attach (quantity)",
+  "ecocraft_mail.compose.attach_label": "To send",
   "ecocraft_mail.compose.currency_label": "Amount (Gold)",
   "ecocraft_mail.compose.cod_label": "Cash on Delivery",
   "ecocraft_mail.compose.sending": "Sending...",
   "ecocraft_mail.compose.sent": "Mail sent",
   "ecocraft_mail.compose.error_recipient": "Recipient required!",
   "ecocraft_mail.compose.error_subject": "Subject required!",
+  "ecocraft_mail.compose.read_receipt": "Read receipt",
+  "ecocraft_mail.compose.read_receipt_cost": "(cost: %d %s)",
+  "ecocraft_mail.compose.total_cost": "Total cost: %d %s",
+  "ecocraft_mail.compose.send_cost": "Send cost: %d %s",
+  "ecocraft_mail.compose.confirm_send": "Confirm?",
 
   "ecocraft_mail.settings.tab_notifications": "Notifications",
   "ecocraft_mail.settings.tab_general": "General",
@@ -62,6 +68,7 @@
   "ecocraft_mail.settings.event.new_mail": "New mail",
   "ecocraft_mail.settings.event.cod_received": "COD payment received",
   "ecocraft_mail.settings.event.mail_returned": "Mail returned",
+  "ecocraft_mail.settings.event.read_receipt": "Read receipt",
 
   "ecocraft_mail.settings.config.player_mail": "Player mail: Active",
   "ecocraft_mail.settings.config.item_attachments": "Item attachments: Active",
@@ -82,10 +89,14 @@
   "ecocraft_mail.settings.input.expiry_days": "Expiry (days)",
   "ecocraft_mail.settings.input.send_cost": "Send cost",
   "ecocraft_mail.settings.input.cod_fee": "COD fee (%)",
+  "ecocraft_mail.settings.toggle.read_receipt": "Read receipts",
+  "ecocraft_mail.settings.input.read_receipt_cost": "Read receipt cost",
+  "ecocraft_mail.settings.input.cost_per_item": "Cost per item",
 
   "ecocraft_mail.notification.new_mail": "New mail",
   "ecocraft_mail.notification.cod_received": "COD payment received",
   "ecocraft_mail.notification.mail_returned": "Mail returned",
+  "ecocraft_mail.notification.read_receipt": "Read receipt",
   "ecocraft_mail.notification.message": "%s - from %s",
   "ecocraft_mail.notification.chat_prefix": "[Mail] ",
 
@@ -122,5 +133,23 @@
   "ecocraft_mail.server.cannot_self_send": "You cannot send mail to yourself",
   "ecocraft_mail.server.mail_sent_success": "Mail sent!",
 
-  "ecocraft_mail.login.unread_mails": "§e✉ You have %d mail(s) in your mailbox."
+  "ecocraft_mail.settings.skin_label": "Postman skin",
+  "ecocraft_mail.settings.skin_placeholder": "Player name...",
+
+  "ecocraft_mail.login.unread_mails": "§e✉ You have %d mail(s) in your mailbox.",
+
+  "ecocraft_mail.filter.all": "All",
+  "ecocraft_mail.filter.unread": "Unread",
+  "ecocraft_mail.filter.attachments": "Attachments",
+  "ecocraft_mail.filter.cod": "COD",
+  "ecocraft_mail.search.placeholder": "Search...",
+  "ecocraft_mail.button.reply": "Reply",
+  "ecocraft_mail.button.forward": "Forward",
+
+  "ecocraft_mail.tab.inbox": "Inbox",
+  "ecocraft_mail.tab.sent": "Sent",
+  "ecocraft_mail.tab.drafts": "Drafts",
+  "ecocraft_mail.button.draft": "Draft",
+  "ecocraft_mail.compose.draft_saved": "Draft saved",
+  "ecocraft_mail.list.to": "To: %s"
 }

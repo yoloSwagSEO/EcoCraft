@@ -9,6 +9,7 @@ import net.ecocraft.mail.client.MailNotificationEventType;
 import net.ecocraft.mail.config.MailConfig;
 import net.ecocraft.mail.network.payload.MailSettingsPayload;
 import net.ecocraft.mail.network.payload.UpdateMailSettingsPayload;
+import net.ecocraft.mail.network.payload.UpdatePostmanSkinPayload;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -35,6 +36,8 @@ public class MailSettingsScreen extends EcoScreen {
 
     private final Screen parentScreen;
     private final boolean isAdmin;
+    private final int postmanEntityId;
+    private String skinPlayerName;
     private int selectedTab = 0;
     private final List<EcoButton> sidebarButtons = new ArrayList<>();
 
@@ -48,11 +51,16 @@ public class MailSettingsScreen extends EcoScreen {
     private int editMailExpiryDays;
     private long editSendCost;
     private int editCodFeePercent;
+    private boolean editAllowReadReceipt;
+    private long editReadReceiptCost;
+    private long editSendCostPerItem;
 
-    public MailSettingsScreen(Screen parent, boolean isAdmin) {
+    public MailSettingsScreen(Screen parent, boolean isAdmin, int postmanEntityId, String skinPlayerName) {
         super(Component.translatable("ecocraft_mail.screen.settings_title"));
         this.parentScreen = parent;
         this.isAdmin = isAdmin;
+        this.postmanEntityId = postmanEntityId;
+        this.skinPlayerName = skinPlayerName != null ? skinPlayerName : "";
         // Initialize from current config values
         var config = MailConfig.CONFIG;
         this.editAllowPlayerMail = config.allowPlayerMail.get();
@@ -64,6 +72,9 @@ public class MailSettingsScreen extends EcoScreen {
         this.editMailExpiryDays = config.mailExpiryDays.get();
         this.editSendCost = config.sendCost.get();
         this.editCodFeePercent = config.codFeePercent.get();
+        this.editAllowReadReceipt = config.allowReadReceipt.get();
+        this.editReadReceiptCost = config.readReceiptCost.get();
+        this.editSendCostPerItem = config.sendCostPerItem.get();
     }
 
     /** Called when the server sends updated settings back. */
@@ -77,6 +88,9 @@ public class MailSettingsScreen extends EcoScreen {
         this.editMailExpiryDays = payload.mailExpiryDays();
         this.editSendCost = payload.sendCost();
         this.editCodFeePercent = payload.codFeePercent();
+        this.editAllowReadReceipt = payload.allowReadReceipt();
+        this.editReadReceiptCost = payload.readReceiptCost();
+        this.editSendCostPerItem = payload.sendCostPerItem();
         if (selectedTab == 1) rebuildScreen();
     }
 
@@ -224,6 +238,7 @@ public class MailSettingsScreen extends EcoScreen {
             case NEW_MAIL -> Component.translatable("ecocraft_mail.settings.event.new_mail").getString();
             case COD_RECEIVED -> Component.translatable("ecocraft_mail.settings.event.cod_received").getString();
             case MAIL_RETURNED -> Component.translatable("ecocraft_mail.settings.event.mail_returned").getString();
+            case READ_RECEIPT -> Component.translatable("ecocraft_mail.settings.event.read_receipt").getString();
         };
     }
 
@@ -234,76 +249,210 @@ public class MailSettingsScreen extends EcoScreen {
         return 2; // default to BOTH
     }
 
-    // --- General tab (admin only) ---
+    // --- General tab (admin only, AH-style panels) ---
+
+    private static final int PANEL_PADDING = 8;
+    private static final int SECTION_GAP = 6;
 
     private void buildGeneralTab(int x, int y, int w, int h) {
         Font font = Minecraft.getInstance().font;
-        int contentX = x + 8;
-        int contentW = w - 16;
-        int currentY = y + 8;
 
-        // Title
-        Label title = new Label(font, contentX, currentY, Component.translatable("ecocraft_mail.settings.general_title"), THEME);
-        title.setColor(THEME.accent);
-        getTree().addChild(title);
-        currentY += font.lineHeight + 12;
+        int titleBlockH = font.lineHeight + 2 + 6;
+        int toggleRowH = 20;
+        int inputRowH = font.lineHeight + 4 + 16 + 8; // label + input + gap
 
+        // Count visible cost rows
+        int costRows = 2; // send cost + expiry (always)
+        if (editAllowItemAttachments) costRows += 1; // cost per item + max attachments (side by side)
+        if (editAllowCOD) costRows += 1; // COD fee
+        if (editAllowReadReceipt) costRows += 1; // receipt cost
+
+        // Section heights
+        boolean hasPostman = postmanEntityId > 0;
+        int postmanH = hasPostman ? PANEL_PADDING * 2 + titleBlockH + font.lineHeight + 4 + 16 + 2 : 0;
+        int featuresH = PANEL_PADDING * 2 + titleBlockH + toggleRowH * 6 + 4 * 5;
+        int costsH = PANEL_PADDING * 2 + titleBlockH + inputRowH * costRows;
+
+        int totalContentH = postmanH + featuresH + costsH + SECTION_GAP * (hasPostman ? 3 : 2) + 20;
+
+        ScrollPane scrollPane = new ScrollPane(x, y, w, h, THEME);
+        scrollPane.setContentHeight(totalContentH);
+        getTree().addChild(scrollPane);
+
+        // Panels
+        Panel postmanPanel = null;
+        if (hasPostman) {
+            postmanPanel = new Panel(0, 0, 0, 0, THEME);
+            postmanPanel.padding(PANEL_PADDING).titleUppercase(true).titleMarginBottom(6)
+                    .separatorStyle(Panel.SeparatorStyle.NONE)
+                    .title(Component.literal("\u263A Facteur"), font);
+        }
+
+        Panel featuresPanel = new Panel(0, 0, 0, 0, THEME);
+        featuresPanel.padding(PANEL_PADDING).titleUppercase(true).titleMarginBottom(6)
+                .separatorStyle(Panel.SeparatorStyle.NONE)
+                .title(Component.literal("\u2302 Fonctionnalités"), font);
+
+        Panel costsPanel = new Panel(0, 0, 0, 0, THEME);
+        costsPanel.padding(PANEL_PADDING).titleUppercase(true).titleMarginBottom(6)
+                .separatorStyle(Panel.SeparatorStyle.NONE)
+                .title(Component.literal("\u272A Coûts & Limites"), font);
+
+        EcoGrid grid = new EcoGrid(x, y, w, totalContentH, 0);
+        grid.rowGap(SECTION_GAP);
+        scrollPane.addChild(grid);
+
+        if (hasPostman && postmanPanel != null) {
+            grid.addRow(postmanH).addCol(12).addChild(postmanPanel);
+        }
+        grid.addRow(featuresH).addCol(12).addChild(featuresPanel);
+        grid.addRow(costsH).addCol(12).addChild(costsPanel);
+        grid.relayout();
+
+        // --- Facteur ---
+        if (hasPostman && postmanPanel != null) {
+            int pcx = postmanPanel.getContentX();
+            int pcy = postmanPanel.getContentY();
+            int pcw = postmanPanel.getContentWidth();
+
+            Label skinLabel = new Label(font, pcx, pcy,
+                    Component.translatable("ecocraft_mail.settings.skin_label"), THEME);
+            skinLabel.setColor(THEME.textGrey);
+            scrollPane.addChild(skinLabel);
+
+            EcoTextInput skinInput = new EcoTextInput(font, pcx, pcy + font.lineHeight + 4, (pcw - 8) / 2, 16,
+                    Component.translatable("ecocraft_mail.settings.skin_placeholder"), THEME);
+            skinInput.setValue(skinPlayerName);
+            skinInput.responder(val -> skinPlayerName = val);
+            scrollPane.addChild(skinInput);
+        }
+
+        // --- Fonctionnalités (toggles rebuild on change) ---
+        int cx = featuresPanel.getContentX();
+        int cy = featuresPanel.getContentY();
+        int cw = featuresPanel.getContentWidth();
+        int toggleAreaW = cw / 3;
         int toggleW = 40;
-        int inputW = (int) (contentW * 0.35);
-        int rightX = contentX + contentW - toggleW;
-        int rightInputX = contentX + contentW - inputW;
 
-        // --- Boolean toggles ---
-
-        currentY = addToggleRow(font, contentX, currentY, rightX, toggleW,
+        cy = addPanelToggle(scrollPane, font, cx, cy, toggleAreaW, toggleW,
                 Component.translatable("ecocraft_mail.settings.toggle.player_mail").getString(),
-                editAllowPlayerMail, val -> editAllowPlayerMail = val);
-
-        currentY = addToggleRow(font, contentX, currentY, rightX, toggleW,
+                editAllowPlayerMail, val -> { editAllowPlayerMail = val; rebuildScreen(); });
+        cy = addPanelToggle(scrollPane, font, cx, cy, toggleAreaW, toggleW,
                 Component.translatable("ecocraft_mail.settings.toggle.item_attachments").getString(),
-                editAllowItemAttachments, val -> editAllowItemAttachments = val);
-
-        currentY = addToggleRow(font, contentX, currentY, rightX, toggleW,
+                editAllowItemAttachments, val -> { editAllowItemAttachments = val; rebuildScreen(); });
+        cy = addPanelToggle(scrollPane, font, cx, cy, toggleAreaW, toggleW,
                 Component.translatable("ecocraft_mail.settings.toggle.currency_attachments").getString(),
-                editAllowCurrencyAttachments, val -> editAllowCurrencyAttachments = val);
-
-        currentY = addToggleRow(font, contentX, currentY, rightX, toggleW,
+                editAllowCurrencyAttachments, val -> { editAllowCurrencyAttachments = val; rebuildScreen(); });
+        cy = addPanelToggle(scrollPane, font, cx, cy, toggleAreaW, toggleW,
                 Component.translatable("ecocraft_mail.settings.toggle.cod").getString(),
-                editAllowCOD, val -> editAllowCOD = val);
-
-        currentY = addToggleRow(font, contentX, currentY, rightX, toggleW,
+                editAllowCOD, val -> { editAllowCOD = val; rebuildScreen(); });
+        cy = addPanelToggle(scrollPane, font, cx, cy, toggleAreaW, toggleW,
                 Component.translatable("ecocraft_mail.settings.toggle.mailbox_craft").getString(),
                 editAllowMailboxCraft, val -> editAllowMailboxCraft = val);
+        addPanelToggle(scrollPane, font, cx, cy, toggleAreaW, toggleW,
+                Component.translatable("ecocraft_mail.settings.toggle.read_receipt").getString(),
+                editAllowReadReceipt, val -> { editAllowReadReceipt = val; rebuildScreen(); });
 
-        currentY += 4;
+        // --- Coûts & Limites (dynamic based on toggles) ---
+        cx = costsPanel.getContentX();
+        cy = costsPanel.getContentY();
+        cw = costsPanel.getContentWidth();
+        int halfW = (cw - 8) / 2;
 
-        // --- Numeric inputs ---
+        // Send cost (always)
+        Label sendCostLabel = new Label(font, cx, cy,
+                Component.translatable("ecocraft_mail.settings.input.send_cost"), THEME);
+        sendCostLabel.setColor(THEME.textGrey);
+        scrollPane.addChild(sendCostLabel);
+        cy += font.lineHeight + 4;
 
-        currentY = addNumberRow(font, contentX, currentY, rightInputX, inputW,
-                Component.translatable("ecocraft_mail.settings.input.max_attachments").getString(),
-                editMaxItemAttachments, 1, 54, val -> editMaxItemAttachments = val.intValue());
+        EcoNumberInput sendCostInput = new EcoNumberInput(font, cx, cy, halfW, 16, THEME);
+        sendCostInput.min(0).max(999999).step(1).showButtons(true).setValue((int) editSendCost);
+        sendCostInput.responder(val -> editSendCost = val);
+        scrollPane.addChild(sendCostInput);
+        cy += 16 + 8;
 
-        currentY = addNumberRow(font, contentX, currentY, rightInputX, inputW,
-                Component.translatable("ecocraft_mail.settings.input.expiry_days").getString(),
-                editMailExpiryDays, 1, 365, val -> editMailExpiryDays = val.intValue());
+        // Cost per item + max attachments (only if item attachments enabled)
+        if (editAllowItemAttachments) {
+            Label costPerItemLabel = new Label(font, cx, cy,
+                    Component.translatable("ecocraft_mail.settings.input.cost_per_item"), THEME);
+            costPerItemLabel.setColor(THEME.textGrey);
+            scrollPane.addChild(costPerItemLabel);
 
-        currentY = addNumberRow(font, contentX, currentY, rightInputX, inputW,
-                Component.translatable("ecocraft_mail.settings.input.send_cost").getString(),
-                (int) editSendCost, 0, 999999, val -> editSendCost = val);
+            Label maxAttachLabel = new Label(font, cx + halfW + 8, cy,
+                    Component.translatable("ecocraft_mail.settings.input.max_attachments"), THEME);
+            maxAttachLabel.setColor(THEME.textGrey);
+            scrollPane.addChild(maxAttachLabel);
+            cy += font.lineHeight + 4;
 
-        currentY = addNumberRow(font, contentX, currentY, rightInputX, inputW,
-                Component.translatable("ecocraft_mail.settings.input.cod_fee").getString(),
-                editCodFeePercent, 0, 100, val -> editCodFeePercent = val.intValue());
+            EcoNumberInput costPerItemInput = new EcoNumberInput(font, cx, cy, halfW, 16, THEME);
+            costPerItemInput.min(0).max(999999).step(1).showButtons(true).setValue((int) editSendCostPerItem);
+            costPerItemInput.responder(val -> editSendCostPerItem = val);
+            scrollPane.addChild(costPerItemInput);
 
-        // Save button
-        currentY += 8;
-        int saveBtnW = 120;
-        int saveBtnX = contentX + (contentW - saveBtnW) / 2;
-        EcoButton saveBtn = EcoButton.success(THEME,
-                Component.translatable("ecocraft_ah.button.save"), this::onSaveSettings);
-        saveBtn.setPosition(saveBtnX, currentY);
-        saveBtn.setSize(saveBtnW, 20);
-        getTree().addChild(saveBtn);
+            EcoNumberInput maxAttachInput = new EcoNumberInput(font, cx + halfW + 8, cy, halfW, 16, THEME);
+            maxAttachInput.min(1).max(54).step(1).showButtons(true).setValue(editMaxItemAttachments);
+            maxAttachInput.responder(val -> editMaxItemAttachments = val.intValue());
+            scrollPane.addChild(maxAttachInput);
+            cy += 16 + 8;
+        }
+
+        // COD fee (only if COD enabled)
+        if (editAllowCOD) {
+            Label codFeeLabel = new Label(font, cx, cy,
+                    Component.translatable("ecocraft_mail.settings.input.cod_fee"), THEME);
+            codFeeLabel.setColor(THEME.textGrey);
+            scrollPane.addChild(codFeeLabel);
+            cy += font.lineHeight + 4;
+
+            EcoSlider codFeeSlider = new EcoSlider(font, cx, cy, halfW, 16, THEME);
+            codFeeSlider.min(0).max(100).step(1).value(editCodFeePercent).suffix("%")
+                    .labelPosition(EcoSlider.LabelPosition.AFTER);
+            codFeeSlider.responder(val -> editCodFeePercent = val.intValue());
+            scrollPane.addChild(codFeeSlider);
+            cy += 16 + 8;
+        }
+
+        // Read receipt cost (only if enabled)
+        if (editAllowReadReceipt) {
+            Label receiptCostLabel = new Label(font, cx, cy,
+                    Component.translatable("ecocraft_mail.settings.input.read_receipt_cost"), THEME);
+            receiptCostLabel.setColor(THEME.textGrey);
+            scrollPane.addChild(receiptCostLabel);
+            cy += font.lineHeight + 4;
+
+            EcoNumberInput receiptCostInput = new EcoNumberInput(font, cx, cy, halfW, 16, THEME);
+            receiptCostInput.min(0).max(999999).step(1).showButtons(true).setValue((int) editReadReceiptCost);
+            receiptCostInput.responder(val -> editReadReceiptCost = val);
+            scrollPane.addChild(receiptCostInput);
+            cy += 16 + 8;
+        }
+
+        // Expiry days (always)
+        Label expiryLabel = new Label(font, cx, cy,
+                Component.translatable("ecocraft_mail.settings.input.expiry_days"), THEME);
+        expiryLabel.setColor(THEME.textGrey);
+        scrollPane.addChild(expiryLabel);
+        cy += font.lineHeight + 4;
+
+        EcoNumberInput expiryInput = new EcoNumberInput(font, cx, cy, halfW, 16, THEME);
+        expiryInput.min(1).max(365).step(1).showButtons(true).setValue(editMailExpiryDays);
+        expiryInput.responder(val -> editMailExpiryDays = val.intValue());
+        scrollPane.addChild(expiryInput);
+    }
+
+    private int addPanelToggle(ScrollPane scrollPane, Font font, int cx, int cy, int toggleAreaW, int toggleW,
+                                String labelText, boolean value, java.util.function.Consumer<Boolean> responder) {
+        Label label = new Label(font, cx, cy + 3, Component.literal(labelText), THEME);
+        label.setColor(THEME.textLight);
+        scrollPane.addChild(label);
+
+        EcoToggle toggle = new EcoToggle(cx + toggleAreaW - toggleW, cy, toggleW, 14, THEME);
+        toggle.value(value);
+        toggle.responder(responder);
+        scrollPane.addChild(toggle);
+
+        return cy + 20;
     }
 
     private int addToggleRow(Font font, int labelX, int y, int toggleX, int toggleW,
@@ -342,21 +491,35 @@ public class MailSettingsScreen extends EcoScreen {
         PacketDistributor.sendToServer(new UpdateMailSettingsPayload(
                 editAllowPlayerMail, editAllowItemAttachments,
                 editAllowCurrencyAttachments, editAllowCOD, editAllowMailboxCraft,
-                editMaxItemAttachments, editMailExpiryDays, editSendCost, editCodFeePercent
+                editMaxItemAttachments, editMailExpiryDays, editSendCost, editCodFeePercent,
+                editAllowReadReceipt, editReadReceiptCost, editSendCostPerItem
         ));
+        if (postmanEntityId > 0) {
+            PacketDistributor.sendToServer(new UpdatePostmanSkinPayload(postmanEntityId, skinPlayerName));
+        }
+        onClose();
     }
 
     // --- Footer ---
 
     private void initFooter() {
-        int btnW = 80;
-        int btnH = 18;
-        int btnY = guiTop + guiHeight - btnH - 8;
-        int btnX = guiLeft + guiWidth - btnW - 8;
+        int footerY = guiTop + guiHeight - 30;
+        int btnW = 100;
+        int gap = 10;
+        int totalBtnW = btnW * 2 + gap;
+        int btnStartX = guiLeft + (guiWidth - totalBtnW) / 2;
 
-        EcoButton closeBtn = EcoButton.ghost(THEME, Component.translatable("ecocraft_mail.button.close"), this::onClose);
-        closeBtn.setBounds(btnX, btnY, btnW, btnH);
-        getTree().addChild(closeBtn);
+        EcoButton footerCancelBtn = EcoButton.ghost(THEME,
+                Component.translatable("ecocraft_mail.button.close"), this::onClose);
+        footerCancelBtn.setPosition(btnStartX, footerY);
+        footerCancelBtn.setSize(btnW, 20);
+        getTree().addChild(footerCancelBtn);
+
+        EcoButton saveBtn = EcoButton.success(THEME,
+                Component.translatable("ecocraft_ah.button.save"), this::onSaveSettings);
+        saveBtn.setPosition(btnStartX + btnW + gap, footerY);
+        saveBtn.setSize(btnW, 20);
+        getTree().addChild(saveBtn);
     }
 
     @Override

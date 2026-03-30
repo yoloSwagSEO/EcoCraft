@@ -27,12 +27,12 @@
   "ecocraft_mail.button.settings": "⚙",
 
   "ecocraft_mail.detail.from": "De: %s",
-  "ecocraft_mail.detail.currency": "%d Gold",
-  "ecocraft_mail.detail.cod_banner": "Contre-remboursement: %d Gold",
+  "ecocraft_mail.detail.currency": "%d %s",
+  "ecocraft_mail.detail.cod_banner": "Contre-remboursement: %d %s",
 
   "ecocraft_mail.list.from": "De: %s",
   "ecocraft_mail.list.tag_items": "[Items]",
-  "ecocraft_mail.list.tag_gold": "[%d G]",
+  "ecocraft_mail.list.tag_gold": "[%d %s]",
   "ecocraft_mail.list.tag_cod": "[COD]",
 
   "ecocraft_mail.compose.header": "NOUVEAU COURRIER",
@@ -42,12 +42,18 @@
   "ecocraft_mail.compose.subject_placeholder": "Objet du mail...",
   "ecocraft_mail.compose.message": "Message",
   "ecocraft_mail.compose.items_label": "Items en main à joindre (quantité)",
-  "ecocraft_mail.compose.currency_label": "Montant (Gold)",
+  "ecocraft_mail.compose.attach_label": "À envoyer",
+  "ecocraft_mail.compose.currency_label": "Montant",
   "ecocraft_mail.compose.cod_label": "Contre-remboursement",
   "ecocraft_mail.compose.sending": "Envoi en cours...",
   "ecocraft_mail.compose.sent": "Courrier envoyé",
   "ecocraft_mail.compose.error_recipient": "Destinataire requis !",
   "ecocraft_mail.compose.error_subject": "Objet requis !",
+  "ecocraft_mail.compose.read_receipt": "Accusé de réception",
+  "ecocraft_mail.compose.read_receipt_cost": "(coût: %d %s)",
+  "ecocraft_mail.compose.total_cost": "Coût total : %d %s",
+  "ecocraft_mail.compose.send_cost": "Coût d'envoi : %d %s",
+  "ecocraft_mail.compose.confirm_send": "Confirmer ?",
 
   "ecocraft_mail.settings.tab_notifications": "Notifications",
   "ecocraft_mail.settings.tab_general": "Général",
@@ -62,6 +68,7 @@
   "ecocraft_mail.settings.event.new_mail": "Nouveau courrier",
   "ecocraft_mail.settings.event.cod_received": "Paiement COD reçu",
   "ecocraft_mail.settings.event.mail_returned": "Courrier retourné",
+  "ecocraft_mail.settings.event.read_receipt": "Accusé de réception",
 
   "ecocraft_mail.settings.config.player_mail": "Courrier entre joueurs: Actif",
   "ecocraft_mail.settings.config.item_attachments": "Pièces jointes (items): Actif",
@@ -82,10 +89,14 @@
   "ecocraft_mail.settings.input.expiry_days": "Expiration (jours)",
   "ecocraft_mail.settings.input.send_cost": "Coût d'envoi",
   "ecocraft_mail.settings.input.cod_fee": "Frais COD (%)",
+  "ecocraft_mail.settings.toggle.read_receipt": "Accusé de réception",
+  "ecocraft_mail.settings.input.read_receipt_cost": "Coût accusé de réception",
+  "ecocraft_mail.settings.input.cost_per_item": "Coût par item",
 
   "ecocraft_mail.notification.new_mail": "Nouveau courrier",
   "ecocraft_mail.notification.cod_received": "Paiement COD reçu",
   "ecocraft_mail.notification.mail_returned": "Courrier retourné",
+  "ecocraft_mail.notification.read_receipt": "Accusé de réception",
   "ecocraft_mail.notification.message": "%s - de %s",
   "ecocraft_mail.notification.chat_prefix": "[Mail] ",
 
@@ -122,5 +133,23 @@
   "ecocraft_mail.server.cannot_self_send": "Vous ne pouvez pas vous envoyer un mail",
   "ecocraft_mail.server.mail_sent_success": "Mail envoyé !",
 
-  "ecocraft_mail.login.unread_mails": "§e✉ Vous avez %d mail(s) dans votre boîte aux lettres."
+  "ecocraft_mail.settings.skin_label": "Skin du facteur",
+  "ecocraft_mail.settings.skin_placeholder": "Nom du joueur...",
+
+  "ecocraft_mail.login.unread_mails": "§e✉ Vous avez %d mail(s) dans votre boîte aux lettres.",
+
+  "ecocraft_mail.filter.all": "Tous",
+  "ecocraft_mail.filter.unread": "Non lus",
+  "ecocraft_mail.filter.attachments": "Pièces jointes",
+  "ecocraft_mail.filter.cod": "COD",
+  "ecocraft_mail.search.placeholder": "Rechercher...",
+  "ecocraft_mail.button.reply": "Répondre",
+  "ecocraft_mail.button.forward": "Transférer",
+
+  "ecocraft_mail.tab.inbox": "Boîte de réception",
+  "ecocraft_mail.tab.sent": "Envoyés",
+  "ecocraft_mail.tab.drafts": "Brouillons",
+  "ecocraft_mail.button.draft": "Brouillon",
+  "ecocraft_mail.compose.draft_saved": "Brouillon enregistré",
+  "ecocraft_mail.list.to": "À: %s"
 }
