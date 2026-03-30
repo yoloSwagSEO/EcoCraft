@@ -9,6 +9,7 @@ import net.ecocraft.api.EconomyProvider;
 import net.ecocraft.api.currency.Currency;
 import net.ecocraft.api.currency.CurrencyFormatter;
 import net.ecocraft.api.currency.CurrencyRegistry;
+import net.ecocraft.core.impl.CurrencyRegistryImpl;
 import net.ecocraft.core.impl.EconomyProviderImpl;
 import net.ecocraft.core.permission.EcoPermissions;
 import net.minecraft.commands.CommandSourceStack;
@@ -64,6 +65,20 @@ public class EcoAdminCommand {
                     )
                 )
             )
+            .then(Commands.literal("createcurrency")
+                .requires(src -> EcoPermissions.check(src, EcoPermissions.ADMIN_SET))
+                .then(Commands.argument("id", StringArgumentType.word())
+                    .then(Commands.argument("name", StringArgumentType.word())
+                        .then(Commands.argument("symbol", StringArgumentType.string())
+                            .executes(ctx -> createCurrency(ctx, currencies.get(), 1.0))
+                            .then(Commands.argument("rate", DoubleArgumentType.doubleArg(0.001))
+                                .executes(ctx -> createCurrency(ctx, currencies.get(),
+                                        DoubleArgumentType.getDouble(ctx, "rate")))
+                            )
+                        )
+                    )
+                )
+            )
         );
     }
 
@@ -100,6 +115,32 @@ public class EcoAdminCommand {
             source.sendFailure(Component.literal(result.errorMessage()));
             return 0;
         }
+    }
+
+    private static int createCurrency(CommandContext<CommandSourceStack> ctx,
+                                        CurrencyRegistry currencies, double rate) {
+        String id = StringArgumentType.getString(ctx, "id");
+        String name = StringArgumentType.getString(ctx, "name");
+        String symbol = StringArgumentType.getString(ctx, "symbol");
+        CommandSourceStack source = ctx.getSource();
+
+        if (currencies.exists(id)) {
+            source.sendFailure(Component.translatable("ecocraft_core.command.eco.currency_exists", id));
+            return 0;
+        }
+
+        Currency currency = Currency.builder(id, name, symbol)
+                .decimals(2)
+                .exchangeable(true)
+                .referenceRate(rate)
+                .build();
+
+        currencies.register(currency);
+
+        source.sendSuccess(() -> Component.translatable(
+                "ecocraft_core.command.eco.currency_created", name, symbol, String.format("%.3f", rate)
+        ), true);
+        return Command.SINGLE_SUCCESS;
     }
 
     private static int set(CommandContext<CommandSourceStack> ctx,

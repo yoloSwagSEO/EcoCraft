@@ -52,6 +52,7 @@ public class ExchangerEntity extends Mob {
         if (!level().isClientSide && hand == InteractionHand.MAIN_HAND
                 && player instanceof ServerPlayer serverPlayer) {
             EcoNetworkHandler.sendExchangeData(serverPlayer);
+            EcoNetworkHandler.sendExchangerSkin(serverPlayer, this.getId());
             PacketDistributor.sendToPlayer(serverPlayer, new OpenExchangePayload(this.getId()));
         }
         return InteractionResult.SUCCESS;

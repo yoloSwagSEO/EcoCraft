@@ -59,11 +59,23 @@ public final class EcoNetworkHandler {
                 EcoClientPayloadHandler::handleExchangeResult
         );
 
+        registrar.playToClient(
+                ExchangerSkinPayload.TYPE,
+                ExchangerSkinPayload.STREAM_CODEC,
+                EcoClientPayloadHandler::handleExchangerSkin
+        );
+
         // Client -> Server
         registrar.playToServer(
                 ExchangeRequestPayload.TYPE,
                 ExchangeRequestPayload.STREAM_CODEC,
                 EcoNetworkHandler::handleExchangeRequest
+        );
+
+        registrar.playToServer(
+                UpdateExchangerSkinPayload.TYPE,
+                UpdateExchangerSkinPayload.STREAM_CODEC,
+                EcoNetworkHandler::handleUpdateExchangerSkin
         );
 
         // --- Vault payloads ---
@@ -170,6 +182,79 @@ public final class EcoNetworkHandler {
                 PacketDistributor.sendToPlayer(player, new ExchangeResultPayload(false,
                         result.errorMessage() != null ? result.errorMessage() : "Conversion failed", 0));
             }
+        });
+    }
+
+    // ========== Exchanger skin handlers ==========
+
+    /**
+     * Sends the current skin player name for an Exchanger NPC to a player.
+     */
+    public static void sendExchangerSkin(ServerPlayer player, int entityId) {
+        if (entityId <= 0) return;
+        var entity = player.level().getEntity(entityId);
+        if (entity instanceof net.ecocraft.core.exchange.ExchangerEntity exchanger) {
+            PacketDistributor.sendToPlayer(player, new ExchangerSkinPayload(entityId, exchanger.getSkinPlayerName()));
+        }
+    }
+
+    /**
+     * Handles a skin update request from an admin client.
+     */
+    private static void handleUpdateExchangerSkin(UpdateExchangerSkinPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            ServerPlayer player = (ServerPlayer) context.player();
+            if (!player.hasPermissions(2)) {
+                return;
+            }
+
+            var entity = player.level().getEntity(payload.entityId());
+            if (!(entity instanceof net.ecocraft.core.exchange.ExchangerEntity exchanger)) {
+                return;
+            }
+
+            String skinName = payload.skinPlayerName().trim();
+            exchanger.setSkinPlayerName(skinName);
+
+            if (skinName.isEmpty()) {
+                exchanger.setSkinProfile(null);
+                LOGGER.info("[Exchange] Exchanger skin reset for entity {}", payload.entityId());
+                return;
+            }
+
+            // Resolve GameProfile asynchronously
+            var server = player.getServer();
+            if (server == null) return;
+
+            net.minecraft.Util.backgroundExecutor().execute(() -> {
+                try {
+                    var profileCache = server.getProfileCache();
+                    if (profileCache == null) {
+                        LOGGER.warn("[Exchange] Profile cache unavailable for skin resolution");
+                        return;
+                    }
+                    var optProfile = profileCache.get(skinName);
+                    if (optProfile.isEmpty()) {
+                        LOGGER.warn("[Exchange] Player not found for skin: {}", skinName);
+                        return;
+                    }
+
+                    var profile = optProfile.get();
+                    var profileResult = server.getSessionService().fetchProfile(profile.getId(), true);
+                    if (profileResult == null) {
+                        LOGGER.warn("[Exchange] Could not fetch profile for skin: {}", skinName);
+                        return;
+                    }
+                    var filledProfile = profileResult.profile();
+
+                    server.execute(() -> {
+                        exchanger.setSkinProfile(filledProfile);
+                        LOGGER.info("[Exchange] Exchanger skin updated to '{}' for entity {}", skinName, payload.entityId());
+                    });
+                } catch (Exception e) {
+                    LOGGER.error("Error resolving exchanger skin for " + skinName, e);
+                }
+            });
         });
     }
 

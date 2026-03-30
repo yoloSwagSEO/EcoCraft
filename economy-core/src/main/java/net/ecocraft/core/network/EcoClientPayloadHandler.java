@@ -49,6 +49,19 @@ public final class EcoClientPayloadHandler {
         });
     }
 
+    // ========== Exchanger skin handler ==========
+
+    public static void handleExchangerSkin(ExchangerSkinPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            LOGGER.debug("[Exchange Client] Received exchanger skin: entityId={}, name='{}'",
+                    payload.entityId(), payload.skinPlayerName());
+            Minecraft mc = Minecraft.getInstance();
+            if (mc.screen instanceof ExchangeScreen screen) {
+                screen.receiveExchangerSkin(payload);
+            }
+        });
+    }
+
     // ========== Vault handlers ==========
 
     public static void handleOpenVault(OpenVaultPayload payload, IPayloadContext context) {
