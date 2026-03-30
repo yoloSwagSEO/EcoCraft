@@ -56,15 +56,6 @@ public class EcoTextInput extends BaseWidget {
         return false;
     }
 
-    /** Dispatch clicks to the inner EcoEditBox (needed when inside ScrollPane). */
-    @Override
-    public boolean onMouseClicked(double mouseX, double mouseY, int button) {
-        if (containsPoint(mouseX, mouseY)) {
-            return editBox.onMouseClicked(mouseX, mouseY, button);
-        }
-        return false;
-    }
-
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         // No-op: EcoEditBox renders its own themed background and text.
