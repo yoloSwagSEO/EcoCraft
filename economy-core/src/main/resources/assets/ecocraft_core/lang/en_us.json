@@ -55,6 +55,8 @@
   "ecocraft_core.exchange.skin_save": "Apply",
   "ecocraft_core.exchange.skin_back": "Back",
   "ecocraft_core.exchange.skin_saved": "Skin updated!",
+  "ecocraft_core.exchange.settings_title": "EXCHANGE SETTINGS",
+  "ecocraft_core.exchange.settings_tab_general": "General",
   "ecocraft_core.command.eco.currency_created": "Currency created: %s (%s) - rate: %s",
   "ecocraft_core.command.eco.currency_exists": "Currency '%s' already exists",
   "ecocraft.vault.title": "VAULT",

@@ -55,6 +55,8 @@
   "ecocraft_core.exchange.skin_save": "Appliquer",
   "ecocraft_core.exchange.skin_back": "Retour",
   "ecocraft_core.exchange.skin_saved": "Skin mis \u00e0 jour !",
+  "ecocraft_core.exchange.settings_title": "PARAM\u00c8TRES DU BUREAU DE CHANGE",
+  "ecocraft_core.exchange.settings_tab_general": "G\u00e9n\u00e9ral",
   "ecocraft_core.command.eco.currency_created": "Devise cr\u00e9\u00e9e : %s (%s) - taux : %s",
   "ecocraft_core.command.eco.currency_exists": "La devise '%s' existe d\u00e9j\u00e0",
   "ecocraft.vault.title": "COFFRE-FORT",

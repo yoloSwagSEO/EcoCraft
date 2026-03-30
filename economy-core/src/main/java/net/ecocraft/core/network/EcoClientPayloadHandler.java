@@ -2,6 +2,7 @@ package net.ecocraft.core.network;
 
 import net.ecocraft.core.network.payload.*;
 import net.ecocraft.core.screen.ExchangeScreen;
+import net.ecocraft.core.screen.ExchangeSettingsScreen;
 import net.ecocraft.core.vault.VaultScreen;
 import net.minecraft.client.Minecraft;
 import net.neoforged.neoforge.network.handling.IPayloadContext;

@@ -3,12 +3,10 @@ package net.ecocraft.core.screen;
 import com.mojang.logging.LogUtils;
 import net.ecocraft.api.currency.Currency;
 import net.ecocraft.api.currency.CurrencyFormatter;
-import net.ecocraft.api.exchange.ExchangeRate;
 import net.ecocraft.core.network.payload.ExchangeDataPayload;
+import net.ecocraft.core.network.payload.ExchangeRequestPayload;
 import net.ecocraft.core.network.payload.ExchangeResultPayload;
 import net.ecocraft.core.network.payload.ExchangerSkinPayload;
-import net.ecocraft.core.network.payload.ExchangeRequestPayload;
-import net.ecocraft.core.network.payload.UpdateExchangerSkinPayload;
 import net.ecocraft.gui.core.*;
 import net.ecocraft.gui.theme.DrawUtils;
 import net.ecocraft.gui.theme.Theme;
@@ -26,11 +24,12 @@ import java.util.List;
 
 /**
  * Bureau de Change screen — allows players to convert between currencies.
+ * Compact centered panel with dropdowns, amount input, preview, and footer buttons.
  */
 public class ExchangeScreen extends EcoScreen {
 
     private static final Logger LOGGER = LogUtils.getLogger();
-    private static final Theme THEME = Theme.dark();
+    static final Theme THEME = Theme.dark();
 
     private final int npcEntityId;
 
@@ -43,8 +42,8 @@ public class ExchangeScreen extends EcoScreen {
     private List<ExchangeDataPayload.CurrencyData> currencies = new ArrayList<>();
     private double feePercent = 2.0;
 
-    // Skin data (for admin config)
-    private String exchangerSkinName = "";
+    // Skin data (for admin config, passed to settings screen)
+    String exchangerSkinName = "";
 
     // Widgets
     private EcoDropdown fromDropdown;
@@ -56,15 +55,7 @@ public class ExchangeScreen extends EcoScreen {
     private Label toBalanceLabel;
     private Label statusLabel;
     private EcoButton convertButton;
-    private EcoButton closeButton;
     private Label noCurrenciesLabel;
-
-    // Skin config widgets (admin only)
-    private boolean showingSkinConfig = false;
-    private EcoTextInput skinInput;
-    private EcoButton saveSkinButton;
-    private EcoButton closeSkinButton;
-    private Label skinStatusLabel;
 
     // Current input amount
     private long currentAmount = 0;
@@ -74,40 +65,57 @@ public class ExchangeScreen extends EcoScreen {
         this.npcEntityId = npcEntityId;
     }
 
+    int getNpcEntityId() {
+        return npcEntityId;
+    }
+
     @Override
     protected void init() {
         super.init();
 
-        guiWidth = (int) (this.width * 0.6);
-        guiHeight = (int) (this.height * 0.7);
+        guiWidth = (int) (this.width * 0.50);
+        guiHeight = (int) (this.height * 0.70);
         guiLeft = (this.width - guiWidth) / 2;
         guiTop = (this.height - guiHeight) / 2;
 
-        if (showingSkinConfig) {
-            buildSkinConfigUI();
-        } else {
-            buildUI();
-        }
+        buildUI();
+    }
+
+    @Override
+    public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        super.renderBackground(graphics, mouseX, mouseY, partialTick);
+        DrawUtils.drawPanel(graphics, guiLeft, guiTop, guiWidth, guiHeight, THEME.bgDarkest, THEME.borderAccent);
+
+        // Title
+        Font font = Minecraft.getInstance().font;
+        String titleText = Component.translatable("ecocraft_core.exchange.title").getString();
+        int titleWidth = font.width(titleText);
+        int titleX = guiLeft + (guiWidth - titleWidth) / 2;
+        graphics.drawString(font, titleText, titleX, guiTop + 10, THEME.accent, false);
+
+        // Accent separator below title
+        DrawUtils.drawAccentSeparator(graphics, guiLeft + 10, guiTop + 22, guiWidth - 20, THEME);
     }
 
     private void buildUI() {
         Font font = Minecraft.getInstance().font;
-        int contentLeft = guiLeft + 20;
-        int contentWidth = guiWidth - 40;
+        int contentLeft = guiLeft + 16;
+        int contentWidth = guiWidth - 32;
         int y = guiTop + 30;
 
         // Gear button (admin only) — top-right corner
         if (npcEntityId > 0) {
             Minecraft mc = Minecraft.getInstance();
             if (mc.player != null && mc.player.hasPermissions(2)) {
-                EcoButton gearButton = EcoButton.ghost(THEME, Component.literal("\u2699"), this::openSkinConfig);
+                EcoButton gearButton = EcoButton.ghost(THEME, Component.literal("\u2699"), this::openSettings);
                 gearButton.setBounds(guiLeft + guiWidth - 20, guiTop + 6, 14, 14);
                 getTree().addChild(gearButton);
             }
         }
 
         // "De" (From) label + dropdown
-        Label fromLabel = new Label(font, contentLeft, y, Component.translatable("ecocraft_core.exchange.from"), THEME);
+        Label fromLabel = new Label(font, contentLeft, y,
+                Component.translatable("ecocraft_core.exchange.from"), THEME);
         fromLabel.setColor(THEME.accent);
         getTree().addChild(fromLabel);
 
@@ -118,10 +126,49 @@ public class ExchangeScreen extends EcoScreen {
         fromDropdown.responder(idx -> onCurrencyChanged());
         getTree().addChild(fromDropdown);
 
-        y += 24;
+        y += 22;
+
+        // From balance
+        fromBalanceLabel = new Label(font, contentLeft, y,
+                Component.translatable("ecocraft_core.exchange.balance", "---"), THEME);
+        fromBalanceLabel.setColor(THEME.textGrey);
+        getTree().addChild(fromBalanceLabel);
+
+        y += 16;
+
+        // "Montant" (Amount) label + input
+        Label amountLabel = new Label(font, contentLeft, y,
+                Component.translatable("ecocraft_core.exchange.amount"), THEME);
+        amountLabel.setColor(THEME.accent);
+        getTree().addChild(amountLabel);
+
+        y += 12;
+        Currency fromCurrency = getSelectedFromCurrency();
+        if (fromCurrency != null) {
+            amountInput = new EcoCurrencyInput(font, contentLeft, y, contentWidth, fromCurrency, THEME);
+            amountInput.min(0).responder(val -> {
+                currentAmount = val;
+                updatePreview();
+                updateConvertButtonState();
+            });
+            getTree().addChild(amountInput);
+            y += amountInput.getHeight() + 8;
+        } else {
+            y += 24;
+        }
+
+        // Arrow separator
+        Label arrowLabel = new Label(font, guiLeft + guiWidth / 2, y,
+                Component.literal("\u2193"), THEME);
+        arrowLabel.setColor(THEME.textDim);
+        arrowLabel.setAlignment(Label.Align.CENTER);
+        getTree().addChild(arrowLabel);
+
+        y += 14;
 
         // "Vers" (To) label + dropdown
-        Label toLabel = new Label(font, contentLeft, y, Component.translatable("ecocraft_core.exchange.to"), THEME);
+        Label toLabel = new Label(font, contentLeft, y,
+                Component.translatable("ecocraft_core.exchange.to"), THEME);
         toLabel.setColor(THEME.accent);
         getTree().addChild(toLabel);
 
@@ -133,34 +180,7 @@ public class ExchangeScreen extends EcoScreen {
         toDropdown.responder(idx -> onCurrencyChanged());
         getTree().addChild(toDropdown);
 
-        y += 24;
-
-        // Amount label + input
-        Label amountLabel = new Label(font, contentLeft, y, Component.translatable("ecocraft_core.exchange.amount"), THEME);
-        amountLabel.setColor(THEME.accent);
-        getTree().addChild(amountLabel);
-
-        y += 12;
-        Currency fromCurrency = getSelectedFromCurrency();
-        if (fromCurrency != null) {
-            amountInput = new EcoCurrencyInput(font, contentLeft, y, contentWidth, fromCurrency, THEME);
-            amountInput.min(0).responder(val -> {
-                currentAmount = val;
-                updatePreview();
-            });
-            getTree().addChild(amountInput);
-            y += amountInput.getHeight() + 8;
-        } else {
-            y += 24;
-        }
-
-        // From balance
-        fromBalanceLabel = new Label(font, contentLeft, y,
-                Component.translatable("ecocraft_core.exchange.balance", "---"), THEME);
-        fromBalanceLabel.setColor(THEME.textGrey);
-        getTree().addChild(fromBalanceLabel);
-
-        y += 14;
+        y += 22;
 
         // To balance
         toBalanceLabel = new Label(font, contentLeft, y,
@@ -168,49 +188,52 @@ public class ExchangeScreen extends EcoScreen {
         toBalanceLabel.setColor(THEME.textGrey);
         getTree().addChild(toBalanceLabel);
 
-        y += 18;
+        y += 20;
 
-        // Preview
+        // Preview: "Vous recevrez : X"
         previewLabel = new Label(font, contentLeft, y,
                 Component.translatable("ecocraft_core.exchange.preview", "---"), THEME);
-        previewLabel.setColor(THEME.textWhite);
+        previewLabel.setColor(THEME.accent);
         getTree().addChild(previewLabel);
 
         y += 14;
 
-        // Fee
+        // Fee: "Frais : X%"
         feeLabel = new Label(font, contentLeft, y,
                 Component.translatable("ecocraft_core.exchange.fee", String.format("%.1f", feePercent)), THEME);
         feeLabel.setColor(THEME.textDim);
         getTree().addChild(feeLabel);
 
-        y += 20;
+        y += 18;
 
         // Status message (success/error)
         statusLabel = new Label(font, contentLeft, y, Component.empty(), THEME);
         statusLabel.setColor(THEME.textLight);
         getTree().addChild(statusLabel);
 
-        y += 16;
+        // Footer: centered buttons at bottom of panel
+        int footerY = guiTop + guiHeight - 30;
+        int btnW = 100;
+        int gap = 10;
+        int totalBtnW = btnW * 2 + gap;
+        int btnStartX = guiLeft + (guiWidth - totalBtnW) / 2;
 
-        // Buttons
-        int buttonWidth = (contentWidth - 10) / 2;
         convertButton = EcoButton.success(THEME,
                 Component.translatable("ecocraft_core.exchange.convert"),
                 this::onConvert);
-        convertButton.setPosition(contentLeft, y);
-        convertButton.setSize(buttonWidth, 20);
+        convertButton.setPosition(btnStartX, footerY);
+        convertButton.setSize(btnW, 20);
         getTree().addChild(convertButton);
 
-        closeButton = EcoButton.ghost(THEME,
+        EcoButton closeButton = EcoButton.ghost(THEME,
                 Component.translatable("ecocraft_core.exchange.close"),
                 this::doClose);
-        closeButton.setPosition(contentLeft + buttonWidth + 10, y);
-        closeButton.setSize(buttonWidth, 20);
+        closeButton.setPosition(btnStartX + btnW + gap, footerY);
+        closeButton.setSize(btnW, 20);
         getTree().addChild(closeButton);
 
-        // No currencies label (hidden by default)
-        noCurrenciesLabel = new Label(font, contentLeft, guiTop + guiHeight / 2,
+        // No currencies label (hidden by default, centered)
+        noCurrenciesLabel = new Label(font, guiLeft + guiWidth / 2, guiTop + guiHeight / 2,
                 Component.translatable("ecocraft_core.exchange.no_currencies"), THEME);
         noCurrenciesLabel.setColor(THEME.textDim);
         noCurrenciesLabel.setAlignment(Label.Align.CENTER);
@@ -223,82 +246,12 @@ public class ExchangeScreen extends EcoScreen {
         updateConvertButtonState();
 
         if (currencies.size() < 2) {
-            setWidgetsVisible(false);
+            setExchangeWidgetsVisible(false);
             noCurrenciesLabel.setVisible(true);
         }
     }
 
-    private void buildSkinConfigUI() {
-        Font font = Minecraft.getInstance().font;
-        int panelW = 260;
-        int panelH = 120;
-        int panelX = (this.width - panelW) / 2;
-        int panelY = (this.height - panelH) / 2;
-
-        int cx = panelX + 15;
-        int cw = panelW - 30;
-        int y = panelY + 30;
-
-        // Skin player name label
-        Label skinLabel = new Label(font, cx, y,
-                Component.translatable("ecocraft_core.exchange.skin_label"), THEME);
-        skinLabel.setColor(THEME.accent);
-        getTree().addChild(skinLabel);
-
-        y += 14;
-
-        // Skin text input
-        skinInput = new EcoTextInput(font, cx, y, cw, 16,
-                Component.translatable("ecocraft_core.exchange.skin_placeholder"), THEME);
-        skinInput.setValue(exchangerSkinName);
-        skinInput.responder(val -> exchangerSkinName = val);
-        getTree().addChild(skinInput);
-
-        y += 24;
-
-        // Status label
-        skinStatusLabel = new Label(font, cx, y, Component.empty(), THEME);
-        skinStatusLabel.setColor(THEME.textGrey);
-        getTree().addChild(skinStatusLabel);
-
-        y += 16;
-
-        // Save + Back buttons
-        int btnW = (cw - 10) / 2;
-        saveSkinButton = EcoButton.success(THEME,
-                Component.translatable("ecocraft_core.exchange.skin_save"), this::onSaveSkin);
-        saveSkinButton.setPosition(cx, y);
-        saveSkinButton.setSize(btnW, 20);
-        getTree().addChild(saveSkinButton);
-
-        closeSkinButton = EcoButton.ghost(THEME,
-                Component.translatable("ecocraft_core.exchange.skin_back"), this::closeSkinConfig);
-        closeSkinButton.setPosition(cx + btnW + 10, y);
-        closeSkinButton.setSize(btnW, 20);
-        getTree().addChild(closeSkinButton);
-    }
-
-    private void openSkinConfig() {
-        showingSkinConfig = true;
-        init();
-    }
-
-    private void closeSkinConfig() {
-        showingSkinConfig = false;
-        init();
-    }
-
-    private void onSaveSkin() {
-        if (npcEntityId <= 0) return;
-        String name = exchangerSkinName != null ? exchangerSkinName.trim() : "";
-        PacketDistributor.sendToServer(new UpdateExchangerSkinPayload(npcEntityId, name));
-        if (skinStatusLabel != null) {
-            skinStatusLabel.setText(Component.translatable("ecocraft_core.exchange.skin_saved"));
-            skinStatusLabel.setColor(0xFF00FF00);
-        }
-    }
-
-    private void setWidgetsVisible(boolean visible) {
+    private void setExchangeWidgetsVisible(boolean visible) {
         if (fromDropdown != null) fromDropdown.setVisible(visible);
         if (toDropdown != null) toDropdown.setVisible(visible);
         if (amountInput != null) amountInput.setVisible(visible);
@@ -309,18 +262,27 @@ public class ExchangeScreen extends EcoScreen {
         if (convertButton != null) convertButton.setVisible(visible);
     }
 
+    // --- Settings ---
+
+    private void openSettings() {
+        boolean isAdmin = false;
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player != null) {
+            isAdmin = mc.player.hasPermissions(2);
+        }
+        mc.setScreen(new ExchangeSettingsScreen(this, isAdmin, npcEntityId, exchangerSkinName));
+    }
+
     // --- Data reception from server ---
 
     public void receiveExchangeData(ExchangeDataPayload payload) {
         this.currencies = new ArrayList<>(payload.currencies());
         this.feePercent = payload.feePercent();
-        // Rebuild UI with new data
-        if (!showingSkinConfig) {
-            init();
-        }
+        init();
     }
 
     public void receiveExchangeResult(ExchangeResultPayload payload) {
+        if (statusLabel == null) return;
         if (payload.success()) {
             statusLabel.setText(Component.translatable("ecocraft_core.exchange.success"));
             statusLabel.setColor(0xFF00FF00);
@@ -332,9 +294,6 @@ public class ExchangeScreen extends EcoScreen {
 
     public void receiveExchangerSkin(ExchangerSkinPayload payload) {
         this.exchangerSkinName = payload.skinPlayerName();
-        if (showingSkinConfig && skinInput != null) {
-            skinInput.setValue(exchangerSkinName);
-        }
     }
 
     // --- Helpers ---
@@ -362,30 +321,24 @@ public class ExchangeScreen extends EcoScreen {
     private Currency getSelectedFromCurrency() {
         var data = getSelectedFrom();
         if (data == null) return null;
-        return Currency.builder(data.id(), data.name(), data.symbol())
-                .decimals(data.decimals())
-                .exchangeable(true)
-                .referenceRate(data.referenceRate())
-                .build();
+        return buildCurrency(data);
     }
 
     private void onCurrencyChanged() {
         updateBalances();
         updatePreview();
         updateConvertButtonState();
-        // Rebuild amount input if from-currency changed (different decimals/sub-units)
-        // For simplicity, we just update preview and balances
     }
 
     private void updateBalances() {
         var from = getSelectedFrom();
         var to = getSelectedTo();
-        if (from != null) {
+        if (from != null && fromBalanceLabel != null) {
             Currency fromC = buildCurrency(from);
             fromBalanceLabel.setText(Component.translatable("ecocraft_core.exchange.balance",
                     CurrencyFormatter.format(from.balance(), fromC) + " " + from.symbol()));
         }
-        if (to != null) {
+        if (to != null && toBalanceLabel != null) {
             Currency toC = buildCurrency(to);
             toBalanceLabel.setText(Component.translatable("ecocraft_core.exchange.balance",
                     CurrencyFormatter.format(to.balance(), toC) + " " + to.symbol()));
@@ -393,15 +346,12 @@ public class ExchangeScreen extends EcoScreen {
     }
 
     private void updatePreview() {
+        if (previewLabel == null || feeLabel == null) return;
+
         var from = getSelectedFrom();
         var to = getSelectedTo();
 
-        if (from == null || to == null || currentAmount <= 0) {
-            previewLabel.setText(Component.translatable("ecocraft_core.exchange.preview", "---"));
-            return;
-        }
-
-        if (from.id().equals(to.id())) {
+        if (from == null || to == null || currentAmount <= 0 || from.id().equals(to.id())) {
             previewLabel.setText(Component.translatable("ecocraft_core.exchange.preview", "---"));
             return;
         }
@@ -452,50 +402,12 @@ public class ExchangeScreen extends EcoScreen {
         var to = getSelectedTo();
         if (from == null || to == null || from.id().equals(to.id()) || currentAmount <= 0) return;
 
-        statusLabel.setText(Component.empty());
+        if (statusLabel != null) statusLabel.setText(Component.empty());
         PacketDistributor.sendToServer(new ExchangeRequestPayload(currentAmount, from.id(), to.id()));
     }
 
     private void doClose() {
         Minecraft.getInstance().setScreen(null);
-    }
-
-    // --- Rendering ---
-
-    @Override
-    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        super.render(graphics, mouseX, mouseY, partialTick);
-
-        if (showingSkinConfig) {
-            // Render skin config panel
-            int panelW = 260;
-            int panelH = 120;
-            int panelX = (this.width - panelW) / 2;
-            int panelY = (this.height - panelH) / 2;
-            DrawUtils.drawPanel(graphics, panelX, panelY, panelW, panelH, THEME.bgDark, THEME.border);
-
-            Font font = Minecraft.getInstance().font;
-            String titleText = Component.translatable("ecocraft_core.exchange.skin_title").getString();
-            int titleWidth = font.width(titleText);
-            graphics.drawString(font, titleText, panelX + (panelW - titleWidth) / 2, panelY + 10, THEME.accent, false);
-            DrawUtils.drawAccentSeparator(graphics, panelX + 10, panelY + 22, panelW - 20, THEME);
-        } else {
-            // Background panel
-            DrawUtils.drawPanel(graphics, guiLeft, guiTop, guiWidth, guiHeight, THEME.bgDark, THEME.border);
-
-            // Title
-            Font font = Minecraft.getInstance().font;
-            String titleText = Component.translatable("ecocraft_core.exchange.title").getString();
-            int titleWidth = font.width(titleText);
-            int titleX = guiLeft + (guiWidth - titleWidth) / 2;
-            graphics.drawString(font, titleText, titleX, guiTop + 10, THEME.accent, false);
-
-            // Accent separator below title
-            DrawUtils.drawAccentSeparator(graphics, guiLeft + 10, guiTop + 22, guiWidth - 20, THEME);
-        }
-
-        // Re-render tree on top of background
-        getTree().render(graphics, mouseX, mouseY, partialTick);
     }
 
     @Override
