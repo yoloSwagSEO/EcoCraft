@@ -33,5 +33,20 @@
   "ecocraft_core.command.currency.history_entry": "§7[%s] §f%s §7- %s",
   "ecocraft_core.command.balance.list_header": "=== Todos los saldos (%s) ===",
   "ecocraft_core.command.balance.list_empty": "No se encontraron saldos.",
-  "ecocraft_core.command.balance.player_not_found": "Jugador no encontrado: %s"
+  "ecocraft_core.command.balance.player_not_found": "Jugador no encontrado: %s",
+  "block.ecocraft_core.exchange_block": "Casa de cambio",
+  "entity.ecocraft_core.exchanger": "Cambista",
+  "item.ecocraft_core.exchanger_spawn_egg": "Huevo de aparición de cambista",
+  "ecocraft_core.exchange.title": "CASA DE CAMBIO",
+  "ecocraft_core.exchange.from": "De",
+  "ecocraft_core.exchange.to": "A",
+  "ecocraft_core.exchange.amount": "Cantidad",
+  "ecocraft_core.exchange.preview": "Recibirás: %s",
+  "ecocraft_core.exchange.fee": "Comisión: %s%%",
+  "ecocraft_core.exchange.balance": "Saldo: %s",
+  "ecocraft_core.exchange.convert": "Convertir",
+  "ecocraft_core.exchange.close": "Cerrar",
+  "ecocraft_core.exchange.success": "¡Conversión exitosa!",
+  "ecocraft_core.exchange.error": "Error: %s",
+  "ecocraft_core.exchange.no_currencies": "No hay divisas intercambiables"
 }

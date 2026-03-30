@@ -33,5 +33,20 @@
   "ecocraft_core.command.currency.history_entry": "§7[%s] §f%s §7- %s",
   "ecocraft_core.command.balance.list_header": "=== Tous les soldes (%s) ===",
   "ecocraft_core.command.balance.list_empty": "Aucun solde trouvé.",
-  "ecocraft_core.command.balance.player_not_found": "Joueur introuvable : %s"
+  "ecocraft_core.command.balance.player_not_found": "Joueur introuvable : %s",
+  "block.ecocraft_core.exchange_block": "Bureau de change",
+  "entity.ecocraft_core.exchanger": "Changeur",
+  "item.ecocraft_core.exchanger_spawn_egg": "Oeuf d'apparition de changeur",
+  "ecocraft_core.exchange.title": "BUREAU DE CHANGE",
+  "ecocraft_core.exchange.from": "De",
+  "ecocraft_core.exchange.to": "Vers",
+  "ecocraft_core.exchange.amount": "Montant",
+  "ecocraft_core.exchange.preview": "Vous recevrez : %s",
+  "ecocraft_core.exchange.fee": "Frais : %s%%",
+  "ecocraft_core.exchange.balance": "Solde : %s",
+  "ecocraft_core.exchange.convert": "Convertir",
+  "ecocraft_core.exchange.close": "Fermer",
+  "ecocraft_core.exchange.success": "Conversion réussie !",
+  "ecocraft_core.exchange.error": "Erreur : %s",
+  "ecocraft_core.exchange.no_currencies": "Aucune devise échangeable"
 }

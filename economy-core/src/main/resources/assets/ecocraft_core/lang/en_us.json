@@ -33,5 +33,20 @@
   "ecocraft_core.command.currency.history_entry": "§7[%s] §f%s §7- %s",
   "ecocraft_core.command.balance.list_header": "=== All Balances (%s) ===",
   "ecocraft_core.command.balance.list_empty": "No balances found.",
-  "ecocraft_core.command.balance.player_not_found": "Player not found: %s"
+  "ecocraft_core.command.balance.player_not_found": "Player not found: %s",
+  "block.ecocraft_core.exchange_block": "Exchange Office",
+  "entity.ecocraft_core.exchanger": "Exchanger",
+  "item.ecocraft_core.exchanger_spawn_egg": "Exchanger Spawn Egg",
+  "ecocraft_core.exchange.title": "EXCHANGE OFFICE",
+  "ecocraft_core.exchange.from": "From",
+  "ecocraft_core.exchange.to": "To",
+  "ecocraft_core.exchange.amount": "Amount",
+  "ecocraft_core.exchange.preview": "You will receive: %s",
+  "ecocraft_core.exchange.fee": "Fee: %s%%",
+  "ecocraft_core.exchange.balance": "Balance: %s",
+  "ecocraft_core.exchange.convert": "Convert",
+  "ecocraft_core.exchange.close": "Close",
+  "ecocraft_core.exchange.success": "Conversion successful!",
+  "ecocraft_core.exchange.error": "Error: %s",
+  "ecocraft_core.exchange.no_currencies": "No exchangeable currencies"
 }
