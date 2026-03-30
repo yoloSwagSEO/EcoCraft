@@ -48,5 +48,19 @@
   "ecocraft_core.exchange.close": "Close",
   "ecocraft_core.exchange.success": "Conversion successful!",
   "ecocraft_core.exchange.error": "Error: %s",
-  "ecocraft_core.exchange.no_currencies": "No exchangeable currencies"
+  "ecocraft_core.exchange.no_currencies": "No exchangeable currencies",
+  "ecocraft.vault.title": "VAULT",
+  "ecocraft.vault.currencies": "Currencies",
+  "ecocraft.vault.balance": "Balance: %s",
+  "ecocraft.vault.deposit": "Deposit",
+  "ecocraft.vault.withdraw": "Withdraw",
+  "ecocraft.vault.withdraw_amount": "Amount to withdraw",
+  "ecocraft.vault.no_physical": "Virtual currency only",
+  "ecocraft.vault.deposit_success": "Deposit successful: +%s",
+  "ecocraft.vault.withdraw_success": "Withdrawal successful: -%s",
+  "ecocraft.vault.insufficient": "Insufficient balance",
+  "ecocraft.vault.inventory_full": "Inventory full",
+  "ecocraft.vault.close": "Close",
+  "ecocraft.vault.not_owner": "This vault does not belong to you",
+  "ecocraft.vault.no_currencies": "No currencies available"
 }

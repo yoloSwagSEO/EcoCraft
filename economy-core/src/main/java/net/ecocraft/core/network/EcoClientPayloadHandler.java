@@ -1,9 +1,8 @@
 package net.ecocraft.core.network;
 
-import net.ecocraft.core.network.payload.ExchangeDataPayload;
-import net.ecocraft.core.network.payload.ExchangeResultPayload;
-import net.ecocraft.core.network.payload.OpenExchangePayload;
+import net.ecocraft.core.network.payload.*;
 import net.ecocraft.core.screen.ExchangeScreen;
+import net.ecocraft.core.vault.VaultScreen;
 import net.minecraft.client.Minecraft;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import org.slf4j.Logger;
@@ -17,6 +16,8 @@ public final class EcoClientPayloadHandler {
     private static final Logger LOGGER = LogUtils.getLogger();
 
     private EcoClientPayloadHandler() {}
+
+    // ========== Exchange handlers ==========
 
     public static void handleOpenExchange(OpenExchangePayload payload, IPayloadContext context) {
         context.enqueueWork(() -> {
@@ -44,6 +45,37 @@ public final class EcoClientPayloadHandler {
             Minecraft mc = Minecraft.getInstance();
             if (mc.screen instanceof ExchangeScreen screen) {
                 screen.receiveExchangeResult(payload);
+            }
+        });
+    }
+
+    // ========== Vault handlers ==========
+
+    public static void handleOpenVault(OpenVaultPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            LOGGER.debug("[Vault Client] Opening vault screen");
+            Minecraft mc = Minecraft.getInstance();
+            mc.setScreen(new VaultScreen());
+        });
+    }
+
+    public static void handleVaultData(VaultDataPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            LOGGER.debug("[Vault Client] Received vault data: {} currencies", payload.currencies().size());
+            Minecraft mc = Minecraft.getInstance();
+            if (mc.screen instanceof VaultScreen screen) {
+                screen.receiveVaultData(payload);
+            }
+        });
+    }
+
+    public static void handleVaultResult(VaultResultPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            LOGGER.debug("[Vault Client] Received vault result: success={}, message='{}'",
+                    payload.success(), payload.message());
+            Minecraft mc = Minecraft.getInstance();
+            if (mc.screen instanceof VaultScreen screen) {
+                screen.receiveVaultResult(payload);
             }
         });
     }

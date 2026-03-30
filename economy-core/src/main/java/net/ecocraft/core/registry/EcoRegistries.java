@@ -6,13 +6,10 @@ import net.ecocraft.core.exchange.ExchangeBlockEntity;
 import net.ecocraft.core.exchange.ExchangerEntity;
 import net.ecocraft.core.vault.VaultBlock;
 import net.ecocraft.core.vault.VaultBlockEntity;
-import net.ecocraft.core.vault.VaultMenu;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;
-import net.minecraft.world.flag.FeatureFlags;
-import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.Item;
@@ -35,8 +32,6 @@ public class EcoRegistries {
         DeferredRegister.createItems(EcoCraftCoreMod.MOD_ID);
     public static final DeferredRegister<BlockEntityType<?>> BLOCK_ENTITIES =
         DeferredRegister.create(Registries.BLOCK_ENTITY_TYPE, EcoCraftCoreMod.MOD_ID);
-    public static final DeferredRegister<MenuType<?>> MENUS =
-        DeferredRegister.create(Registries.MENU, EcoCraftCoreMod.MOD_ID);
     public static final DeferredRegister<EntityType<?>> ENTITY_TYPES =
         DeferredRegister.create(Registries.ENTITY_TYPE, EcoCraftCoreMod.MOD_ID);
     public static final DeferredRegister<CreativeModeTab> CREATIVE_TABS =
@@ -55,11 +50,6 @@ public class EcoRegistries {
     public static final Supplier<BlockEntityType<VaultBlockEntity>> VAULT_BLOCK_ENTITY =
         BLOCK_ENTITIES.register("vault_block_entity", () ->
             BlockEntityType.Builder.of(VaultBlockEntity::new, VAULT_BLOCK.get()).build(null)
-        );
-
-    public static final Supplier<MenuType<VaultMenu>> VAULT_MENU =
-        MENUS.register("vault_menu", () ->
-            new MenuType<>(VaultMenu::new, FeatureFlags.DEFAULT_FLAGS)
         );
 
     // --- Exchange Block ---
@@ -110,7 +100,6 @@ public class EcoRegistries {
         BLOCKS.register(modBus);
         ITEMS.register(modBus);
         BLOCK_ENTITIES.register(modBus);
-        MENUS.register(modBus);
         ENTITY_TYPES.register(modBus);
         CREATIVE_TABS.register(modBus);
     }

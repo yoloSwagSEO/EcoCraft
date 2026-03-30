@@ -5,7 +5,6 @@ import net.ecocraft.core.exchange.ExchangerEntity;
 import net.ecocraft.core.exchange.ExchangerRenderer;
 import net.ecocraft.core.network.EcoNetworkHandler;
 import net.ecocraft.core.registry.EcoRegistries;
-import net.ecocraft.core.vault.VaultScreen;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.IEventBus;
@@ -14,7 +13,6 @@ import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.config.ModConfig;
 import net.neoforged.fml.loading.FMLEnvironment;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
-import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
 import net.neoforged.neoforge.event.entity.EntityAttributeCreationEvent;
 
 @Mod(EcoCraftCoreMod.MOD_ID)
@@ -28,13 +26,8 @@ public class EcoCraftCoreMod {
         modBus.addListener(this::registerAttributes);
 
         if (FMLEnvironment.dist == Dist.CLIENT) {
-            modBus.addListener(EcoCraftCoreMod::registerScreens);
             modBus.addListener(EcoCraftCoreMod::registerRenderers);
         }
-    }
-
-    private static void registerScreens(RegisterMenuScreensEvent event) {
-        event.register(EcoRegistries.VAULT_MENU.get(), VaultScreen::new);
     }
 
     private static void registerRenderers(EntityRenderersEvent.RegisterRenderers event) {

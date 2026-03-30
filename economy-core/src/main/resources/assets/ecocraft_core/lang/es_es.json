@@ -48,5 +48,19 @@
   "ecocraft_core.exchange.close": "Cerrar",
   "ecocraft_core.exchange.success": "¡Conversión exitosa!",
   "ecocraft_core.exchange.error": "Error: %s",
-  "ecocraft_core.exchange.no_currencies": "No hay divisas intercambiables"
+  "ecocraft_core.exchange.no_currencies": "No hay divisas intercambiables",
+  "ecocraft.vault.title": "BÓVEDA",
+  "ecocraft.vault.currencies": "Divisas",
+  "ecocraft.vault.balance": "Saldo: %s",
+  "ecocraft.vault.deposit": "Depositar",
+  "ecocraft.vault.withdraw": "Retirar",
+  "ecocraft.vault.withdraw_amount": "Cantidad a retirar",
+  "ecocraft.vault.no_physical": "Divisa virtual únicamente",
+  "ecocraft.vault.deposit_success": "Depósito realizado: +%s",
+  "ecocraft.vault.withdraw_success": "Retiro realizado: -%s",
+  "ecocraft.vault.insufficient": "Saldo insuficiente",
+  "ecocraft.vault.inventory_full": "Inventario lleno",
+  "ecocraft.vault.close": "Cerrar",
+  "ecocraft.vault.not_owner": "Esta bóveda no te pertenece",
+  "ecocraft.vault.no_currencies": "No hay divisas disponibles"
 }

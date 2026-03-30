@@ -48,5 +48,19 @@
   "ecocraft_core.exchange.close": "Fermer",
   "ecocraft_core.exchange.success": "Conversion réussie !",
   "ecocraft_core.exchange.error": "Erreur : %s",
-  "ecocraft_core.exchange.no_currencies": "Aucune devise échangeable"
+  "ecocraft_core.exchange.no_currencies": "Aucune devise échangeable",
+  "ecocraft.vault.title": "COFFRE-FORT",
+  "ecocraft.vault.currencies": "Devises",
+  "ecocraft.vault.balance": "Solde : %s",
+  "ecocraft.vault.deposit": "Déposer",
+  "ecocraft.vault.withdraw": "Retirer",
+  "ecocraft.vault.withdraw_amount": "Montant à retirer",
+  "ecocraft.vault.no_physical": "Devise virtuelle uniquement",
+  "ecocraft.vault.deposit_success": "Dépôt effectué : +%s",
+  "ecocraft.vault.withdraw_success": "Retrait effectué : -%s",
+  "ecocraft.vault.insufficient": "Solde insuffisant",
+  "ecocraft.vault.inventory_full": "Inventaire plein",
+  "ecocraft.vault.close": "Fermer",
+  "ecocraft.vault.not_owner": "Ce coffre-fort ne vous appartient pas",
+  "ecocraft.vault.no_currencies": "Aucune devise disponible"
 }
