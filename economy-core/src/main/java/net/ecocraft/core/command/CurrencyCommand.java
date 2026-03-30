@@ -128,9 +128,11 @@ public class CurrencyCommand {
             return 0;
         }
 
-        var result = exchange.convert(player.getUUID(), BigDecimal.valueOf(amount), from, to);
+        long smallestUnit = CurrencyFormatter.toSmallestUnit(BigDecimal.valueOf(amount), from);
+        BigDecimal bdAmount = CurrencyFormatter.fromSmallestUnit(smallestUnit, from);
+        var result = exchange.convert(player.getUUID(), bdAmount, from, to);
         if (result.successful()) {
-            String formattedFrom = CurrencyFormatter.format(BigDecimal.valueOf(amount).longValue(), from);
+            String formattedFrom = CurrencyFormatter.format(smallestUnit, from);
             source.sendSuccess(() -> Component.translatable(
                 "ecocraft_core.command.currency.converted", formattedFrom, to.name()
             ), false);

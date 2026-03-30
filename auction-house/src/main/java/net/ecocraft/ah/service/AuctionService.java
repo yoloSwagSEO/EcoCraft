@@ -4,6 +4,7 @@ import net.ecocraft.ah.data.*;
 import net.ecocraft.ah.storage.AuctionStorageProvider;
 import net.ecocraft.api.EconomyProvider;
 import net.ecocraft.api.currency.Currency;
+import net.ecocraft.api.currency.CurrencyFormatter;
 import net.ecocraft.api.currency.CurrencyRegistry;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -885,14 +886,14 @@ public class AuctionService {
      * Stores in the main currency unit (Gold), not sub-units.
      */
     public static long toSmallestUnit(BigDecimal amount, Currency currency) {
-        return amount.setScale(0, RoundingMode.DOWN).longValueExact();
+        return CurrencyFormatter.toSmallestUnit(amount, currency);
     }
 
     /**
      * Converts a stored long back to a BigDecimal.
      */
     public static BigDecimal fromSmallestUnit(long amount, Currency currency) {
-        return BigDecimal.valueOf(amount);
+        return CurrencyFormatter.fromSmallestUnit(amount, currency);
     }
 
     // -------------------------------------------------------------------------

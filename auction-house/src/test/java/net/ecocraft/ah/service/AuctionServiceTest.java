@@ -151,21 +151,22 @@ class AuctionServiceTest {
 
     @Test
     void toSmallestUnitConversion() {
-        // Prices stored in main unit (Gold), no sub-unit multiplication
-        assertEquals(10L, AuctionService.toSmallestUnit(new BigDecimal("10.50"), GOLD));
-        assertEquals(100L, AuctionService.toSmallestUnit(new BigDecimal("100.00"), GOLD));
-        assertEquals(0L, AuctionService.toSmallestUnit(new BigDecimal("0.01"), GOLD));
+        // With decimals=2: display amount × 100 = smallest unit
+        assertEquals(1050L, AuctionService.toSmallestUnit(new BigDecimal("10.50"), GOLD));
+        assertEquals(10000L, AuctionService.toSmallestUnit(new BigDecimal("100.00"), GOLD));
+        assertEquals(1L, AuctionService.toSmallestUnit(new BigDecimal("0.01"), GOLD));
     }
 
     @Test
     void fromSmallestUnitConversion() {
-        assertEquals(new BigDecimal("1050"), AuctionService.fromSmallestUnit(1050L, GOLD));
-        assertEquals(new BigDecimal("100"), AuctionService.fromSmallestUnit(100L, GOLD));
+        // With decimals=2: smallest unit ÷ 100 = display amount
+        assertEquals(new BigDecimal("10.50"), AuctionService.fromSmallestUnit(1050L, GOLD));
+        assertEquals(new BigDecimal("1.00"), AuctionService.fromSmallestUnit(100L, GOLD));
     }
 
     @Test
     void conversionRoundTrip() {
-        BigDecimal original = new BigDecimal("42");
+        BigDecimal original = new BigDecimal("42.00");
         long units = AuctionService.toSmallestUnit(original, GOLD);
         assertEquals(original, AuctionService.fromSmallestUnit(units, GOLD));
     }
@@ -238,7 +239,7 @@ class AuctionServiceTest {
                 1, ListingType.AUCTION, new BigDecimal("20.00"), 24, "gold", ItemCategory.WEAPONS, null, null, -1, -1);
 
         assertEquals(0L, listing.buyoutPrice());
-        assertEquals(20L, listing.startingBid()); // 20.00 stored as-is = 20 units
+        assertEquals(2000L, listing.startingBid()); // 20.00 × 100 = 2000 smallest units
     }
 
     // -------------------------------------------------------------------------
@@ -327,7 +328,7 @@ class AuctionServiceTest {
         AuctionStorageProvider.PriceStats stats = storage.getPriceHistory(
                 "minecraft:diamond_sword", "gold", 86_400_000L);
         assertNotNull(stats);
-        assertEquals(100L, stats.minPrice()); // 100.00 stored as-is = 100 units
+        assertEquals(10000L, stats.minPrice()); // 100.00 × 100 = 10000 smallest units
     }
 
     // -------------------------------------------------------------------------
@@ -354,7 +355,7 @@ class AuctionServiceTest {
         // Listing should have updated bid
         AuctionListing updated = storage.getListingById(listing.id());
         assertNotNull(updated);
-        assertEquals(60L, updated.currentBid());
+        assertEquals(6000L, updated.currentBid());
         assertEquals(bidder, updated.currentBidderUuid());
     }
 
@@ -501,11 +502,11 @@ class AuctionServiceTest {
         economy.setBalance(winner, GOLD, new BigDecimal("500.00"));
 
         // Insert an expired AUCTION listing directly:
-        //   startingBid = 10 (i.e. 10.00 Gold), currentBid = 100 (i.e. 100.00 Gold)
-        // This simulates an auction where the starting bid was 10 but the winning bid was 100.
+        //   startingBid = 1000 (i.e. 10.00 Gold × 100), currentBid = 10000 (i.e. 100.00 Gold × 100)
+        // This simulates an auction where the starting bid was 10.00 but the winning bid was 100.00.
         long past = System.currentTimeMillis() - 10_000L;
-        long startingBid = 10L;   // 10.00 Gold
-        long finalBid = 100L;     // 100.00 Gold — 10x the starting bid
+        long startingBid = 1000L;   // 10.00 Gold × 100
+        long finalBid = 10000L;     // 100.00 Gold × 100
         AuctionListing listing = new AuctionListing(
                 UUID.randomUUID().toString(), seller, "Seller",
                 "minecraft:diamond_pickaxe", "Diamond Pickaxe", null, 1,
@@ -517,9 +518,9 @@ class AuctionServiceTest {
 
         service.expireListings();
 
-        // Tax should be 5% of 100 (final bid) = 5, NOT 5% of 10 (starting bid)
+        // Tax should be 5% of 10000 (final bid) = 500, NOT 5% of 1000 (starting bid)
         long expectedTax = Math.max(1, (long) (finalBid * AuctionService.DEFAULT_TAX_RATE));
-        assertEquals(5L, expectedTax, "Tax should be 5% of final bid (100), not starting bid (10)");
+        assertEquals(500L, expectedTax, "Tax should be 5% of final bid (10000), not starting bid (1000)");
 
         long sellerGain = finalBid - expectedTax; // 100 - 5 = 95
         BigDecimal expectedBalance = sellerBalanceBefore.add(
@@ -586,8 +587,8 @@ class AuctionServiceTest {
 
         service.collectParcels(player);
 
-        // Should be credited 50
-        assertEquals(0, new BigDecimal("50").compareTo(economy.getVirtualBalance(player, GOLD)));
+        // Should be credited 0.50 (50 smallest units with decimals=2)
+        assertEquals(0, new BigDecimal("0.50").compareTo(economy.getVirtualBalance(player, GOLD)));
         assertEquals(0, storage.countUncollectedParcels(player));
     }
 

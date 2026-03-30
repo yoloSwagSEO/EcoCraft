@@ -98,8 +98,10 @@ public class EcoAdminCommand {
         Currency currency = EcoCommands.resolveCurrency(ctx, currencies);
         CommandSourceStack source = ctx.getSource();
 
-        economy.deposit(target.getUUID(), BigDecimal.valueOf(amount), currency);
-        String formatted = CurrencyFormatter.format(BigDecimal.valueOf(amount).longValue(), currency);
+        long smallestUnit = CurrencyFormatter.toSmallestUnit(BigDecimal.valueOf(amount), currency);
+        BigDecimal bdAmount = CurrencyFormatter.fromSmallestUnit(smallestUnit, currency);
+        economy.deposit(target.getUUID(), bdAmount, currency);
+        String formatted = CurrencyFormatter.format(smallestUnit, currency);
         source.sendSuccess(() -> Component.translatable(
             "ecocraft_core.command.eco.give", formatted, target.getName().getString()
         ), true);
@@ -113,9 +115,11 @@ public class EcoAdminCommand {
         Currency currency = EcoCommands.resolveCurrency(ctx, currencies);
         CommandSourceStack source = ctx.getSource();
 
-        var result = economy.withdraw(target.getUUID(), BigDecimal.valueOf(amount), currency);
+        long smallestUnit = CurrencyFormatter.toSmallestUnit(BigDecimal.valueOf(amount), currency);
+        BigDecimal bdAmount = CurrencyFormatter.fromSmallestUnit(smallestUnit, currency);
+        var result = economy.withdraw(target.getUUID(), bdAmount, currency);
         if (result.successful()) {
-            String formatted = CurrencyFormatter.format(BigDecimal.valueOf(amount).longValue(), currency);
+            String formatted = CurrencyFormatter.format(smallestUnit, currency);
             source.sendSuccess(() -> Component.translatable(
                 "ecocraft_core.command.eco.take", formatted, target.getName().getString()
             ), true);
@@ -186,8 +190,10 @@ public class EcoAdminCommand {
         CommandSourceStack source = ctx.getSource();
 
         // Direct set via EconomyProviderImpl to avoid phantom withdraw/deposit transactions
-        ((EconomyProviderImpl) economy).setBalance(target.getUUID(), BigDecimal.valueOf(amount), currency);
-        String formatted = CurrencyFormatter.format(BigDecimal.valueOf(amount).longValue(), currency);
+        long smallestUnit = CurrencyFormatter.toSmallestUnit(BigDecimal.valueOf(amount), currency);
+        BigDecimal bdAmount = CurrencyFormatter.fromSmallestUnit(smallestUnit, currency);
+        ((EconomyProviderImpl) economy).setBalance(target.getUUID(), bdAmount, currency);
+        String formatted = CurrencyFormatter.format(smallestUnit, currency);
         source.sendSuccess(() -> Component.translatable(
             "ecocraft_core.command.eco.set", target.getName().getString(), formatted
         ), true);

@@ -61,11 +61,13 @@ public class PayCommand {
             return 0;
         }
 
+        long smallestUnit = CurrencyFormatter.toSmallestUnit(BigDecimal.valueOf(amount), currency);
+        BigDecimal bdAmount = CurrencyFormatter.fromSmallestUnit(smallestUnit, currency);
         var result = economy.transfer(sender.getUUID(), target.getUUID(),
-            BigDecimal.valueOf(amount), currency);
+            bdAmount, currency);
 
         if (result.successful()) {
-            String formatted = CurrencyFormatter.format(BigDecimal.valueOf(amount).longValue(), currency);
+            String formatted = CurrencyFormatter.format(smallestUnit, currency);
             source.sendSuccess(() -> Component.translatable(
                 "ecocraft_core.command.pay.sent", formatted, target.getName().getString()
             ), false);

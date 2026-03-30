@@ -2,6 +2,7 @@ package net.ecocraft.mail.service;
 
 import net.ecocraft.api.EconomyProvider;
 import net.ecocraft.api.currency.Currency;
+import net.ecocraft.api.currency.CurrencyFormatter;
 import net.ecocraft.api.currency.CurrencyRegistry;
 import net.ecocraft.api.transaction.TransactionResult;
 import net.ecocraft.mail.data.Mail;
@@ -665,14 +666,14 @@ public class MailService {
      * Converts a stored long back to a BigDecimal.
      */
     public static BigDecimal fromSmallestUnit(long amount, Currency currency) {
-        return BigDecimal.valueOf(amount);
+        return CurrencyFormatter.fromSmallestUnit(amount, currency);
     }
 
     /**
      * Converts a BigDecimal amount to long for storage.
      */
     public static long toSmallestUnit(BigDecimal amount, Currency currency) {
-        return amount.setScale(0, RoundingMode.DOWN).longValueExact();
+        return CurrencyFormatter.toSmallestUnit(amount, currency);
     }
 
     // -------------------------------------------------------------------------

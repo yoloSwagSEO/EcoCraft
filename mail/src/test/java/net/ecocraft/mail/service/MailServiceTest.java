@@ -182,24 +182,26 @@ class MailServiceTest {
 
     @Test
     void sendMailWithCurrencyWithdrawsFromSender() {
-        economy.setBalance(SENDER, GOLD, new BigDecimal("500"));
+        economy.setBalance(SENDER, GOLD, new BigDecimal("500.00"));
 
+        // 10000 smallest units = 100.00 Gold (decimals=2)
         service.sendMail(SENDER, "Sender", RECIPIENT, "Gift", "",
-                List.of(), 100, "gold", 0, null, false);
+                List.of(), 10000, "gold", 0, null, false);
 
-        assertEquals(new BigDecimal("400"), economy.getVirtualBalance(SENDER, GOLD));
+        assertEquals(new BigDecimal("400.00"), economy.getVirtualBalance(SENDER, GOLD));
     }
 
     @Test
     void sendMailWithCurrencyFailsIfInsufficientFunds() {
-        economy.setBalance(SENDER, GOLD, new BigDecimal("50"));
+        economy.setBalance(SENDER, GOLD, new BigDecimal("50.00"));
 
+        // 10000 smallest units = 100.00 Gold — more than the 50.00 balance
         assertThrows(MailService.MailException.class, () ->
                 service.sendMail(SENDER, "Sender", RECIPIENT, "Gift", "",
-                        List.of(), 100, "gold", 0, null, false));
+                        List.of(), 10000, "gold", 0, null, false));
 
         // Balance unchanged
-        assertEquals(new BigDecimal("50"), economy.getVirtualBalance(SENDER, GOLD));
+        assertEquals(new BigDecimal("50.00"), economy.getVirtualBalance(SENDER, GOLD));
     }
 
     @Test
@@ -216,13 +218,14 @@ class MailServiceTest {
 
     @Test
     void sendMailWithCOD() {
+        // 20000 smallest units = 200.00 Gold COD
         String mailId = service.sendMail(SENDER, "Sender", RECIPIENT, "COD item", "",
-                swordItems(), 0, null, 200, "gold", false);
+                swordItems(), 0, null, 20000, "gold", false);
 
         Mail mail = storage.getMailById(mailId);
         assertNotNull(mail);
         assertTrue(mail.hasCOD());
-        assertEquals(200, mail.codAmount());
+        assertEquals(20000, mail.codAmount());
     }
 
     // -------------------------------------------------------------------------
@@ -271,14 +274,15 @@ class MailServiceTest {
 
     @Test
     void collectMailDeliversCurrencyAndMarksCollected() {
-        economy.setBalance(SENDER, GOLD, new BigDecimal("1000"));
+        economy.setBalance(SENDER, GOLD, new BigDecimal("1000.00"));
+        // 10000 smallest units = 100.00 Gold
         String mailId = service.sendMail(SENDER, "Sender", RECIPIENT, "Gift", "",
-                List.of(), 100, "gold", 0, null, false);
+                List.of(), 10000, "gold", 0, null, false);
 
         service.collectMail(RECIPIENT, mailId);
 
-        // Currency credited to recipient
-        assertEquals(new BigDecimal("100"), economy.getVirtualBalance(RECIPIENT, GOLD));
+        // Currency credited to recipient: 100.00 Gold
+        assertEquals(new BigDecimal("100.00"), economy.getVirtualBalance(RECIPIENT, GOLD));
 
         // Mail marked as collected
         Mail mail = storage.getMailById(mailId);
@@ -299,9 +303,9 @@ class MailServiceTest {
 
     @Test
     void collectMailFailsIfAlreadyCollected() {
-        economy.setBalance(SENDER, GOLD, new BigDecimal("1000"));
+        economy.setBalance(SENDER, GOLD, new BigDecimal("1000.00"));
         String mailId = service.sendMail(SENDER, "Sender", RECIPIENT, "Gift", "",
-                List.of(), 50, "gold", 0, null, false);
+                List.of(), 5000, "gold", 0, null, false);
 
         service.collectMail(RECIPIENT, mailId);
 
@@ -312,7 +316,7 @@ class MailServiceTest {
     @Test
     void collectMailFailsIfCOD() {
         String mailId = service.sendMail(SENDER, "Sender", RECIPIENT, "COD", "",
-                swordItems(), 0, null, 100, "gold", false);
+                swordItems(), 0, null, 10000, "gold", false);
 
         assertThrows(MailService.MailException.class, () ->
                 service.collectMail(RECIPIENT, mailId));
@@ -333,15 +337,15 @@ class MailServiceTest {
 
     @Test
     void collectAllMailsSkipsCODMails() {
-        economy.setBalance(SENDER, GOLD, new BigDecimal("1000"));
+        economy.setBalance(SENDER, GOLD, new BigDecimal("1000.00"));
 
-        // Normal mail with currency
+        // Normal mail with currency (5000 smallest units = 50.00 Gold)
         service.sendMail(SENDER, "Sender", RECIPIENT, "Gift 1", "",
-                List.of(), 50, "gold", 0, null, false);
+                List.of(), 5000, "gold", 0, null, false);
 
-        // COD mail
+        // COD mail (20000 smallest units = 200.00 Gold)
         service.sendMail(SENDER, "Sender", RECIPIENT, "COD", "",
-                swordItems(), 0, null, 200, "gold", false);
+                swordItems(), 0, null, 20000, "gold", false);
 
         // Normal mail with items
         service.sendMail(SENDER, "Sender", RECIPIENT, "Gift 2", "",
@@ -350,8 +354,8 @@ class MailServiceTest {
         int collected = service.collectAllMails(RECIPIENT);
 
         assertEquals(2, collected);
-        // Currency from first mail
-        assertEquals(new BigDecimal("50"), economy.getVirtualBalance(RECIPIENT, GOLD));
+        // Currency from first mail: 50.00 Gold
+        assertEquals(new BigDecimal("50.00"), economy.getVirtualBalance(RECIPIENT, GOLD));
         // Items from third mail
         assertEquals(1, itemDeliverer.deliveries.size());
     }
@@ -372,19 +376,19 @@ class MailServiceTest {
 
     @Test
     void payCODWithdrawsFromRecipientAndDepositsToSender() {
-        economy.setBalance(SENDER, GOLD, new BigDecimal("1000"));
-        economy.setBalance(RECIPIENT, GOLD, new BigDecimal("500"));
+        economy.setBalance(SENDER, GOLD, new BigDecimal("1000.00"));
+        economy.setBalance(RECIPIENT, GOLD, new BigDecimal("500.00"));
 
+        // 20000 smallest units = 200.00 Gold COD
         String mailId = service.sendMail(SENDER, "Sender", RECIPIENT, "COD Item", "",
-                swordItems(), 0, null, 200, "gold", false);
+                swordItems(), 0, null, 20000, "gold", false);
 
         service.payCOD(RECIPIENT, mailId);
 
-        // Recipient paid 200
-        assertEquals(new BigDecimal("300"), economy.getVirtualBalance(RECIPIENT, GOLD));
-        // Sender receives 200 (no fee by default)
-        // Sender started with 1000, lost nothing for items, gains 200 from COD
-        assertEquals(new BigDecimal("1200"), economy.getVirtualBalance(SENDER, GOLD));
+        // Recipient paid 200.00
+        assertEquals(new BigDecimal("300.00"), economy.getVirtualBalance(RECIPIENT, GOLD));
+        // Sender receives 200.00 (no fee by default)
+        assertEquals(new BigDecimal("1200.00"), economy.getVirtualBalance(SENDER, GOLD));
 
         // Items delivered
         assertEquals(1, itemDeliverer.deliveries.size());
@@ -398,48 +402,50 @@ class MailServiceTest {
     void payCODWithFeeDeductsFeeFromSenderPayment() {
         service.setCodFeePercent(5); // 5% fee
 
-        economy.setBalance(SENDER, GOLD, new BigDecimal("1000"));
-        economy.setBalance(RECIPIENT, GOLD, new BigDecimal("500"));
+        economy.setBalance(SENDER, GOLD, new BigDecimal("1000.00"));
+        economy.setBalance(RECIPIENT, GOLD, new BigDecimal("500.00"));
 
+        // 20000 smallest units = 200.00 Gold COD
         String mailId = service.sendMail(SENDER, "Sender", RECIPIENT, "COD Item", "",
-                swordItems(), 0, null, 200, "gold", false);
+                swordItems(), 0, null, 20000, "gold", false);
 
         service.payCOD(RECIPIENT, mailId);
 
-        // Recipient paid full 200
-        assertEquals(new BigDecimal("300"), economy.getVirtualBalance(RECIPIENT, GOLD));
-        // Sender receives 200 - 5% = 200 - 10 = 190
-        assertEquals(new BigDecimal("1190"), economy.getVirtualBalance(SENDER, GOLD));
+        // Recipient paid full 200.00
+        assertEquals(new BigDecimal("300.00"), economy.getVirtualBalance(RECIPIENT, GOLD));
+        // Sender receives 200.00 - 5% = 200.00 - 10.00 = 190.00
+        assertEquals(new BigDecimal("1190.00"), economy.getVirtualBalance(SENDER, GOLD));
     }
 
     @Test
     void payCODFailsIfInsufficientFunds() {
-        economy.setBalance(SENDER, GOLD, new BigDecimal("1000"));
-        economy.setBalance(RECIPIENT, GOLD, new BigDecimal("50")); // not enough
+        economy.setBalance(SENDER, GOLD, new BigDecimal("1000.00"));
+        economy.setBalance(RECIPIENT, GOLD, new BigDecimal("50.00")); // not enough for 200.00 COD
 
+        // 20000 smallest units = 200.00 Gold COD
         String mailId = service.sendMail(SENDER, "Sender", RECIPIENT, "Expensive COD", "",
-                swordItems(), 0, null, 200, "gold", false);
+                swordItems(), 0, null, 20000, "gold", false);
 
         assertThrows(MailService.MailException.class, () ->
                 service.payCOD(RECIPIENT, mailId));
 
         // Balance unchanged
-        assertEquals(new BigDecimal("50"), economy.getVirtualBalance(RECIPIENT, GOLD));
+        assertEquals(new BigDecimal("50.00"), economy.getVirtualBalance(RECIPIENT, GOLD));
     }
 
     @Test
     void payCODDeliversCurrencyAttachmentToo() {
-        economy.setBalance(SENDER, GOLD, new BigDecimal("1000"));
-        economy.setBalance(RECIPIENT, GOLD, new BigDecimal("500"));
+        economy.setBalance(SENDER, GOLD, new BigDecimal("1000.00"));
+        economy.setBalance(RECIPIENT, GOLD, new BigDecimal("500.00"));
 
-        // COD mail that also has currency attached
+        // COD mail with currency attached: 5000 = 50.00 Gold, COD 20000 = 200.00 Gold
         String mailId = service.sendMail(SENDER, "Sender", RECIPIENT, "COD + Currency", "",
-                swordItems(), 50, "gold", 200, "gold", false);
+                swordItems(), 5000, "gold", 20000, "gold", false);
 
         service.payCOD(RECIPIENT, mailId);
 
-        // Recipient: 500 - 200 (COD) + 50 (currency attachment) = 350
-        assertEquals(new BigDecimal("350"), economy.getVirtualBalance(RECIPIENT, GOLD));
+        // Recipient: 500.00 - 200.00 (COD) + 50.00 (currency attachment) = 350.00
+        assertEquals(new BigDecimal("350.00"), economy.getVirtualBalance(RECIPIENT, GOLD));
     }
 
     // -------------------------------------------------------------------------
@@ -449,7 +455,7 @@ class MailServiceTest {
     @Test
     void returnCODCreatesReturnMailToSenderAndMarksReturned() {
         String mailId = service.sendMail(SENDER, "Sender", RECIPIENT, "COD Item", "",
-                swordItems(), 0, null, 100, "gold", false);
+                swordItems(), 0, null, 10000, "gold", false);
 
         service.returnCOD(RECIPIENT, mailId);
 
@@ -472,7 +478,7 @@ class MailServiceTest {
     @Test
     void returnCODFailsIfAlreadyReturned() {
         String mailId = service.sendMail(SENDER, "Sender", RECIPIENT, "COD", "",
-                swordItems(), 0, null, 100, "gold", false);
+                swordItems(), 0, null, 10000, "gold", false);
 
         service.returnCOD(RECIPIENT, mailId);
 
@@ -482,10 +488,10 @@ class MailServiceTest {
 
     @Test
     void returnCODFailsIfAlreadyCollected() {
-        economy.setBalance(RECIPIENT, GOLD, new BigDecimal("500"));
+        economy.setBalance(RECIPIENT, GOLD, new BigDecimal("500.00"));
 
         String mailId = service.sendMail(SENDER, "Sender", RECIPIENT, "COD", "",
-                swordItems(), 0, null, 100, "gold", false);
+                swordItems(), 0, null, 10000, "gold", false);
 
         service.payCOD(RECIPIENT, mailId);
 
@@ -513,9 +519,9 @@ class MailServiceTest {
 
     @Test
     void deleteMailSucceedsAfterCollection() {
-        economy.setBalance(SENDER, GOLD, new BigDecimal("1000"));
+        economy.setBalance(SENDER, GOLD, new BigDecimal("1000.00"));
         String mailId = service.sendMail(SENDER, "Sender", RECIPIENT, "Gift", "",
-                swordItems(), 50, "gold", 0, null, false);
+                swordItems(), 5000, "gold", 0, null, false);
 
         // Collect first
         service.collectMail(RECIPIENT, mailId);
@@ -556,7 +562,7 @@ class MailServiceTest {
         String mailId = UUID.randomUUID().toString();
         Mail expiredCOD = new Mail(
             mailId, SENDER, "Sender", RECIPIENT, "Expired COD", "",
-            swordItems(), 0, null, 100, "gold",
+            swordItems(), 0, null, 10000, "gold",
             false, false, false, false, false,
             past - 60_000, past - 60_000, past  // expired
         );
