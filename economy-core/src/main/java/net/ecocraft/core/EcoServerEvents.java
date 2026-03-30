@@ -1,8 +1,10 @@
 package net.ecocraft.core;
 
+import net.ecocraft.api.EcoCraftCurrencyApi;
 import net.ecocraft.api.EconomyProvider;
 import net.ecocraft.api.currency.Currency;
 import net.ecocraft.api.currency.CurrencyRegistry;
+import net.ecocraft.api.currency.ExternalCurrencyAdapter;
 import net.ecocraft.api.exchange.ExchangeService;
 import net.ecocraft.api.transaction.TransactionLog;
 import net.ecocraft.core.command.EcoCommands;
@@ -64,6 +66,14 @@ public class EcoServerEvents {
         );
         var exchangeService = new ExchangeServiceImpl(economyProvider, storage.getProvider(), currencyRegistry, exchangeConfig);
         exchangeService.loadRatesFromStorage();
+
+        // Register external currency adapters into the registry
+        for (ExternalCurrencyAdapter adapter : EcoCraftCurrencyApi.getAdapters()) {
+            if (!currencyRegistry.exists(adapter.getCurrency().id())) {
+                currencyRegistry.register(adapter.getCurrency());
+            }
+        }
+
         var transactionLog = new TransactionLogImpl(storage.getProvider(), currencyRegistry);
         context = new EcoServerContext(storage, currencyRegistry, economyProvider,
                 exchangeService, transactionLog);
@@ -90,6 +100,7 @@ public class EcoServerEvents {
             ctx.getStorage().shutdown();
             context = null;
         }
+        EcoCraftCurrencyApi.clearAdapters();
     }
 
     @SubscribeEvent
