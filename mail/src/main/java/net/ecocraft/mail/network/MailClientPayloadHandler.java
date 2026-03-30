@@ -13,7 +13,11 @@ public final class MailClientPayloadHandler {
     private MailClientPayloadHandler() {}
 
     public static void handleOpenMailbox(OpenMailboxPayload payload, IPayloadContext context) {
-        context.enqueueWork(MailboxScreen::open);
+        context.enqueueWork(() -> MailboxScreen.open(payload.entityId()));
+    }
+
+    public static void handlePostmanSkin(PostmanSkinPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> MailboxScreen.receivePostmanSkin(payload));
     }
 
     public static void handleMailListResponse(MailListResponsePayload payload, IPayloadContext context) {
@@ -34,6 +38,10 @@ public final class MailClientPayloadHandler {
 
     public static void handleNotification(MailNotificationPayload payload, IPayloadContext context) {
         context.enqueueWork(() -> MailNotificationManager.handle(payload));
+    }
+
+    public static void handleDraftsResponse(DraftsResponsePayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> MailboxScreen.receiveDrafts(payload));
     }
 
     public static void handleMailSettings(MailSettingsPayload payload, IPayloadContext context) {

@@ -49,7 +49,7 @@ public class MailboxBlock extends BaseEntityBlock {
                 serverPlayer.sendSystemMessage(Component.translatable("ecocraft_mail.error.no_permission"));
                 return InteractionResult.FAIL;
             }
-            PacketDistributor.sendToPlayer(serverPlayer, new OpenMailboxPayload());
+            PacketDistributor.sendToPlayer(serverPlayer, new OpenMailboxPayload(0));
         }
         return InteractionResult.sidedSuccess(level.isClientSide);
     }
